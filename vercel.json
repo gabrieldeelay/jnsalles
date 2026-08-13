@@ -7,6 +7,12 @@
       "maxDuration": 60
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/orders",
+      "schedule": "0 4 * * *"
+    }
+  ],
   "routes": [
     {
       "src": "/(?:banco_de_dados\\.sql|composer\\.(?:json|lock)|Instruções\\.txt|pedido\\.lock|deploy\\.php)",

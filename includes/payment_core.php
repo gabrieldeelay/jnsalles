@@ -759,14 +759,20 @@ function payment_check_order($orderId)
     if ($provider === 'mercadopago') {
         $response = payment_http('GET', 'https://api.mercadopago.com/v1/payments/' . rawurlencode((string) $order['id_mp']), ['Authorization: Bearer ' . payment_setting('mercadopago_access_token')]);
         $data = $response['json'];
-        if (!$response['ok'] || ($data['status'] ?? '') !== 'approved') {
+        if (!$response['ok']) {
+            return ['ok' => false, 'status' => 1, 'message' => 'Falha ao consultar o Mercado Pago.'];
+        }
+        if (($data['status'] ?? '') !== 'approved') {
             return ['ok' => true, 'status' => 1];
         }
         $verified = ['order_id' => $data['external_reference'] ?? $orderId, 'amount' => $data['transaction_amount'] ?? 0, 'reference' => $data['id'] ?? $order['id_mp']];
     } elseif ($provider === 'openpix') {
         $response = payment_http('GET', 'https://api.openpix.com.br/api/v1/charge/' . rawurlencode((string) $orderId), ['Authorization: ' . payment_setting('openpix_app_id')]);
         $charge = $response['json']['charge'] ?? [];
-        if (!$response['ok'] || !in_array(strtoupper((string) ($charge['status'] ?? '')), ['COMPLETED', 'PAID'], true)) {
+        if (!$response['ok']) {
+            return ['ok' => false, 'status' => 1, 'message' => 'Falha ao consultar a OpenPix.'];
+        }
+        if (!in_array(strtoupper((string) ($charge['status'] ?? '')), ['COMPLETED', 'PAID'], true)) {
             return ['ok' => true, 'status' => 1];
         }
         $verified = ['order_id' => $charge['correlationID'] ?? $orderId, 'amount' => ((float) ($charge['value'] ?? 0)) / 100, 'reference' => $charge['globalID'] ?? $order['id_mp']];
@@ -777,7 +783,10 @@ function payment_check_order($orderId)
         }
         $response = payment_http('GET', 'https://portal.pay2m.com.br/api/v1/pix/qrcode/' . rawurlencode((string) $order['id_mp']), ['Authorization: ' . $token['authorization']]);
         $data = $response['json'];
-        if (!$response['ok'] || strtolower((string) ($data['status'] ?? '')) !== 'paid') {
+        if (!$response['ok']) {
+            return ['ok' => false, 'status' => 1, 'message' => 'Falha ao consultar a Pay2M.'];
+        }
+        if (strtolower((string) ($data['status'] ?? '')) !== 'paid') {
             return ['ok' => true, 'status' => 1];
         }
         $verified = ['order_id' => $data['external_reference'] ?? $orderId, 'amount' => $data['value'] ?? 0, 'reference' => $data['reference_code'] ?? $order['id_mp']];
@@ -788,7 +797,10 @@ function payment_check_order($orderId)
         }
         $response = payment_http('GET', payment_efi_base_url() . '/v2/cob/' . rawurlencode((string) $order['txid']), ['Authorization: ' . $token['authorization'], 'Content-Type: application/json'], null, $token['certificate']);
         $data = $response['json'];
-        if (!$response['ok'] || strtoupper((string) ($data['status'] ?? '')) !== 'CONCLUIDA') {
+        if (!$response['ok']) {
+            return ['ok' => false, 'status' => 1, 'message' => 'Falha ao consultar a Efi.'];
+        }
+        if (strtoupper((string) ($data['status'] ?? '')) !== 'CONCLUIDA') {
             return ['ok' => true, 'status' => 1];
         }
         $verified = ['order_id' => $orderId, 'amount' => $data['valor']['original'] ?? 0, 'reference' => $order['txid']];
@@ -802,7 +814,10 @@ function payment_check_order($orderId)
         ]);
         $data = $response['json'];
         $status = $data['status'] ?? ($data['payment']['status'] ?? null);
-        if (!$response['ok'] || !in_array((string) $status, ['1', 'paid', 'PAID'], true)) {
+        if (!$response['ok']) {
+            return ['ok' => false, 'status' => 1, 'message' => 'Falha ao consultar a Paggue.'];
+        }
+        if (!in_array((string) $status, ['1', 'paid', 'PAID'], true)) {
             return ['ok' => true, 'status' => 1];
         }
         $amount = $data['amount'] ?? ($data['payment']['amount'] ?? 0);
@@ -811,4 +826,67 @@ function payment_check_order($orderId)
 
     $approved = payment_mark_order_paid($provider, $verified);
     return !empty($approved['ok']) ? ['ok' => true, 'status' => 2] : ['ok' => false, 'status' => 1, 'message' => $approved['message'] ?? 'Confirmação recusada.'];
+}
+
+function payment_expire_pending_orders($productId = null, $limit = 10)
+{
+    global $conn;
+    $limit = max(1, min(50, (int) $limit));
+    $productId = $productId === null ? null : (int) $productId;
+    $sql = 'SELECT id, product_id, payment_method FROM order_list '
+        . 'WHERE status = 1 AND order_expiration > 0 '
+        . 'AND DATE_ADD(date_created, INTERVAL order_expiration MINUTE) <= NOW()';
+    if ($productId !== null && $productId > 0) {
+        $sql .= ' AND product_id = ' . $productId;
+    }
+    $sql .= ' ORDER BY date_created ASC LIMIT ' . $limit;
+    $result = $conn->query($sql);
+    if (!$result) {
+        return ['ok' => false, 'expired' => 0, 'message' => 'Falha ao localizar pedidos vencidos.'];
+    }
+
+    $expired = 0;
+    $products = [];
+    $deadline = microtime(true) + 45;
+    $gatewayMethods = ['MercadoPago', 'Gerencianet', 'Paggue', 'OpenPix', 'Pay2m'];
+    while ($order = $result->fetch_assoc()) {
+        if (microtime(true) >= $deadline) {
+            break;
+        }
+        $check = in_array((string) $order['payment_method'], $gatewayMethods, true)
+            ? payment_check_order((int) $order['id'])
+            : ['ok' => true, 'status' => 1];
+        if (empty($check['ok']) || (int) ($check['status'] ?? 1) !== 1) {
+            continue;
+        }
+
+        $statement = $conn->prepare(
+            'UPDATE order_list SET status = 3, date_updated = NOW() '
+            . 'WHERE id = ? AND status = 1 AND order_expiration > 0 '
+            . 'AND DATE_ADD(date_created, INTERVAL order_expiration MINUTE) <= NOW()'
+        );
+        $orderId = (int) $order['id'];
+        $statement->bind_param('i', $orderId);
+        $statement->execute();
+        if ($statement->affected_rows === 1) {
+            $expired++;
+            $products[(int) $order['product_id']] = true;
+        }
+        $statement->close();
+    }
+    $result->free();
+
+    foreach (array_keys($products) as $expiredProductId) {
+        $statement = $conn->prepare(
+            'UPDATE product_list SET pending_numbers = ('
+            . 'SELECT COALESCE(SUM(quantity), 0) FROM order_list '
+            . 'WHERE product_id = ? AND status = 1'
+            . ') WHERE id = ?'
+        );
+        $statement->bind_param('ii', $expiredProductId, $expiredProductId);
+        $statement->execute();
+        $statement->close();
+    }
+
+    return ['ok' => true, 'expired' => $expired];
 }

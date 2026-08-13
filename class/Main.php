@@ -1441,8 +1441,10 @@ class Main extends DBConnection
             $ref = $_POST["ref"];
             $order_token = md5($pref . $code);
 
-
-
+            $expirationCleanup = payment_expire_pending_orders((int) $product_id, 2);
+            if (empty($expirationCleanup['ok'])) {
+                error_log('[payments] expired order cleanup failed product=' . (int) $product_id);
+            }
 
             if ($this->settings->info("pay2m") == 1) {
                 // Se CPF for obrigatório e estiver vazio, bloqueia

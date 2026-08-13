@@ -458,6 +458,22 @@ if (strpos($requestPath, "\0") !== false || strpos($requestPath, '..') !== false
     stop_request(400, 'Invalid request path.');
 }
 
+if ($requestPath === '/api/cron/orders') {
+    $cronSecret = (string) getenv('CRON_SECRET');
+    $authorization = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+
+    if ($cronSecret === '' || !hash_equals('Bearer ' . $cronSecret, $authorization)) {
+        stop_request(401, 'Unauthorized');
+    }
+
+    require_once $appRoot . DIRECTORY_SEPARATOR . 'settings.php';
+    $result = payment_expire_pending_orders(null, 50);
+    http_response_code(!empty($result['ok']) ? 200 : 500);
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode($result);
+    exit;
+}
+
 if (stripos($requestPath, '/uploads/') === 0) {
     $uploadPath = realpath(
         $writableAppRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, ltrim($requestPath, '/'))
