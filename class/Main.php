@@ -32,8 +32,183 @@ class Main extends DBConnection
         }
     }
 
+    private function campaign_upload_error($code)
+    {
+        $messages = [
+            UPLOAD_ERR_INI_SIZE => 'A imagem excede o limite permitido pelo servidor.',
+            UPLOAD_ERR_FORM_SIZE => 'A imagem excede o limite permitido pelo formulário.',
+            UPLOAD_ERR_PARTIAL => 'O envio da imagem foi interrompido. Tente novamente.',
+            UPLOAD_ERR_NO_TMP_DIR => 'O servidor não conseguiu preparar a imagem.',
+            UPLOAD_ERR_CANT_WRITE => 'O servidor não conseguiu gravar a imagem.',
+            UPLOAD_ERR_EXTENSION => 'O envio da imagem foi bloqueado pelo servidor.',
+        ];
+        return $messages[$code] ?? 'Não foi possível receber a imagem.';
+    }
+
+    private function campaign_blob_credentials()
+    {
+        $token = trim((string) getenv('BLOB_READ_WRITE_TOKEN'));
+        $parts = explode('_', $token);
+        $storeId = isset($parts[3]) ? trim($parts[3]) : '';
+
+        if ($token === '' || $storeId === '') {
+            return false;
+        }
+
+        return ['token' => $token, 'store_id' => $storeId];
+    }
+
+    private function campaign_blob_request($path, $method, $body, $headers = [])
+    {
+        $credentials = $this->campaign_blob_credentials();
+        if (!$credentials || !function_exists('curl_init')) {
+            return ['ok' => false, 'message' => 'O armazenamento de imagens não está disponível.'];
+        }
+
+        $requestId = $credentials['store_id'] . ':' . time() . ':' . bin2hex(random_bytes(5));
+        $requestHeaders = array_merge([
+            'Authorization: Bearer ' . $credentials['token'],
+            'x-api-version: 12',
+            'x-api-blob-request-id: ' . $requestId,
+            'x-api-blob-request-attempt: 0',
+            'x-vercel-blob-store-id: ' . $credentials['store_id'],
+            'Expect:',
+        ], $headers);
+
+        $curl = curl_init('https://vercel.com/api/blob' . $path);
+        curl_setopt_array($curl, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_CONNECTTIMEOUT => 8,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_CUSTOMREQUEST => $method,
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_HTTPHEADER => $requestHeaders,
+        ]);
+        $rawResponse = curl_exec($curl);
+        $curlError = curl_error($curl);
+        $statusCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        curl_close($curl);
+
+        $response = is_string($rawResponse) ? json_decode($rawResponse, true) : null;
+        if ($curlError !== '' || $statusCode < 200 || $statusCode >= 300 || !is_array($response)) {
+            $apiMessage = is_array($response) ? ($response['error']['message'] ?? '') : '';
+            error_log('[campaign-blob] request failed status=' . $statusCode . ' curl=' . ($curlError !== '' ? $curlError : 'none') . ' api=' . $apiMessage);
+            return ['ok' => false, 'message' => 'Não foi possível gravar a imagem no armazenamento permanente.'];
+        }
+
+        return ['ok' => true, 'data' => $response];
+    }
+
+    private function delete_campaign_blob($url)
+    {
+        $host = strtolower((string) parse_url((string) $url, PHP_URL_HOST));
+        if (!preg_match('/^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/', $host)) {
+            return;
+        }
+
+        $this->campaign_blob_request(
+            '/delete',
+            'POST',
+            json_encode(['urls' => [(string) $url]]),
+            ['Content-Type: application/json']
+        );
+    }
+
+    private function save_campaign_main_image($file, $productId)
+    {
+        $error = isset($file['error']) ? (int) $file['error'] : UPLOAD_ERR_NO_FILE;
+        if ($error !== UPLOAD_ERR_OK) {
+            return ['ok' => false, 'message' => $this->campaign_upload_error($error)];
+        }
+
+        if (empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+            return ['ok' => false, 'message' => 'O arquivo de imagem recebido é inválido.'];
+        }
+
+        if ((int) ($file['size'] ?? 0) > 4 * 1024 * 1024) {
+            return ['ok' => false, 'message' => 'A imagem continua muito grande. Escolha um arquivo de até 4 MB.'];
+        }
+
+        $imageInfo = @getimagesize($file['tmp_name']);
+        $accepted = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!$imageInfo || !in_array($imageInfo['mime'] ?? '', $accepted, true)) {
+            return ['ok' => false, 'message' => 'Formato inválido. Use JPG, PNG, GIF ou WebP.'];
+        }
+
+        $width = (int) ($imageInfo[0] ?? 0);
+        $height = (int) ($imageInfo[1] ?? 0);
+        if ($width < 1 || $height < 1 || ($width * $height) > 40000000) {
+            return ['ok' => false, 'message' => 'A resolução da imagem é inválida ou muito alta.'];
+        }
+
+        $contents = @file_get_contents($file['tmp_name']);
+        $source = $contents !== false ? @imagecreatefromstring($contents) : false;
+        if (!$source) {
+            return ['ok' => false, 'message' => 'A imagem está corrompida ou não pôde ser aberta.'];
+        }
+
+        $targetSize = 600;
+        $scale = max($targetSize / $width, $targetSize / $height);
+        $resizedWidth = max($targetSize, (int) ceil($width * $scale));
+        $resizedHeight = max($targetSize, (int) ceil($height * $scale));
+        $resized = imagecreatetruecolor($resizedWidth, $resizedHeight);
+        $white = imagecolorallocate($resized, 255, 255, 255);
+        imagefill($resized, 0, 0, $white);
+        imagecopyresampled($resized, $source, 0, 0, 0, 0, $resizedWidth, $resizedHeight, $width, $height);
+
+        $cropped = imagecrop($resized, [
+            'x' => max(0, (int) floor(($resizedWidth - $targetSize) / 2)),
+            'y' => max(0, (int) floor(($resizedHeight - $targetSize) / 2)),
+            'width' => $targetSize,
+            'height' => $targetSize,
+        ]);
+        imagedestroy($source);
+        imagedestroy($resized);
+
+        if (!$cropped) {
+            return ['ok' => false, 'message' => 'Não foi possível ajustar a imagem para o formato da campanha.'];
+        }
+
+        ob_start();
+        $saved = imagejpeg($cropped, null, 88);
+        $imageBytes = ob_get_clean();
+        imagedestroy($cropped);
+
+        if (!$saved || !is_string($imageBytes) || $imageBytes === '') {
+            return ['ok' => false, 'message' => 'Não foi possível salvar a nova imagem da campanha.'];
+        }
+
+        $pathname = 'campanhas/' . (int) $productId . '/campanha-' . bin2hex(random_bytes(8)) . '.jpg';
+        $blobResult = $this->campaign_blob_request(
+            '/?pathname=' . rawurlencode($pathname),
+            'PUT',
+            $imageBytes,
+            [
+                'Content-Type: application/octet-stream',
+                'Content-Length: ' . strlen($imageBytes),
+                'x-vercel-blob-access: public',
+                'x-content-type: image/jpeg',
+                'x-add-random-suffix: 0',
+                'x-cache-control-max-age: 31536000',
+            ]
+        );
+
+        $blobUrl = $blobResult['data']['url'] ?? '';
+        if (empty($blobResult['ok']) || !filter_var($blobUrl, FILTER_VALIDATE_URL)) {
+            return ['ok' => false, 'message' => $blobResult['message'] ?? 'Não foi possível enviar a imagem.'];
+        }
+
+        return ['ok' => true, 'path' => $blobUrl];
+    }
+
     public function save_product()
     {
+        if (empty($this->settings->userdata('firstname')) || $this->settings->userdata('type') != 1) {
+            http_response_code(403);
+            return json_encode(['status' => 'failed', 'msg' => 'Não autorizado.']);
+        }
+
         $id = $_POST["id"];
         $name = $this->conn->real_escape_string(
             filter_var($_POST["name"], FILTER_SANITIZE_SPECIAL_CHARS)
@@ -621,326 +796,114 @@ class Main extends DBConnection
                 );
             }
 
-            if (!empty($_FILES["img"]["tmp_name"])) {
-                $img_path = "uploads/campanhas";
+            if (isset($_FILES['img']) && (int) ($_FILES['img']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+                $oldImage = '';
+                $oldImageQuery = $this->conn->prepare('SELECT image_path FROM product_list WHERE id = ? LIMIT 1');
+                $oldImageQuery->bind_param('i', $pid);
+                $oldImageQuery->execute();
+                $oldImageResult = $oldImageQuery->get_result();
+                if ($oldImageResult && ($oldImageRow = $oldImageResult->fetch_assoc())) {
+                    $oldImage = preg_replace('/\?.*$/', '', (string) $oldImageRow['image_path']);
+                }
+                $oldImageQuery->close();
 
-                if (!is_dir(BASE_APP . $img_path)) {
-                    mkdir(BASE_APP . $img_path);
+                $imageResult = $this->save_campaign_main_image($_FILES['img'], $pid);
+                if (empty($imageResult['ok'])) {
+                    error_log('[campaign] main image upload failed product=' . (int) $pid . ' reason=' . ($imageResult['message'] ?? 'unknown'));
+                    return json_encode([
+                        'status' => 'failed',
+                        'msg' => 'Os dados foram salvos, mas a imagem não foi alterada. ' . ($imageResult['message'] ?? 'Tente novamente.'),
+                    ]);
                 }
 
-                $accept = ["image/jpeg", "image/png"];
+                $newImage = $imageResult['path'];
+                $imageUpdate = $this->conn->prepare('UPDATE product_list SET image_path = ? WHERE id = ?');
+                $imageUpdate->bind_param('si', $newImage, $pid);
+                $imageSaved = $imageUpdate->execute();
+                $imageUpdate->close();
 
-                if (!in_array($_FILES["img"]["type"], $accept)) {
-                    $resp["msg"] .= " Image file type is invalid";
-                } else {
-                    if ($_FILES["img"]["type"] == "image/jpeg") {
-                        $uploadfile = imagecreatefromjpeg(
-                            $_FILES["img"]["tmp_name"]
-                        );
-                    } elseif ($_FILES["img"]["type"] == "image/png") {
-                        $uploadfile = imagecreatefrompng(
-                            $_FILES["img"]["tmp_name"]
-                        );
-                    }
+                if (!$imageSaved) {
+                    $this->delete_campaign_blob($newImage);
+                    error_log('[campaign] main image database update failed product=' . (int) $pid);
+                    return json_encode(['status' => 'failed', 'msg' => 'Os dados foram salvos, mas não foi possível associar a nova imagem.']);
+                }
 
-                    if (!$uploadfile) {
-                        $resp["msg"] .= " Image is invalid";
-                    } else {
-                        list($width, $height) = getimagesize(
-                            $_FILES["img"]["tmp_name"]
-                        );
-                        $desired_width = 600;
-                        $desired_height = 600;
-                        $source_aspect_ratio = $width / $height;
-                        $desired_aspect_ratio =
-                            $desired_width / $desired_height;
-
-                        if ($desired_aspect_ratio < $source_aspect_ratio) {
-                            $temp_height = $desired_height;
-                            $temp_width =
-                                (int) ($desired_height * $source_aspect_ratio);
-                        } else {
-                            $temp_width = $desired_width;
-                            $temp_height =
-                                (int) ($desired_width / $source_aspect_ratio);
-                        }
-
-                        $temp_resized = imagecreatetruecolor(
-                            $temp_width,
-                            $temp_height
-                        );
-                        imagecopyresampled(
-                            $temp_resized,
-                            $uploadfile,
-                            0,
-                            0,
-                            0,
-                            0,
-                            $temp_width,
-                            $temp_height,
-                            $width,
-                            $height
-                        );
-                        $x = ($temp_width - $desired_width) / 2;
-                        $y = ($temp_height - $desired_height) / 2;
-                        $temp_cropped = imagecrop($temp_resized, [
-                            "x" => $x,
-                            "y" => $y,
-                            "width" => $desired_width,
-                            "height" => $desired_height,
-                        ]);
-                        $spath = $img_path . "/" . $_FILES["img"]["name"];
-                        $i = 1;
-
-                        while (true) {
-                            if (is_file(BASE_APP . $spath)) {
-                                $spath =
-                                    $img_path .
-                                    "/" .
-                                    $i++ .
-                                    "_" .
-                                    $_FILES["img"]["name"];
-                                continue;
-                            }
-
-                            break;
-                        }
-
-                        if ($_FILES["img"]["type"] == "image/jpeg") {
-                            $upload = imagejpeg(
-                                $temp_cropped,
-                                BASE_APP . $spath,
-                                95
-                            );
-                        } elseif ($_FILES["img"]["type"] == "image/png") {
-                            $upload = imagepng(
-                                $temp_cropped,
-                                BASE_APP . $spath,
-                                9
-                            );
-                        }
-
-                        if ($upload) {
-                            $this->conn->query(
-                                'UPDATE product_list SET image_path = CONCAT(\'' .
-                                    $spath .
-                                    '\', \'?v=\', UNIX_TIMESTAMP(CURRENT_TIMESTAMP)) WHERE id = \'' .
-                                    $pid .
-                                    '\' '
-                            );
-                        }
-
-                        imagedestroy($temp_cropped);
-                        imagedestroy($temp_resized);
-                    }
+                if ($oldImage !== '' && $oldImage !== $newImage) {
+                    $this->delete_campaign_blob($oldImage);
                 }
             }
 
             $on_gallery = isset($_POST["on-gallery"])
-                ? $_POST["on-gallery"]
-                : "";
-            $image_gallery = !array_filter($_FILES["image_gallery"]["name"]);
-            if (!$on_gallery && $image_gallery) {
-                $this->conn->query(
-                    'UPDATE product_list set image_gallery = \'[]\' where id = \'' .
-                        $pid .
-                        '\' '
-                );
+                ? array_values(array_filter((array) $_POST["on-gallery"]))
+                : [];
+
+            $existingGallery = [];
+            $existingGalleryQuery = $this->conn->prepare('SELECT image_gallery FROM product_list WHERE id = ? LIMIT 1');
+            $existingGalleryQuery->bind_param('i', $pid);
+            $existingGalleryQuery->execute();
+            $existingGalleryResult = $existingGalleryQuery->get_result();
+            if ($existingGalleryResult && ($existingGalleryRow = $existingGalleryResult->fetch_assoc())) {
+                $decodedGallery = json_decode((string) $existingGalleryRow['image_gallery'], true);
+                $existingGallery = is_array($decodedGallery) ? $decodedGallery : [];
+            }
+            $existingGalleryQuery->close();
+
+            $galleryNames = isset($_FILES["image_gallery"]["name"])
+                ? (array) $_FILES["image_gallery"]["name"]
+                : [];
+            $newGallery = [];
+
+            if (array_filter($galleryNames)) {
+                foreach ((array) $_FILES["image_gallery"]["tmp_name"] as $index => $tmpName) {
+                    if (empty($galleryNames[$index])) {
+                        continue;
+                    }
+
+                    $galleryFile = [
+                        'name' => $galleryNames[$index],
+                        'type' => $_FILES["image_gallery"]["type"][$index] ?? '',
+                        'tmp_name' => $tmpName,
+                        'error' => $_FILES["image_gallery"]["error"][$index] ?? UPLOAD_ERR_NO_FILE,
+                        'size' => $_FILES["image_gallery"]["size"][$index] ?? 0,
+                    ];
+                    $galleryResult = $this->save_campaign_main_image($galleryFile, $pid);
+
+                    if (empty($galleryResult['ok'])) {
+                        foreach ($newGallery as $newGalleryImage) {
+                            $this->delete_campaign_blob($newGalleryImage);
+                        }
+                        error_log('[campaign] gallery upload failed product=' . (int) $pid . ' reason=' . ($galleryResult['message'] ?? 'unknown'));
+                        return json_encode([
+                            'status' => 'failed',
+                            'msg' => 'Os dados foram salvos, mas uma imagem da galeria não foi alterada. ' . ($galleryResult['message'] ?? 'Tente novamente.'),
+                        ]);
+                    }
+
+                    $newGallery[] = $galleryResult['path'];
+                }
             }
 
-            if (isset($_FILES["image_gallery"])) {
-                $img_path = "uploads/campanhas";
+            $finalGallery = array_values(array_merge($on_gallery, $newGallery));
+            $galleryJson = json_encode($finalGallery, JSON_UNESCAPED_SLASHES);
+            $galleryUpdate = $this->conn->prepare('UPDATE product_list SET image_gallery = ? WHERE id = ?');
+            $galleryUpdate->bind_param('si', $galleryJson, $pid);
+            $gallerySaved = $galleryUpdate->execute();
+            $galleryUpdate->close();
 
-                if (!is_dir(BASE_APP . $img_path)) {
-                    mkdir(BASE_APP . $img_path);
+            if (!$gallerySaved) {
+                foreach ($newGallery as $newGalleryImage) {
+                    $this->delete_campaign_blob($newGalleryImage);
                 }
+                return json_encode([
+                    'status' => 'failed',
+                    'msg' => 'Os dados foram salvos, mas não foi possível atualizar a galeria.',
+                ]);
+            }
 
-                $accept = ["image/jpeg", "image/png"];
-                $image_paths = [];
-
-                foreach (
-                    $_FILES["image_gallery"]["tmp_name"]
-                    as $index => $tmp_name
-                ) {
-                    if (
-                        !in_array(
-                            $_FILES["image_gallery"]["type"][$index],
-                            $accept
-                        )
-                    ) {
-                        $resp["msg"] .= " Image file type is invalid";
-                    } else {
-                        if (
-                            $_FILES["image_gallery"]["type"][$index] ==
-                            "image/jpeg"
-                        ) {
-                            $uploadfile = imagecreatefromjpeg($tmp_name);
-                        } elseif (
-                            $_FILES["image_gallery"]["type"][$index] ==
-                            "image/png"
-                        ) {
-                            $uploadfile = imagecreatefrompng($tmp_name);
-                        }
-
-                        if (!$uploadfile) {
-                            $resp["msg"] .= " Image is invalid";
-                        } else {
-                            list($width, $height) = getimagesize($tmp_name);
-                            if (600 < $width || 600 < $height) {
-                                $ratio = $width / $height;
-                                $new_width = 600;
-                                $new_height = $new_width / $ratio;
-
-                                if ($new_height < 600) {
-                                    $new_height = 600;
-                                    $new_width = $new_height * $ratio;
-                                }
-
-                                $temp_resized = imagecreatetruecolor(
-                                    $new_width,
-                                    $new_height
-                                );
-                                imagecopyresampled(
-                                    $temp_resized,
-                                    $uploadfile,
-                                    0,
-                                    0,
-                                    0,
-                                    0,
-                                    $new_width,
-                                    $new_height,
-                                    $width,
-                                    $height
-                                );
-                                $x = ($new_width - 600) / 2;
-                                $y = ($new_height - 600) / 2;
-                                $temp_cropped = imagecrop($temp_resized, [
-                                    "x" => $x,
-                                    "y" => $y,
-                                    "width" => 600,
-                                    "height" => 600,
-                                ]);
-
-                                if ($temp_cropped) {
-                                    $spath =
-                                        $img_path .
-                                        "/" .
-                                        $_FILES["image_gallery"]["name"][$index];
-                                    $i = 1;
-
-                                    while (true) {
-                                        if (is_file(BASE_APP . $spath)) {
-                                            $spath =
-                                                $img_path .
-                                                "/" .
-                                                $i++ .
-                                                "" .
-                                                $_FILES["image_gallery"]["name"][$index];
-                                            continue;
-                                        }
-
-                                        break;
-                                    }
-
-                                    if (
-                                        $_FILES["image_gallery"]["type"][$index] == "image/jpeg"
-                                    ) {
-                                        $upload = imagejpeg(
-                                            $temp_cropped,
-                                            BASE_APP . $spath,
-                                            95
-                                        );
-                                    } elseif (
-                                        $_FILES["image_gallery"]["type"][$index] == "image/png"
-                                    ) {
-                                        $upload = imagepng(
-                                            $temp_cropped,
-                                            BASE_APP . $spath,
-                                            9
-                                        );
-                                    }
-
-                                    if ($upload) {
-                                        $image_paths[] = $spath;
-                                    }
-
-                                    imagedestroy($temp_cropped);
-                                }
-
-                                imagedestroy($temp_resized);
-                            } else {
-                                $spath =
-                                    $img_path .
-                                    "/" .
-                                    $_FILES["image_gallery"]["name"][$index];
-                                $i = 1;
-
-                                while (true) {
-                                    if (is_file(BASE_APP . $spath)) {
-                                        $spath =
-                                            $img_path .
-                                            "/" .
-                                            $i++ .
-                                            "" .
-                                            $_FILES["image_gallery"]["name"][$index];
-                                        continue;
-                                    }
-
-                                    break;
-                                }
-
-                                if (
-                                    $_FILES["image_gallery"]["type"][$index] ==
-                                    "image/jpeg"
-                                ) {
-                                    $upload = imagejpeg(
-                                        $uploadfile,
-                                        BASE_APP . $spath,
-                                        95
-                                    );
-                                } elseif (
-                                    $_FILES["image_gallery"]["type"][$index] ==
-                                    "image/png"
-                                ) {
-                                    $upload = imagepng(
-                                        $uploadfile,
-                                        BASE_APP . $spath,
-                                        9
-                                    );
-                                }
-
-                                if ($upload) {
-                                    $image_paths[] = $spath;
-                                }
-                            }
-                        }
-                    }
+            foreach ($existingGallery as $oldGalleryImage) {
+                if (!in_array($oldGalleryImage, $finalGallery, true)) {
+                    $this->delete_campaign_blob($oldGalleryImage);
                 }
-
-                if ($on_gallery) {
-                    $on_gallery_arr = [];
-
-                    foreach ($on_gallery as $img_gallery) {
-                        $on_gallery_arr[] = $img_gallery;
-                    }
-
-                    $image_paths = json_encode(
-                        array_merge($on_gallery_arr, $image_paths)
-                    );
-                } else {
-                    $image_paths = json_encode($image_paths, true);
-                }
-
-                $image_paths_str = $this->conn->real_escape_string(
-                    $image_paths
-                );
-                $this->conn->query(
-                    'UPDATE product_list SET image_gallery = \'' .
-                        $image_paths_str .
-                        '\' WHERE id = \'' .
-                        $pid .
-                        '\' '
-                );
             }
         } else {
             $resp["status"] = "failed";

@@ -622,8 +622,7 @@ if ($enable_cpf == 1) {
                                 echo '"> <img alt="';
                                 echo (isset($name) ? $name : '');
                                 echo '" src="';
-                                echo BASE_URL;
-                                echo $image;
+                                echo validate_image($image);
                                 echo '" decoding="async" data-nimg="fill" class="SorteioTpl_imagem__2GXxI"> </div> ';
                             }
 

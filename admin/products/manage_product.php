@@ -359,6 +359,25 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
             margin-right: 0
         }
     }
+
+    #campaign-save-feedback {
+        position: fixed;
+        top: 22px;
+        right: 22px;
+        z-index: 9999;
+        display: none;
+        width: calc(100% - 44px);
+        max-width: 440px;
+        padding: 14px 18px;
+        border-radius: 10px;
+        color: #fff;
+        font-weight: 600;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, .28);
+    }
+
+    #campaign-save-feedback.success { background: #047857; }
+    #campaign-save-feedback.error { background: #b91c1c; }
+    #campaign-save-feedback.info { background: #6d28d9; }
 </style>
 
 <main class="h-full pb-16 overflow-y-auto">
@@ -366,6 +385,7 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
         <h2 class="my-6 text-2xl font-semibold text-gray-700 dark:text-gray-200">
             <?= isset($id) ? 'Atualizar campanha <a href="./?page=products/manage_product" id="create_new"><button class="px-4 py-2 text-sm font-medium leading-5 text-white transition-colors duration-150 bg-purple-600 border border-transparent rounded-lg active:bg-purple-600 hover:bg-purple-700 focus:outline-none focus:shadow-outline-purple">Criar novo</button></a>' : 'Nova campanha' ?>
         </h2>
+        <div id="campaign-save-feedback" role="status" aria-live="polite"></div>
         <div class="px-4 py-3 mb-8 bg-white rounded-lg shadow-md dark:bg-gray-800">
             <div class="flex">
                 <ul class="flex" id="tabs">
@@ -534,7 +554,7 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
                                 </label>
                                 <div class="image-container__box dark:bg-gray-800 add-logo"><svg width="35" height="30" viewBox="0 0 35 30" xmlns="http://www.w3.org/2000/svg" class="box__icon">
                                         <path d="M3.502 3.4h5.11L12.02.09h10.222l3.407 3.31h5.111c1.882 0 3.408 1.481 3.408 3.309v19.856c0 1.828-1.526 3.31-3.408 3.31H3.502c-1.882 0-3.408-1.482-3.408-3.31V6.709c0-1.828 1.526-3.31 3.408-3.31zM17.13 8.364c-4.705 0-8.518 3.704-8.518 8.273 0 4.57 3.813 8.273 8.518 8.273 4.704 0 8.518-3.704 8.518-8.273 0-4.57-3.814-8.273-8.518-8.273zm0 3.309c2.823 0 5.11 2.222 5.11 4.964 0 2.741-2.287 4.964-5.11 4.964-2.823 0-5.111-2.223-5.111-4.964 0-2.742 2.288-4.964 5.11-4.964z" fill="#9027B0" fill-rule="evenodd"></path>
-                                    </svg><span class="box__main-text">Adicionar Imagem</span><span class="box__info-text"> JPG, GIF e PNG somente </span></div><input id="customFile1" accept=".gif, .jpg, .jpeg, .png" type="file" name="img" style="display:none;">
+                                    </svg><span class="box__main-text">Adicionar Imagem</span><span class="box__info-text"> JPG, PNG, GIF ou WebP </span></div><input id="customFile1" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" type="file" name="img" style="display:none;">
                                 <div class="show_logo" style="display:inline-block;"><img id="loadlogo" src="<?= validate_image(isset($image_path) ? $image_path : '') ?>" width="150" alt="Logo" /><span class="remove-logo"><svg width='25' height='25' viewBox='0 0 25 25' xmlns='http://www.w3.org/2000/svg' class='s'>
                                             <g transform='translate(.317)' fill='none' fill-rule='evenodd'>
                                                 <rect fill='#323232' opacity='.99' width='24.503' height='24.33' rx='12.165'></rect>
@@ -555,9 +575,9 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
                                             <svg width="35" height="30" viewBox="0 0 35 30" xmlns="http://www.w3.org/2000/svg" class="box__icon">
                                                 '<path d="M3.502 3.4h5.11L12.02.09h10.222l3.407 3.31h5.111c1.882 0 3.408 1.481 3.408 3.309v19.856c0 1.828-1.526 3.31-3.408 3.31H3.502c-1.882 0-3.408-1.482-3.408-3.31V6.709c0-1.828 1.526-3.31 3.408-3.31zM17.13 8.364c-4.705 0-8.518 3.704-8.518 8.273 0 4.57 3.813 8.273 8.518 8.273 4.704 0 8.518-3.704 8.518-8.273 0-4.57-3.814-8.273-8.518-8.273zm0 3.309c2.823 0 5.11 2.222 5.11 4.964 0 2.741-2.287 4.964-5.11 4.964-2.823 0-5.111-2.223-5.111-4.964 0-2.742 2.288-4.964 5.11-4.964z" fill="#9027B0" fill-rule="evenodd"></path></svg>
                                             <span class="box__main-text">Adicionar fotos</span>
-                                            <span class="box__info-text"> JPG, GIF e PNG somente </span>
+                                            <span class="box__info-text"> JPG, PNG, GIF ou WebP </span>
                                         </div>
-                                        <input style="display:none;" type="file" accept=".gif, .jpg, .jpeg, .png" id="image_gallery" name="image_gallery[]" multiple />
+                                        <input style="display:none;" type="file" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" id="image_gallery" name="image_gallery[]" multiple />
                                     </span>
                                     <div class="drope-files">
                                         <?php
@@ -568,7 +588,7 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
 
                                             foreach ($image_gallery as $image) { ?>
                                                 <span class="pip">
-                                                    <img class="imageThumb" src="<?= BASE_URL . $image ?> " title="" />
+                                                    <img class="imageThumb" src="<?= validate_image($image) ?>" title="" />
                                                     <input type="hidden" name="on-gallery[]" value="<?= $image ?>">
                                                     <br />
                                                     <span class="remove">
@@ -1410,7 +1430,7 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
                 </div>
 
                 <div style="margin-top:20px;">
-                    <button form="product-form" class="px-5 py-3 font-medium leading-5 text-white transition-colors duration-150 bg-purple-600 border border-transparent rounded-lg active:bg-purple-600 hover:bg-purple-700 focus:outline-none focus:shadow-outline-purple"> Salvar
+                    <button id="save-product-button" form="product-form" class="px-5 py-3 font-medium leading-5 text-white transition-colors duration-150 bg-purple-600 border border-transparent rounded-lg active:bg-purple-600 hover:bg-purple-700 focus:outline-none focus:shadow-outline-purple"> Salvar
                     </button>
                 </div>
             </form>
@@ -1802,40 +1822,175 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
 
         //Fim imagem e galeria
         //Save products
-        $('#product-form').submit(function(e) {
-            e.preventDefault();
-            var _this = $(this)
-            $('.err-msg').remove();
+        function showCampaignFeedback(type, message) {
+            var feedback = $('#campaign-save-feedback');
+            feedback.stop(true, true).removeClass('success error info').addClass(type).text(message).fadeIn(150);
+            if (type !== 'info') {
+                setTimeout(function() { feedback.fadeOut(250); }, 6500);
+            }
+        }
 
+        var persistedFeedback = sessionStorage.getItem('campaignSaveFeedback');
+        if (persistedFeedback) {
+            sessionStorage.removeItem('campaignSaveFeedback');
+            showCampaignFeedback('success', persistedFeedback);
+        }
 
-            $.ajax({
-                url: _base_url_ + "class/Main.php?action=save_product_sys",
-                data: new FormData($(this)[0]),
-                cache: false,
-                contentType: false,
-                processData: false,
-                method: 'POST',
-                type: 'POST',
-                dataType: 'json',
-                error: err => {
+        function decodeCampaignImage(file) {
+            return new Promise(function(resolve, reject) {
+                var url = URL.createObjectURL(file);
+                var image = new Image();
+                image.onload = function() {
+                    resolve({
+                        source: image,
+                        width: image.naturalWidth,
+                        height: image.naturalHeight,
+                        cleanup: function() { URL.revokeObjectURL(url); }
+                    });
+                };
+                image.onerror = function() {
+                    URL.revokeObjectURL(url);
+                    reject(new Error('A imagem "' + file.name + '" está corrompida ou usa um formato incompatível.'));
+                };
+                image.src = url;
+            });
+        }
 
-                    console.log(err)
-                    alert("[AP03] - An error occured");
-                },
-                success: function(resp) {
-                    if (typeof resp == 'object' && resp.status == 'success') {
-                        $('#openModal').click();
-                        setTimeout(function() {
-                            location.replace('./?page=products/manage_product&id=' + resp.pid);
-                        }, 1000);
-                    } else if (resp.status == 'failed' && !!resp.msg) {
-                        alert(resp.msg);
-                    } else {
-                        alert("[AP04] - An error occured");
-                        console.log(resp)
-                    }
+        function canvasToJpeg(canvas, quality) {
+            return new Promise(function(resolve, reject) {
+                canvas.toBlob(function(blob) {
+                    if (blob) resolve(blob);
+                    else reject(new Error('Não foi possível otimizar uma das imagens.'));
+                }, 'image/jpeg', quality);
+            });
+        }
+
+        async function compressCampaignImage(file) {
+            var validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            var extensionIsValid = /\.(jpe?g|png|gif|webp)$/i.test(file.name || '');
+            if (file.type && validTypes.indexOf(file.type) === -1 && !extensionIsValid) {
+                throw new Error('Formato inválido em "' + file.name + '". Use JPG, PNG, GIF ou WebP.');
+            }
+
+            var decoded = await decodeCampaignImage(file);
+            if (!decoded.width || !decoded.height || decoded.width * decoded.height > 50000000) {
+                decoded.cleanup();
+                throw new Error('A resolução de "' + file.name + '" é muito alta.');
+            }
+
+            var maxDimension = 1200;
+            var ratio = Math.min(1, maxDimension / Math.max(decoded.width, decoded.height));
+            var width = Math.max(1, Math.round(decoded.width * ratio));
+            var height = Math.max(1, Math.round(decoded.height * ratio));
+            var canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            var context = canvas.getContext('2d', { alpha: false });
+            if (!context) {
+                decoded.cleanup();
+                throw new Error('Seu navegador não conseguiu preparar a imagem.');
+            }
+            context.fillStyle = '#ffffff';
+            context.fillRect(0, 0, width, height);
+            context.drawImage(decoded.source, 0, 0, width, height);
+            decoded.cleanup();
+
+            var quality = .84;
+            var blob = await canvasToJpeg(canvas, quality);
+            while (blob.size > 440 * 1024 && quality > .60) {
+                quality -= .08;
+                blob = await canvasToJpeg(canvas, quality);
+            }
+
+            var safeName = (file.name || 'campanha').replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]+/gi, '-');
+            return new File([blob], (safeName || 'campanha') + '.jpg', { type: 'image/jpeg', lastModified: Date.now() });
+        }
+
+        async function buildCampaignFormData(form) {
+            var data = new FormData(form);
+            var mainInput = document.getElementById('customFile1');
+            var galleryInput = document.getElementById('image_gallery');
+            var files = [];
+
+            if (mainInput && mainInput.files.length) {
+                data.delete('img');
+                var mainImage = await compressCampaignImage(mainInput.files[0]);
+                data.append('img', mainImage, mainImage.name);
+                files.push(mainImage);
+            }
+
+            if (galleryInput && galleryInput.files.length) {
+                data.delete('image_gallery[]');
+                for (var index = 0; index < galleryInput.files.length; index++) {
+                    var galleryImage = await compressCampaignImage(galleryInput.files[index]);
+                    data.append('image_gallery[]', galleryImage, galleryImage.name);
+                    files.push(galleryImage);
                 }
-            })
+            }
+
+            var totalSize = files.reduce(function(total, file) { return total + file.size; }, 0);
+            if (totalSize > 3.5 * 1024 * 1024) {
+                throw new Error('As imagens selecionadas ainda ultrapassam o limite. Envie menos imagens por vez.');
+            }
+            return data;
+        }
+
+        $('#product-form').submit(async function(e) {
+            e.preventDefault();
+            $('.err-msg').remove();
+            var form = this;
+            var button = $('#save-product-button');
+            button.prop('disabled', true).text('Salvando...');
+            showCampaignFeedback('info', 'Otimizando imagens e salvando a campanha...');
+
+            try {
+                var formData = await buildCampaignFormData(form);
+                $.ajax({
+                    url: _base_url_ + "class/Main.php?action=save_product_sys",
+                    data: formData,
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    method: 'POST',
+                    type: 'POST',
+                    dataType: 'json',
+                    timeout: 60000,
+                    error: function(err) {
+                        var message = 'Não foi possível salvar a campanha. Tente novamente.';
+                        if (err.status === 413) {
+                            message = 'As imagens ultrapassaram o limite de envio. Elas serão reduzidas automaticamente; tente salvar novamente.';
+                        } else if (err.status === 403) {
+                            message = 'Sua sessão administrativa expirou. Entre novamente no painel.';
+                        } else if (err.responseJSON && err.responseJSON.msg) {
+                            message = err.responseJSON.msg;
+                        } else if (err.status === 0) {
+                            message = 'A conexão foi interrompida durante o salvamento. Verifique a internet e tente novamente.';
+                        }
+                        console.error('[campaign-save]', { status: err.status, response: err.responseText });
+                        showCampaignFeedback('error', message);
+                    },
+                    success: function(resp) {
+                        if (typeof resp === 'object' && resp.status === 'success') {
+                            var successMessage = $('input[name="id"]').val()
+                                ? 'Campanha atualizada com sucesso!'
+                                : 'Campanha criada com sucesso!';
+                            sessionStorage.setItem('campaignSaveFeedback', successMessage);
+                            showCampaignFeedback('success', successMessage);
+                            setTimeout(function() {
+                                location.replace('./?page=products/manage_product&id=' + resp.pid);
+                            }, 900);
+                        } else {
+                            showCampaignFeedback('error', (resp && resp.msg) ? resp.msg : 'O servidor não confirmou o salvamento da campanha.');
+                        }
+                    },
+                    complete: function() {
+                        button.prop('disabled', false).text('Salvar');
+                    }
+                });
+            } catch (error) {
+                button.prop('disabled', false).text('Salvar');
+                showCampaignFeedback('error', error.message || 'Não foi possível preparar as imagens.');
+            }
         })
         //End save products
     });

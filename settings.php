@@ -248,6 +248,11 @@ function validate_image($file)
     global $_settings;
 
     if (!empty($file)) {
+        $remoteHost = strtolower((string) parse_url($file, PHP_URL_HOST));
+        if (preg_match('/^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/', $remoteHost)) {
+            return $file;
+        }
+
         $ex = explode('?', $file);
         $file = $ex[0];
         $ts = (isset($ex[1]) ? '?' . $ex[1] : '');

@@ -682,8 +682,7 @@ if ($image_gallery != '[]' && !empty($image_gallery)) {
         echo '">' . "\r\n" . '                     <img alt="';
         echo isset($name) ? $name : '';
         echo '" src="';
-        echo BASE_URL;
-        echo $image;
+        echo validate_image($image);
         echo '" decoding="async" data-nimg="fill" class="SorteioTpl_imagem__2GXxI">' . "\r\n" . '                  </div>' . "\r\n" . '               ';
     }
 

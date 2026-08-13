@@ -654,7 +654,7 @@ if ($enable_cpf == 1) {
                                 <div class="custom-image carousel-item <?php if ($slide == 1) {
                                                                             echo 'active';
                                                                         } ?>">
-                                    <img src="<?php echo base_url ?><?= $image; ?>" alt="<?= isset($name) ? $name : '' ?>" class="SorteioTpl_imagem__2GXxI">
+                                    <img src="<?= validate_image($image) ?>" alt="<?= isset($name) ? $name : '' ?>" class="SorteioTpl_imagem__2GXxI">
                                 </div>
                             <?php } ?>
 
