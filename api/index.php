@@ -62,9 +62,19 @@ if (!defined('base_url')) {
 }
 
 $databaseHost = env_value(['DB_SERVER', 'DB_HOST', 'MYSQL_HOST']);
+$databasePort = env_value(['DB_PORT', 'MYSQL_PORT']);
 $databaseUser = env_value(['DB_USERNAME', 'DB_USER', 'MYSQL_USER']);
 $databasePassword = env_value(['DB_PASSWORD', 'MYSQL_PASSWORD'], '');
 $databaseName = env_value(['DB_NAME', 'MYSQL_DATABASE']);
+
+if (
+    $databaseHost !== null
+    && $databasePort !== null
+    && ctype_digit((string) $databasePort)
+    && !preg_match('/:\d+$/', $databaseHost)
+) {
+    $databaseHost .= ':' . $databasePort;
+}
 
 if ($databaseHost !== null && !defined('DB_SERVER')) {
     define('DB_SERVER', $databaseHost);
@@ -473,6 +483,68 @@ if (stripos($requestPath, '/uploads/') === 0) {
     exit;
 }
 
+/*
+ * Vercel otherwise serves root PHP files as static text when resolving a
+ * directory index. Route every request through this entrypoint and only emit
+ * explicitly safe public asset types from the original application tree.
+ */
+$publicAssetExtensions = [
+    'css', 'js', 'mjs', 'map',
+    'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico',
+    'woff', 'woff2', 'ttf', 'eot',
+    'mp3', 'ogg', 'wav', 'mp4', 'webm',
+    'pdf', 'webmanifest',
+];
+$publicAssetMimeTypes = [
+    'css' => 'text/css; charset=UTF-8',
+    'js' => 'application/javascript; charset=UTF-8',
+    'mjs' => 'application/javascript; charset=UTF-8',
+    'map' => 'application/json; charset=UTF-8',
+    'png' => 'image/png',
+    'jpg' => 'image/jpeg',
+    'jpeg' => 'image/jpeg',
+    'gif' => 'image/gif',
+    'webp' => 'image/webp',
+    'svg' => 'image/svg+xml',
+    'ico' => 'image/x-icon',
+    'woff' => 'font/woff',
+    'woff2' => 'font/woff2',
+    'ttf' => 'font/ttf',
+    'eot' => 'application/vnd.ms-fontobject',
+    'mp3' => 'audio/mpeg',
+    'ogg' => 'audio/ogg',
+    'wav' => 'audio/wav',
+    'mp4' => 'video/mp4',
+    'webm' => 'video/webm',
+    'pdf' => 'application/pdf',
+    'webmanifest' => 'application/manifest+json',
+];
+$requestedExtension = strtolower(pathinfo($requestPath, PATHINFO_EXTENSION));
+
+if (in_array($requestedExtension, $publicAssetExtensions, true)) {
+    $assetPath = realpath(
+        $appRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, ltrim($requestPath, '/'))
+    );
+
+    if (
+        $assetPath === false
+        || strpos($assetPath, $appRoot . DIRECTORY_SEPARATOR) !== 0
+        || !is_file($assetPath)
+    ) {
+        stop_request(404);
+    }
+
+    $mimeType = $publicAssetMimeTypes[$requestedExtension]
+        ?? (function_exists('mime_content_type')
+            ? (mime_content_type($assetPath) ?: 'application/octet-stream')
+            : 'application/octet-stream');
+    header('Content-Type: ' . $mimeType);
+    header('Content-Length: ' . filesize($assetPath));
+    header('Cache-Control: public, max-age=86400');
+    readfile($assetPath);
+    exit;
+}
+
 /* Never expose application bootstrap or deployment files as web endpoints. */
 $blockedFiles = [
     '/api/index.php',
@@ -571,4 +643,40 @@ if (
 $_SERVER['SCRIPT_NAME'] = $requestPath;
 $_SERVER['PHP_SELF'] = $requestPath;
 chdir(dirname($targetPath));
-require $targetPath;
+
+if ($databaseHost === null || $databaseUser === null || $databaseName === null) {
+    error_log('[vercel-php] Database configuration is missing.');
+    http_response_code(503);
+    header('Content-Type: text/html; charset=UTF-8');
+    echo '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">'
+        . '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        . '<title>Configuração pendente</title></head>'
+        . '<body style="margin:0;min-height:100vh;display:grid;place-items:center;'
+        . 'font-family:Arial,sans-serif;background:#f7f7f8;color:#18181b">'
+        . '<main style="max-width:560px;padding:32px;text-align:center">'
+        . '<h1 style="font-size:24px;margin:0 0 12px">Banco de dados não configurado</h1>'
+        . '<p style="line-height:1.6;margin:0">Configure DB_HOST, DB_PORT, DB_USER, '
+        . 'DB_PASSWORD e DB_NAME na Vercel para concluir a instalação.</p>'
+        . '</main></body></html>';
+    exit;
+}
+
+try {
+    require $targetPath;
+} catch (Throwable $exception) {
+    error_log(
+        '[vercel-php] Unhandled application error: '
+        . get_class($exception)
+        . ' in '
+        . basename($exception->getFile())
+        . ':'
+        . $exception->getLine()
+    );
+
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: text/plain; charset=UTF-8');
+    }
+
+    echo 'Não foi possível iniciar o site. Verifique a conexão com o banco de dados.';
+}
