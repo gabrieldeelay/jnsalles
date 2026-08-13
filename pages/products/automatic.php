@@ -600,6 +600,126 @@ if (empty($minor['cota'])) {
         transform: rotate(180deg);
     }
 
+    .ranking-spotlight {
+        width: 100%;
+        min-height: 44px;
+        margin-bottom: 7px;
+        padding: 6px 7px 6px 9px;
+        border: 1px solid rgba(255, 255, 255, .18);
+        border-radius: 10px;
+        background: linear-gradient(135deg, #198754 0%, #117343 100%);
+        box-shadow: 0 5px 14px rgba(17, 115, 67, .2);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-family: inherit;
+        cursor: pointer;
+        transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+    }
+
+    .ranking-spotlight:hover,
+    .ranking-spotlight:focus-visible {
+        color: #fff;
+        filter: brightness(1.04);
+        transform: translateY(-1px);
+        box-shadow: 0 7px 18px rgba(17, 115, 67, .25);
+    }
+
+    .ranking-spotlight:focus-visible {
+        outline: 3px solid rgba(25, 135, 84, .25);
+        outline-offset: 2px;
+    }
+
+    .ranking-spotlight__title {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: .78rem;
+        font-weight: 700;
+        line-height: 1.1;
+        text-align: left;
+        white-space: nowrap;
+    }
+
+    .ranking-spotlight__icon {
+        width: 28px;
+        height: 28px;
+        flex: 0 0 28px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, .16);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ranking-spotlight__timer {
+        min-height: 30px;
+        padding: 4px 9px;
+        border: 1px solid rgba(255, 255, 255, .2);
+        border-radius: 999px;
+        background: rgba(3, 55, 32, .24);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        color: rgba(255, 255, 255, .9);
+        font-size: .69rem;
+        font-weight: 600;
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .ranking-spotlight__timer-dot {
+        width: 6px;
+        height: 6px;
+        flex: 0 0 6px;
+        border-radius: 50%;
+        background: #d8ffe9;
+        box-shadow: 0 0 0 3px rgba(216, 255, 233, .13);
+    }
+
+    .ranking-spotlight__timer strong {
+        color: #fff;
+        font-size: .82rem;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: .025em;
+    }
+
+    .ranking-spotlight__arrow {
+        flex: 0 0 auto;
+        opacity: .8;
+    }
+
+    @media (max-width: 420px) {
+        .ranking-spotlight {
+            gap: 5px;
+            padding-left: 7px;
+        }
+
+        .ranking-spotlight__title {
+            gap: 5px;
+            font-size: .71rem;
+        }
+
+        .ranking-spotlight__icon {
+            width: 26px;
+            height: 26px;
+            flex-basis: 26px;
+        }
+
+        .ranking-spotlight__timer {
+            padding-inline: 8px;
+        }
+
+        .ranking-spotlight__timer-label {
+            display: none;
+        }
+    }
+
 </style>
 
 <?php
@@ -903,13 +1023,28 @@ if ($available > 0 && $enable_sale == 1 && $enable_discount == 0 && $status == '
 
 echo "\r\n";
 if ($status == '1') { ?>
-<div class="btn btn-sm text-white border-0 font-xs py-1 box-shadow-08 w-100 rounded btn-hover-blue"
-     style="background: linear-gradient(90deg, #6c757d, #6c757d); border: 1px solid #000000; border-radius: 10px; margin-bottom: 6px;"
-     data-bs-toggle="modal" data-bs-target="#modal-premios">
-   <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="MuiBox-root css-1wit1pw iconify iconify--carbon" sx="[object Object]" width="1.5em" height="1.5em" preserveAspectRatio="xMidYMid meet" viewBox="0 0 32 32"><path fill="currentColor" d="M30 6V4h-3V2h-2v2h-1c-1.103 0-2 .898-2 2v2c0 1.103.897 2 2 2h4v2h-6v2h3v2h2v-2h1c1.103 0 2-.897 2-2v-2c0-1.102-.897-2-2-2h-4V6zm-6 14v2h2.586L23 25.586l-2.292-2.293a1 1 0 0 0-.706-.293H20a1 1 0 0 0-.706.293L14 28.586L15.414 30l4.587-4.586l2.292 2.293a1 1 0 0 0 1.414 0L28 23.414V26h2v-6zM4 30H2v-5c0-3.86 3.14-7 7-7h6c1.989 0 3.89.85 5.217 2.333l-1.49 1.334A5 5 0 0 0 15 20H9c-2.757 0-5 2.243-5 5zm8-14a7 7 0 1 0 0-14a7 7 0 0 0 0 14m0-12a5 5 0 1 1 0 10a5 5 0 0 1 0-10"></path></svg>
-    Top Compradores Diário
-    <?php if ($rankingTimerVisible): ?><span id="ranking-timer-summary" class="ms-2 fw-bold"></span><?php endif; ?>
-</div>
+<button type="button" class="ranking-spotlight" data-bs-toggle="modal" data-bs-target="#modal-premios" aria-label="Abrir Top Compradores Diário">
+    <span class="ranking-spotlight__title">
+        <span class="ranking-spotlight__icon" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8 4h8v3.5a4 4 0 0 1-8 0V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                <path d="M8 6H5.5v1A3.5 3.5 0 0 0 9 10.5M16 6h2.5v1a3.5 3.5 0 0 1-3.5 3.5M12 11.5V16m-3 4h6m-5-4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </span>
+        <span>Top Compradores Diário</span>
+    </span>
+    <?php if ($rankingTimerVisible): ?>
+        <span class="ranking-spotlight__timer" aria-live="polite">
+            <span class="ranking-spotlight__timer-dot" aria-hidden="true"></span>
+            <span id="ranking-timer-summary-label" class="ranking-spotlight__timer-label">Contador</span>
+            <strong id="ranking-timer-summary">--:--:--</strong>
+        </span>
+    <?php else: ?>
+        <svg class="ranking-spotlight__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="m9 18 6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    <?php endif; ?>
+</button>
 
 <?php }
 
@@ -1850,6 +1985,7 @@ if ($available > 0 && $status == '1') {
                                                 var endAt = new Date('<?= date('Y-m-d\\TH:i:s', strtotime($rankingTimerEnd)) ?>-03:00').getTime();
                                                 var label = document.getElementById('ranking-timer-label');
                                                 var value = document.getElementById('ranking-timer-value');
+                                                var summaryLabel = document.getElementById('ranking-timer-summary-label');
                                                 var summary = document.getElementById('ranking-timer-summary');
 
                                                 function twoDigits(number) {
@@ -1883,7 +2019,8 @@ if ($available > 0 && $status == '1') {
 
                                                     if (label) label.textContent = phaseLabel;
                                                     if (value) value.textContent = timerText;
-                                                    if (summary) summary.textContent = 'â€¢ ' + phaseLabel + ' ' + timerText;
+                                                    if (summaryLabel) summaryLabel.textContent = phaseLabel;
+                                                    if (summary) summary.textContent = timerText;
                                                 }
 
                                                 updateRankingTimer();
