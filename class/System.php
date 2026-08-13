@@ -51,15 +51,15 @@ class System extends DBConnection
     private function save_brand_image($file)
     {
         if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
-            return ['ok' => false, 'message' => 'O arquivo da logo n&atilde;o foi recebido.'];
+            return ['ok' => false, 'message' => 'O arquivo da logo não foi recebido.'];
         }
 
         if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
-            return ['ok' => false, 'message' => 'N&atilde;o foi poss&iacute;vel enviar a logo. Tente novamente.'];
+            return ['ok' => false, 'message' => 'Não foi possível enviar a logo. Tente novamente.'];
         }
 
         if (($file['size'] ?? 0) <= 0 || $file['size'] > 4 * 1024 * 1024) {
-            return ['ok' => false, 'message' => 'A logo deve ter no m&aacute;ximo 4 MB.'];
+            return ['ok' => false, 'message' => 'A logo deve ter no máximo 4 MB.'];
         }
 
         $imageInfo = @getimagesize($file['tmp_name']);
@@ -67,12 +67,12 @@ class System extends DBConnection
         $extensions = ['image/png' => 'png', 'image/jpeg' => 'jpg'];
 
         if (!isset($extensions[$mimeType])) {
-            return ['ok' => false, 'message' => 'Use uma imagem PNG ou JPG v&aacute;lida.'];
+            return ['ok' => false, 'message' => 'Use uma imagem PNG ou JPG válida.'];
         }
 
         $directory = BASE_APP . 'uploads' . DIRECTORY_SEPARATOR . 'branding';
         if (!is_dir($directory) && !mkdir($directory, 0755, true)) {
-            return ['ok' => false, 'message' => 'N&atilde;o foi poss&iacute;vel preparar o armazenamento da logo.'];
+            return ['ok' => false, 'message' => 'Não foi possível preparar o armazenamento da logo.'];
         }
 
         try {
@@ -85,7 +85,7 @@ class System extends DBConnection
         $absolutePath = BASE_APP . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
 
         if (!move_uploaded_file($file['tmp_name'], $absolutePath)) {
-            return ['ok' => false, 'message' => 'N&atilde;o foi poss&iacute;vel salvar a logo. Tente novamente.'];
+            return ['ok' => false, 'message' => 'Não foi possível salvar a logo. Tente novamente.'];
         }
 
         $storedValue = $relativePath . '?v=' . time();
@@ -99,7 +99,7 @@ class System extends DBConnection
             $this->conn->rollback();
             @unlink($absolutePath);
             error_log('[system] brand image save failed');
-            return ['ok' => false, 'message' => 'N&atilde;o foi poss&iacute;vel salvar a logo. Tente novamente.'];
+            return ['ok' => false, 'message' => 'Não foi possível salvar a logo. Tente novamente.'];
         }
 
         return ['ok' => true];
@@ -284,7 +284,7 @@ class System extends DBConnection
             }
 
             if (!$this->save_gateway_meta($key, (string) $value)) {
-                return json_encode(['status' => 'failed', 'msg' => 'N&atilde;o foi poss&iacute;vel salvar as configura&ccedil;&otilde;es.']);
+                return json_encode(['status' => 'failed', 'msg' => 'Não foi possível salvar as configurações.']);
             }
         }
 
