@@ -381,6 +381,10 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
                             </div>
                         </div>
                         <div class="col-12 my-2">
+                            <button type="button" id="payment-confirmed-button" class="app-btn btn btn-success w-100 py-2 mb-2">
+                                <i class="bi bi-check-circle me-1"></i> J&aacute; fiz o pagamento
+                            </button>
+                            <div id="payment-confirmation-feedback" class="alert alert-info p-2 mb-2 font-xss d-none" role="status" aria-live="polite"></div>
                             <p class="alert alert-warning p-2 font-xss" style="text-align: justify; margin-bottom:0.5rem !important">Este pagamento só pode ser realizado dentro do tempo, após este período, caso o pagamento não for confirmado os números voltam a ficar disponíveis.</p>
                         </div>
                     </div>
@@ -1283,32 +1287,91 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
         }, 1000);
 
         <?php if ($status == 1) { ?>
-            var paymentStatusInterval = setInterval(function() {
+            var paymentStatusInterval = null;
+            var paymentStatusRequest = null;
+            var paymentWasInformed = false;
+
+            function redirectApprovedOrder() {
+                if (paymentStatusInterval) {
+                    clearInterval(paymentStatusInterval);
+                }
+                $('#payment-confirmation-feedback')
+                    .removeClass('d-none alert-info alert-warning')
+                    .addClass('alert-success')
+                    .html('<strong>Pagamento aprovado!</strong> Estamos atualizando a sua compra.');
+                $('#payment-confirmed-button')
+                    .prop('disabled', true)
+                    .html('<i class="bi bi-check-circle-fill me-1"></i> Pagamento aprovado');
+
+                <?php if ($_SESSION['ads']) { ?>
+                    window.location.replace('<?= BASE_URL ?>sucesso/<?= $order_token ?>');
+                <?php } else { ?>
+                    var separator = window.location.search ? '&' : '?';
+                    window.location.replace(window.location.href + separator + 'payment_confirmed=' + Date.now());
+                <?php } ?>
+            }
+
+            function checkPaymentStatus(manualCheck) {
+                if (paymentStatusRequest) {
+                    return;
+                }
+
                 var check = {
                     order_token: '<?= $order_token ?>',
                 };
-                $.ajax({
+                paymentStatusRequest = $.ajax({
                     type: 'POST',
                     url: _base_url_ + "class/Main.php?action=check_order",
                     dataType: 'json',
                     data: check,
 
                     success: function(resp) {
-                        if (resp.status == '2') {
-                            clearInterval(paymentStatusInterval);
+                        if (String(resp.status) === '2') {
+                            redirectApprovedOrder();
+                            return;
                         }
-                        <?php if ($_SESSION['ads']) { ?>
-                            if (resp.status == '2') {
-                                window.location.replace('<?= BASE_URL ?>sucesso/<?= $order_token ?>');
-                            }
-                        <?php } else { ?>
-                            if (resp.status == '2') {
-                                var separator = window.location.search ? '&' : '?';
-                                window.location.replace(window.location.href + separator + 'payment_confirmed=' + Date.now());
-                            }
-                        <?php } ?>
+
+                        if (manualCheck || paymentWasInformed) {
+                            $('#payment-confirmation-feedback')
+                                .removeClass('d-none alert-warning alert-success')
+                                .addClass('alert-info')
+                                .html('<strong>Tudo certo!</strong> A confirma&ccedil;&atilde;o do PIX pode levar alguns instantes. N&atilde;o fa&ccedil;a outro pagamento: esta p&aacute;gina continuar&aacute; verificando automaticamente.');
+                        }
+                    },
+                    error: function() {
+                        if (manualCheck || paymentWasInformed) {
+                            $('#payment-confirmation-feedback')
+                                .removeClass('d-none alert-success')
+                                .addClass('alert-info')
+                                .html('Seu pagamento continuar&aacute; sendo verificado automaticamente. N&atilde;o &eacute; necess&aacute;rio fazer outro PIX.');
+                        }
+                    },
+                    complete: function() {
+                        paymentStatusRequest = null;
+                        if (paymentWasInformed) {
+                            $('#payment-confirmed-button')
+                                .prop('disabled', true)
+                                .html('<i class="bi bi-check-circle me-1"></i> Pagamento informado');
+                        }
                     },
                 });
+            }
+
+            $('#payment-confirmed-button').on('click', function() {
+                paymentWasInformed = true;
+                $(this)
+                    .prop('disabled', true)
+                    .html('<i class="bi bi-clock-history me-1"></i> Verificando pagamento...');
+                $('#payment-confirmation-feedback')
+                    .removeClass('d-none alert-warning alert-success')
+                    .addClass('alert-info')
+                    .html('Estamos consultando o pagamento diretamente no gateway. Aguarde s&oacute; um instante.');
+                checkPaymentStatus(true);
+            });
+
+            checkPaymentStatus(false);
+            paymentStatusInterval = setInterval(function() {
+                checkPaymentStatus(false);
             }, 3000);
         <?php } ?>
 

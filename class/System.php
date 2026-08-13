@@ -48,6 +48,63 @@ class System extends DBConnection
         return true;
     }
 
+    private function save_brand_image($file)
+    {
+        if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+            return ['ok' => false, 'message' => 'O arquivo da logo n&atilde;o foi recebido.'];
+        }
+
+        if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            return ['ok' => false, 'message' => 'N&atilde;o foi poss&iacute;vel enviar a logo. Tente novamente.'];
+        }
+
+        if (($file['size'] ?? 0) <= 0 || $file['size'] > 4 * 1024 * 1024) {
+            return ['ok' => false, 'message' => 'A logo deve ter no m&aacute;ximo 4 MB.'];
+        }
+
+        $imageInfo = @getimagesize($file['tmp_name']);
+        $mimeType = is_array($imageInfo) ? ($imageInfo['mime'] ?? '') : '';
+        $extensions = ['image/png' => 'png', 'image/jpeg' => 'jpg'];
+
+        if (!isset($extensions[$mimeType])) {
+            return ['ok' => false, 'message' => 'Use uma imagem PNG ou JPG v&aacute;lida.'];
+        }
+
+        $directory = BASE_APP . 'uploads' . DIRECTORY_SEPARATOR . 'branding';
+        if (!is_dir($directory) && !mkdir($directory, 0755, true)) {
+            return ['ok' => false, 'message' => 'N&atilde;o foi poss&iacute;vel preparar o armazenamento da logo.'];
+        }
+
+        try {
+            $suffix = bin2hex(random_bytes(6));
+        } catch (Throwable $error) {
+            $suffix = str_replace('.', '', uniqid('', true));
+        }
+
+        $relativePath = 'uploads/branding/site-brand-' . time() . '-' . $suffix . '.' . $extensions[$mimeType];
+        $absolutePath = BASE_APP . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
+
+        if (!move_uploaded_file($file['tmp_name'], $absolutePath)) {
+            return ['ok' => false, 'message' => 'N&atilde;o foi poss&iacute;vel salvar a logo. Tente novamente.'];
+        }
+
+        $storedValue = $relativePath . '?v=' . time();
+        $this->conn->begin_transaction();
+        try {
+            if (!$this->save_gateway_meta('logo', $storedValue) || !$this->save_gateway_meta('favicon', $storedValue)) {
+                throw new Exception('Falha ao salvar a identidade visual.');
+            }
+            $this->conn->commit();
+        } catch (Throwable $error) {
+            $this->conn->rollback();
+            @unlink($absolutePath);
+            error_log('[system] brand image save failed');
+            return ['ok' => false, 'message' => 'N&atilde;o foi poss&iacute;vel salvar a logo. Tente novamente.'];
+        }
+
+        return ['ok' => true];
+    }
+
     public function update_settings_info()
     {
         if (empty($_SESSION['userdata']['firstname']) || $_SESSION['userdata']['type'] != 1) {
@@ -213,15 +270,22 @@ class System extends DBConnection
                 $_POST['dealer_split_mercadopago'] = '2';
             }
         }
-        foreach ($_POST as $key => $value) {
+        if (isset($_POST['name'])) {
+            $_POST['name'] = trim((string) $_POST['name']);
+            if ($_POST['name'] === '') {
+                return json_encode(['status' => 'failed', 'msg' => 'Informe o nome do site.']);
+            }
+            $_POST['name'] = function_exists('mb_substr') ? mb_substr($_POST['name'], 0, 120) : substr($_POST['name'], 0, 120);
+        }
 
-            if (!in_array($key, array("content")))
-                if (isset($_SESSION['system_info'][$key])) {
-                    $value = str_replace('\'', '&apos;', $value);
-                    $qry = $this->conn->query('UPDATE system_info set meta_value = \'' . $value . '\' where meta_field = \'' . $key   . '\' ');
-                } else {
-                    $qry = $this->conn->query('INSERT into system_info set meta_value = \'' . $value . '\', meta_field = \'' . $key . '\' ');
-                }
+        foreach ($_POST as $key => $value) {
+            if ($key === 'content' || !is_scalar($value) || !preg_match('/^[a-zA-Z0-9_]+$/', $key)) {
+                continue;
+            }
+
+            if (!$this->save_gateway_meta($key, (string) $value)) {
+                return json_encode(['status' => 'failed', 'msg' => 'N&atilde;o foi poss&iacute;vel salvar as configura&ccedil;&otilde;es.']);
+            }
         }
 
 
@@ -234,6 +298,19 @@ class System extends DBConnection
         }
 
         if (!empty($_FILES['img']['tmp_name'])) {
+            $brandImage = $this->save_brand_image($_FILES['img']);
+            if (!$brandImage['ok']) {
+                return json_encode(['status' => 'failed', 'msg' => $brandImage['message']]);
+            }
+        } elseif (!empty($_FILES['favicon']['tmp_name'])) {
+            $brandImage = $this->save_brand_image($_FILES['favicon']);
+            if (!$brandImage['ok']) {
+                return json_encode(['status' => 'failed', 'msg' => $brandImage['message']]);
+            }
+        }
+
+        /* Legacy image handlers kept below for backwards compatibility. */
+        if (false && !empty($_FILES['img']['tmp_name'])) {
             $ext = pathinfo($_FILES['img']['name'], PATHINFO_EXTENSION);
             $fname = 'uploads/logo.png';
             $accept = ['image/jpeg', 'image/png'];
@@ -279,7 +356,7 @@ class System extends DBConnection
             imagedestroy($temp);
         }
 
-        if (!empty($_FILES['favicon']['tmp_name'])) {
+        if (false && !empty($_FILES['favicon']['tmp_name'])) {
             $ext = pathinfo($_FILES['favicon']['name'], PATHINFO_EXTENSION);
             $fname = 'uploads/favicon.png';
             $accept = ['image/jpeg', 'image/png'];
@@ -437,6 +514,7 @@ class System extends DBConnection
 
         if ($update) {
             $resp['status'] = 'success';
+            $resp['msg'] = 'Configurações salvas com sucesso!';
             $user_name = $_SESSION['userdata']['firstname'];
             $insert = $this->conn->query('INSERT INTO `logs` (`origin`, `description`) VALUES (\'SYSTEM\', \'Configurações do sistema atualizadas pelo usuário ' . $user_name . '\')');
         } else {

@@ -13,6 +13,8 @@ $facebook_footer = $_settings->info('facebook_footer');
 $twitter_footer = $_settings->info('twitter_footer');
 $youtube_footer = $_settings->info('youtube_footer');
 $favicon = $_settings->info('favicon');
+$site_name = trim((string) $_settings->info('name'));
+$site_name = $site_name !== '' ? htmlspecialchars($site_name, ENT_QUOTES, 'UTF-8') : 'Site';
 
 if ($enable_footer == '1') { ?>
 	<style>
@@ -150,16 +152,16 @@ if ($enable_footer == '1') { ?>
 					if ($text_footer) {
 						echo blockHTML($text_footer);
 					} else { ?>
-						<span style="color:var(--incrivel-bgLink);">© Copyright <?= date('Y') ?> - <?= $_settings->info('name') ?> Todos os direitos reservados.</span><br>
-						<span style="color:var(--incrivel-bgLink);"> <?= date('') ?>  <?= $_settings->info('') ?> Desenvolvido Por</span> <a href="/contato.php?site=<?= BASE_URL ?>"
+						<span style="color:var(--incrivel-bgLink);">© Copyright <?= date('Y') ?> - <?= $site_name ?> Todos os direitos reservados.</span><br>
+					<?php } ?>
+						<span style="color:var(--incrivel-bgLink);">Desenvolvido por</span> <a href="/contato.php?site=<?= BASE_URL ?>"
                        target="_blank"
                        class="font-weight-600 font-xs badge"
                        rel="noreferrer"
                        style="background-color:#0d6efd;">
-                        <?= $_settings->info('name') ?>
+                        <?= $site_name ?>
                     </a>
 				<?php
-					}
 				}
 				?>
 				</div>
