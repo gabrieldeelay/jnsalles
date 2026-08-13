@@ -350,15 +350,8 @@ while ($row = $qry->fetch_assoc()) {
 
 
 		'<a href="./?page=products/manage_product&id=';
-	echo $row['id'];
-	echo '">' . "\r\n\t\t\t" . '<button title="Editar" ' . "\r\n\t\t\t" . 'class="flex items-center justify-between px-2 py-2 text-sm font-medium leading-5 text-purple-600 rounded-lg dark:text-gray-400 focus:outline-none focus:shadow-outline-gray"' . "\r\n\t\t\t" . 'aria-label="Edit">' . "\r\n\t\t\t\t" . '    <i class="fa-duotone  fa-pen-to-square" style="color: #5827AC;font-size:22px"></i> 
-
-		
-' . "\r\n\t\t\t" .
-
-
-		'</button>' . "\r\n\t\t" . '</a>	
-' . "\r\n\t\t" .
+	echo (int) $row['id'];
+	echo '" title="Editar campanha" ' . "\r\n\t\t\t" . 'class="inline-flex items-center px-3 py-2 text-sm font-medium leading-5 text-white transition-colors duration-150 bg-purple-600 border border-transparent rounded-lg active:bg-purple-600 hover:bg-purple-700 focus:outline-none focus:shadow-outline-purple"' . "\r\n\t\t\t" . 'aria-label="Editar campanha">' . "\r\n\t\t\t\t" . '<svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" style="width:16px;height:16px;margin-right:6px"><path d="M13.586 3.586a2 2 0 012.828 2.828l-8.5 8.5a1 1 0 01-.465.263l-3 1a1 1 0 01-1.265-1.265l1-3a1 1 0 01.263-.465l8.5-8.5zM12.172 5L5.99 11.182l-.528 1.584 1.584-.528L13.228 6.056 12.172 5z"></path></svg><span>Editar</span>' . "\r\n\t\t\t" . '</a>' . "\r\n\t\t" .
 
 
 
