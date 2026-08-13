@@ -7,15 +7,42 @@ function strcasecmp_utf8($str1, $str2)
 
 $status = isset($_GET['status']) ? $_GET['status'] : '';
 $stat_arr = ['Pending Orders', 'Packed Orders', 'Our for Delivery', 'Completed Order'];
-$product_id = isset($_GET['product_id']) ? $_GET['product_id'] : '';
-$status_id = isset($_GET['status_id']) ? $_GET['status_id'] : '';
+$product_id = isset($_GET['product_id']) && ctype_digit((string) $_GET['product_id']) ? (int) $_GET['product_id'] : 0;
+$status_id = isset($_GET['status_id']) && in_array((int) $_GET['status_id'], [1, 2, 3], true) ? (int) $_GET['status_id'] : 0;
 $order = trim(isset($_GET['order']) ? $_GET['order'] : '');
 $order_number = trim(isset($_GET['order_number']) ? $_GET['order_number'] : '');
-$customer_phone = isset($_GET['customer_phone']) ? $_GET['customer_phone'] : '';
+$customer_phone = trim(isset($_GET['customer_phone']) ? $_GET['customer_phone'] : '');
 $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d', strtotime('-6 days'));
 $end_date = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
 $tod = '';
-$name = isset($_GET['name']) ? $_GET['name'] : '';
+$name = trim(isset($_GET['name']) ? $_GET['name'] : '');
+$payment_methods = [
+    'MercadoPago' => 'Mercado Pago',
+    'Paggue' => 'Paggue',
+    'Gerencianet' => 'Efí / Gerencianet',
+    'OpenPix' => 'OpenPix / Woovi',
+    'Pay2m' => 'Pay2M',
+    'Manual' => 'Manual',
+];
+$payment_method = isset($_GET['payment_method'], $payment_methods[$_GET['payment_method']]) ? $_GET['payment_method'] : '';
+$sort_options = [
+    'newest' => 'Mais recentes',
+    'value_desc' => 'Maior valor primeiro',
+    'value_asc' => 'Menor valor primeiro',
+];
+$sort_order = isset($_GET['sort_order'], $sort_options[$_GET['sort_order']]) ? $_GET['sort_order'] : 'newest';
+
+foreach (['start_date', 'end_date'] as $dateKey) {
+    $dateValue = ${$dateKey};
+    $dateObject = DateTime::createFromFormat('Y-m-d', (string) $dateValue);
+    if (!$dateObject || $dateObject->format('Y-m-d') !== $dateValue) {
+        ${$dateKey} = $dateKey === 'start_date' ? date('Y-m-d', strtotime('-6 days')) : date('Y-m-d');
+    }
+}
+
+if ($start_date > $end_date) {
+    [$start_date, $end_date] = [$end_date, $start_date];
+}
 
 if ($product_id) {
     $qry = $conn->query('SELECT type_of_draw FROM `product_list` WHERE id = ' . $product_id);
@@ -352,9 +379,25 @@ if ($product_id) {
         margin-bottom: 10px;
     }
 
+    .filtro-busca {
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: .5rem;
+    }
+
+    .filtro-busca > * {
+        margin-right: 0 !important;
+    }
+
+    @media all and (max-width:72em) {
+        .filtro-busca {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
     @media all and (max-width:40em) {
         .filtro-busca {
-            display: block !important;
+            grid-template-columns: 1fr;
         }
     }
 
@@ -433,16 +476,29 @@ if ($product_id) {
                     <option value="1" <?= $status_id == '1' ? 'selected' : '' ?>>Pendente</option>
                     <option value="3" <?= $status_id == '3' ? 'selected' : '' ?>>Cancelado</option>
                 </select>
-                <input name="name" id="name" value="<?= $name ?>"
+                <select name="payment_method" id="payment_method"
+                    class="mr-2 block w-full mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray">
+                    <option value="">Todos os pagamentos</option>
+                    <?php foreach ($payment_methods as $method_value => $method_label): ?>
+                        <option value="<?= htmlspecialchars($method_value, ENT_QUOTES, 'UTF-8') ?>" <?= $payment_method === $method_value ? 'selected' : '' ?>><?= htmlspecialchars($method_label, ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <select name="sort_order" id="sort_order"
+                    class="mr-2 block w-full mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray">
+                    <?php foreach ($sort_options as $sort_value => $sort_label): ?>
+                        <option value="<?= htmlspecialchars($sort_value, ENT_QUOTES, 'UTF-8') ?>" <?= $sort_order === $sort_value ? 'selected' : '' ?>><?= htmlspecialchars($sort_label, ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <input name="name" id="name" value="<?= htmlspecialchars($name, ENT_QUOTES, 'UTF-8') ?>"
                     class="mr-2 block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input"
                     placeholder="Nome">
-                <input name="order" id="order" value="<?= $order ?>"
+                <input name="order" id="order" value="<?= htmlspecialchars($order, ENT_QUOTES, 'UTF-8') ?>"
                     class="mr-2 block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input"
                     placeholder="Pedido">
-                <input name="order_number" id="order_number" value="<?= $order_number ?>"
+                <input name="order_number" id="order_number" value="<?= htmlspecialchars($order_number, ENT_QUOTES, 'UTF-8') ?>"
                     class="mr-2 block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input"
                     placeholder="Cota">
-                <input name="customer_phone" id="customer_phone" value="<?= $customer_phone ?>"
+                <input name="customer_phone" id="customer_phone" value="<?= htmlspecialchars($customer_phone, ENT_QUOTES, 'UTF-8') ?>"
                     class="mr-2 block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input"
                     placeholder="Telefone">
                 <input name="start_date" id="start_date" type="date"
@@ -475,6 +531,7 @@ if ($product_id) {
                             <th class="px-4 py-3">Cliente</th>
                             <th class="px-4 py-3">Números</th>
                             <th class="px-4 py-3">Total</th>
+                            <th class="px-4 py-3">Pagamento</th>
                             <th class="px-4 py-3">Status</th>
                             <th class="px-4 py-3">Ação</th>
 
@@ -484,7 +541,7 @@ if ($product_id) {
                     <tbody class="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
                         <?php
         $perPage = 20;
-        $page = isset($_GET['pg']) ? $_GET['pg'] : 1;
+        $page = max(1, (int) ($_GET['pg'] ?? 1));
         $offset = $perPage * ($page - 1);
         $i = 1;
         $where = '';
@@ -497,6 +554,10 @@ if ($product_id) {
             $where .= ' AND o.status = \'' . $conn->real_escape_string($status_id) . '\'';
         }
 
+        if ($payment_method) {
+            $where .= ' AND o.payment_method = \'' . $conn->real_escape_string($payment_method) . '\'';
+        }
+
         if ($start_date || $end_date) {
             $where .= ' AND o.date_created BETWEEN \'' . $conn->real_escape_string($start_date) . ' 00:00:00\' AND \'' . $conn->real_escape_string($end_date) . ' 23:59:59\'';
         }
@@ -506,39 +567,49 @@ if ($product_id) {
         }
 
         if ($name) {
-            
-            $sql = "SELECT id FROM customer_list WHERE firstname LIKE '%" . $conn->real_escape_string($name) . "%' OR lastname LIKE '%" . $conn->real_escape_string($name) . "%'";
-            $qry = $conn->query($sql);
-
-            $id = [];
-            if ($qry->num_rows > 0) {
-                while ($row = $qry->fetch_assoc()) {
-                    $id[] = $row['id'];
-                }
-            }
-
-            if (!empty($id)) {
-                $id_list = implode(',', $id);
-                $where .= " AND customer_id IN ($id_list)";
-            }
-            
-            //$where .= " AND (cl.firstname LIKE %'$name'% OR cl.lastname LIKE %'$name'%) ";
+            $escaped_name = $conn->real_escape_string($name);
+            $where .= " AND (cl.firstname LIKE '%{$escaped_name}%' OR cl.lastname LIKE '%{$escaped_name}%' OR CONCAT(cl.firstname, ' ', cl.lastname) LIKE '%{$escaped_name}%')";
         }
 
         if ($order_number) {
-            //$where .= " AND o.order_number LIKE '%" . $conn->real_escape_string($order_number) . "%'";
-            $where .= " AND FIND_IN_SET('$order_number', o.order_numbers) ";
+            $escaped_order_number = $conn->real_escape_string($order_number);
+            $where .= " AND FIND_IN_SET('{$escaped_order_number}', o.order_numbers)";
         }
 
         if ($customer_phone) {
             $where .= " AND cl.phone LIKE '%" . $conn->real_escape_string($customer_phone) . "%'";
         }
 
-        $qry = $conn->query("SELECT o.*, cl.firstname, cl.lastname, cl.phone, p.name AS product FROM order_list o INNER JOIN customer_list cl ON o.customer_id = cl.id INNER JOIN product_list p ON o.product_id = p.id WHERE o.id > 0 $where ORDER BY UNIX_TIMESTAMP(o.date_created) DESC LIMIT $offset, $perPage");
+        $orderBy = [
+            'newest' => 'o.date_created DESC, o.id DESC',
+            'value_desc' => 'o.total_amount DESC, o.date_created DESC, o.id DESC',
+            'value_asc' => 'o.total_amount ASC, o.date_created DESC, o.id DESC',
+        ][$sort_order];
+
+        $countQuery = $conn->query("SELECT COUNT(*) AS total FROM order_list o INNER JOIN customer_list cl ON o.customer_id = cl.id INNER JOIN product_list p ON o.product_id = p.id WHERE o.id > 0 $where");
+        $totalResults = (int) ($countQuery->fetch_assoc()['total'] ?? 0);
+        $totalPages = max(1, (int) ceil($totalResults / $perPage));
+        $page = min($page, $totalPages);
+        $offset = $perPage * ($page - 1);
+        $qry = $conn->query("SELECT o.*, cl.firstname, cl.lastname, cl.phone, p.name AS product FROM order_list o INNER JOIN customer_list cl ON o.customer_id = cl.id INNER JOIN product_list p ON o.product_id = p.id WHERE o.id > 0 $where ORDER BY $orderBy LIMIT $offset, $perPage");
         $records = $qry->num_rows;
-        
-        $totalPages = $records / $perPage;
-        $totalResults = $conn->query("SELECT id FROM order_list")->num_rows;
+
+        $ordersPageUrl = static function ($targetPage) use ($product_id, $status_id, $payment_method, $sort_order, $name, $order, $order_number, $customer_phone, $start_date, $end_date) {
+            return './?' . http_build_query([
+                'page' => 'orders',
+                'product_id' => $product_id ?: '',
+                'status_id' => $status_id ?: '',
+                'payment_method' => $payment_method,
+                'sort_order' => $sort_order,
+                'name' => $name,
+                'order' => $order,
+                'order_number' => $order_number,
+                'customer_phone' => $customer_phone,
+                'start_date' => $start_date,
+                'end_date' => $end_date,
+                'pg' => $targetPage,
+            ]);
+        };
         
 
         while ($row = $qry->fetch_assoc()) {
@@ -586,8 +657,7 @@ if ($product_id) {
 
                             <td class="px-4 py-3 text-sm">R$<?= number_format($row['total_amount'], 2, ',', '.') ?></td>
 
-
-
+                            <td class="px-4 py-3 text-sm"><?= htmlspecialchars($payment_methods[$row['payment_method']] ?? ($row['payment_method'] ?: 'Não informado'), ENT_QUOTES, 'UTF-8') ?></td>
 
                             <td class="px-4 py-3 text-sm">
                                 <?php if ($row['status'] == 1) : ?>
@@ -725,135 +795,23 @@ if ($product_id) {
                 <span class="flex items-center col-span-3"></span>
                 <span class="col-span-2"></span>
 
-                <!-- Pagination -->
                 <span class="flex col-span-4 mt-2 sm:mt-auto sm:justify-end">
-                    <nav aria-label="Table navigation">
-                        <ul class="inline-flex items-center">
-                            <?php
-                            $totalPages = ceil($totalResults / $perPage);
-
-                            if ($page > 1) {
-                            ?>
-                            <a
-                                href="./?page=orders&product_id=<?= $product_id ?>&status_id=<?= $status_id ?>&order_number=<?= $order_number ?>&customer_phone=<?= $customer_phone ?>&start_date=<?= $start_date ?>&end_date=<?= $end_date ?>&pg=<?= $page - 1 ?>">
-                                <li>
-                                    <button
-                                        class="px-3 py-1 rounded-md rounded-l-lg focus:outline-none focus:shadow-outline-purple"
-                                        aria-label="Previous">
-                                        <svg class="w-4 h-4 fill-current" aria-hidden="true" viewBox="0 0 20 20">
-                                            <path
-                                                d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                                                clip-rule="evenodd" fill-rule="evenodd"></path>
-                                        </svg>
-                                    </button>
-                                </li>
-                            </a>
-                            <?php
-                            }
-            
-                            if ($page > 3) {
-                            ?>
-                            <a
-                                href="./?page=orders&product_id=<?= $product_id ?>&status_id=<?= $status_id ?>&order_number=<?= $order_number ?>&customer_phone=<?= $customer_phone ?>&start_date=<?= $start_date ?>&end_date=<?= $end_date ?>&pg=1">
-                                <li><button
-                                        class="px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-purple">1</button>
-                                </li>
-                            </a>
-                            <li class="dots">...</li>
-                            <?php
-                            }
-            
-                            if ($page - 2 > 0) {
-                            ?>
-                            <a
-                                href="./?page=orders&product_id=<?= $product_id ?>&status_id=<?= $status_id ?>&order_number=<?= $order_number ?>&customer_phone=<?= $customer_phone ?>&start_date=<?= $start_date ?>&end_date=<?= $end_date ?>&pg=<?= $page - 2 ?>">
-                                <li><button
-                                        class="px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-purple"><?= $page - 2 ?></button>
-                                </li>
-                            </a>
-                            <?php
-                            }
-            
-                            if ($page - 1 > 0) {
-                            ?>
-                            <a
-                                href="./?page=orders&product_id=<?= $product_id ?>&status_id=<?= $status_id ?>&order_number=<?= $order_number ?>&customer_phone=<?= $customer_phone ?>&start_date=<?= $start_date ?>&end_date=<?= $end_date ?>&pg=<?= $page - 1 ?>">
-                                <li><button
-                                        class="px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-purple"><?= $page - 1 ?></button>
-                                </li>
-                            </a>
-                            <?php
-                            }
-                            ?>
-
-                            <a
-                                href="./?page=orders&product_id=<?= $product_id ?>&status_id=<?= $status_id ?>&order_number=<?= $order_number ?>&customer_phone=<?= $customer_phone ?>&start_date=<?= $start_date ?>&end_date=<?= $end_date ?>&pg=<?= $page ?>">
-                                <li>
-                                    <button
-                                        class="px-3 py-1 text-white transition-colors duration-150 bg-purple-600 border border-r-0 border-purple-600 rounded-md focus:outline-none focus:shadow-outline-purple">
-                                        <?= $page ?>
-                                    </button>
-                                </li>
-                            </a>
-
-                            <?php
-                            if ($page + 1 <= $totalPages) {
-                            ?>
-                            <a
-                                href="./?page=orders&product_id=<?= $product_id ?>&status_id=<?= $status_id ?>&order_number=<?= $order_number ?>&customer_phone=<?= $customer_phone ?>&start_date=<?= $start_date ?>&end_date=<?= $end_date ?>&pg=<?= $page + 1 ?>">
-                                <li><button
-                                        class="px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-purple"><?= $page + 1 ?></button>
-                                </li>
-                            </a>
-                            <?php
-                            }
-            
-                            if ($page + 2 <= $totalPages) {
-                            ?>
-                            <a
-                                href="./?page=orders&product_id=<?= $product_id ?>&status_id=<?= $status_id ?>&order_number=<?= $order_number ?>&customer_phone=<?= $customer_phone ?>&start_date=<?= $start_date ?>&end_date=<?= $end_date ?>&pg=<?= $page + 2 ?>">
-                                <li><button
-                                        class="px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-purple"><?= $page + 2 ?></button>
-                                </li>
-                            </a>
-                            <?php
-                            }
-            
-                            if ($page < $totalPages - 2) {
-                            ?>
-                            <li class="dots">...</li>
-                            <a
-                                href="./?page=orders&product_id=<?= $product_id ?>&status_id=<?= $status_id ?>&order_number=<?= $order_number ?>&customer_phone=<?= $customer_phone ?>&start_date=<?= $start_date ?>&end_date=<?= $end_date ?>&pg=<?= $totalPages ?>">
-                                <li><button
-                                        class="px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-purple"><?= $totalPages ?></button>
-                                </li>
-                            </a>
-                            <?php
-                            }
-            
-                            if ($page < $totalPages) {
-                            ?>
-                            <a
-                                href="./?page=orders&product_id=<?= $product_id ?>&status_id=<?= $status_id ?>&order_number=<?= $order_number ?>&customer_phone=<?= $customer_phone ?>&start_date=<?= $start_date ?>&end_date=<?= $end_date ?>&pg=<?= $page + 1 ?>">
-                                <li>
-                                    <button
-                                        class="px-3 py-1 rounded-md rounded-r-lg focus:outline-none focus:shadow-outline-purple"
-                                        aria-label="Next">
-                                        <svg class="w-4 h-4 fill-current" aria-hidden="true" viewBox="0 0 20 20">
-                                            <path
-                                                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                                                clip-rule="evenodd" fill-rule="evenodd"></path>
-                                        </svg>
-                                    </button>
-                                </li>
-                            </a>
-                            <?php
-                            }
-                            ?>
-                        </ul>
-                    </nav>
+                    <?php if ($totalResults > 0): ?>
+                        <nav aria-label="Paginação dos pedidos">
+                            <ul class="inline-flex items-center">
+                                <?php if ($page > 1): ?>
+                                    <li><a class="px-3 py-1 rounded-md" href="<?= htmlspecialchars($ordersPageUrl($page - 1), ENT_QUOTES, 'UTF-8') ?>">Anterior</a></li>
+                                <?php endif; ?>
+                                <?php for ($number = max(1, $page - 2); $number <= min($totalPages, $page + 2); $number++): ?>
+                                    <li><a class="px-3 py-1 rounded-md <?= $number === $page ? 'text-white bg-purple-600' : '' ?>" href="<?= htmlspecialchars($ordersPageUrl($number), ENT_QUOTES, 'UTF-8') ?>"><?= $number ?></a></li>
+                                <?php endfor; ?>
+                                <?php if ($page < $totalPages): ?>
+                                    <li><a class="px-3 py-1 rounded-md" href="<?= htmlspecialchars($ordersPageUrl($page + 1), ENT_QUOTES, 'UTF-8') ?>">Próxima</a></li>
+                                <?php endif; ?>
+                            </ul>
+                        </nav>
+                    <?php endif; ?>
                 </span>
-                <!-- End pagination -->
             </div>
 
         </div>

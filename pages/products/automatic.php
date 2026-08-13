@@ -894,7 +894,7 @@ if ($available > 0 && $enable_sale == 1 && $enable_discount == 0 && $status == '
 }
 
 echo "\r\n";
-if (0 < $enable_ranking) { ?>
+if ($status == '1') { ?>
 <div class="btn btn-sm text-white border-0 font-xs py-1 box-shadow-08 w-100 rounded btn-hover-blue"
      style="background: linear-gradient(90deg, #6c757d, #6c757d); border: 1px solid #000000; border-radius: 10px; margin-bottom: 6px;"
      data-bs-toggle="modal" data-bs-target="#modal-premios">
@@ -1752,7 +1752,7 @@ if ($available > 0 && $status == '1') {
                                                 <div class="modal-body">
                                                      
                                                  <p class="text-center"><small class="text-muted">Atualizado às <?= date('d/m/Y \à\s H:i') ?></small></p>
-                                                    <?php if ($enable_ranking_definido == 1): ?>
+                                                    <?php if ($enable_ranking_definido == 1 && false): ?>
                                                         <?php if ($ranking_ini != '0000-00-00 00:00:00' && $ranking_fim != '0000-00-00 00:00:00') {
 
                                                             // Converte a data para um objeto DateTime
@@ -1772,17 +1772,17 @@ if ($available > 0 && $status == '1') {
                                                     ?>
                                                     <?php
                                                     $today = date('Y-m-d');
-                                                    $hoje = date('Y-m-d H:i:s');
-                                                    if ($ranking_type == 1 && $enable_ranking_definido == 0) {
-                                                        $requests = $conn->query("\r\n" . ' SELECT c.firstname, SUM(o.quantity) AS total_quantity' . "\r\n" . ' FROM order_list o' . "\r\n" . ' INNER JOIN customer_list c ON o.customer_id = c.id' . "\r\n" . ' WHERE o.product_id = ' . $id . ' AND o.status = 2' . "\r\n" . ' GROUP BY o.customer_id' . "\r\n" . ' ORDER BY total_quantity DESC' . "\r\n" . ' LIMIT ' . $ranking_qty . "\r\n" . ' ');
-                                                    } else if ($enable_ranking_definido == 1) {
-
-                                                        if ($ranking_ini != '0000-00-00 00:00:00' && $ranking_fim != '0000-00-00 00:00:00') {
-                                                            $requests = $conn->query("\r\n" . ' SELECT c.firstname, SUM(o.quantity) AS total_quantity' . "\r\n" . ' FROM order_list o' . "\r\n" . ' INNER JOIN customer_list c ON o.customer_id = c.id' . "\r\n" . ' WHERE o.product_id = ' . $id . ' AND o.status = 2' . "\r\n" . ' AND o.date_created >= \'' . $ranking_ini . '\' AND o.date_created <= \'' . $ranking_fim . '\'' . "\r\n" . ' GROUP BY o.customer_id' . "\r\n" . ' ORDER BY total_quantity DESC' . "\r\n" . ' LIMIT ' . $ranking_qty . "\r\n" . ' ');
-                                                        }
-                                                    } else {
-                                                        $requests = $conn->query("\r\n" . ' SELECT c.firstname, SUM(o.quantity) AS total_quantity' . "\r\n" . ' FROM order_list o' . "\r\n" . ' INNER JOIN customer_list c ON o.customer_id = c.id' . "\r\n" . ' WHERE o.product_id = ' . $id . ' AND o.status = 2' . "\r\n" . ' AND o.date_created BETWEEN \'' . $today . ' 00:00:00\' AND \'' . $today . ' 23:59:59\'' . "\r\n" . ' GROUP BY o.customer_id' . "\r\n" . ' ORDER BY total_quantity DESC' . "\r\n" . ' LIMIT ' . $ranking_qty . "\r\n" . ' ');
-                                                    }
+                                                    $ranking_limit = max(3, min(20, (int) $ranking_qty ?: 5));
+                                                    $requests = $conn->query(
+                                                        'SELECT c.id, c.firstname, SUM(o.quantity) AS total_quantity ' .
+                                                        'FROM order_list o ' .
+                                                        'INNER JOIN customer_list c ON c.id = o.customer_id ' .
+                                                        'WHERE o.product_id = ' . (int) $id . ' AND o.status = 2 ' .
+                                                        "AND o.date_created BETWEEN '{$today} 00:00:00' AND '{$today} 23:59:59' " .
+                                                        'GROUP BY c.id, c.firstname ' .
+                                                        'ORDER BY total_quantity DESC, c.firstname ASC ' .
+                                                        'LIMIT ' . $ranking_limit
+                                                    );
 
                                                     $count = 0;
 
@@ -1815,6 +1815,10 @@ if ($available > 0 && $status == '1') {
                                                             </div>
                                                         </div>
                                                     <?php
+                                                    }
+
+                                                    if ($count === 0) {
+                                                        echo '<p class="text-center text-muted my-3">Ainda não há pagamentos confirmados hoje.</p>';
                                                     }
 
                                                     ?>
