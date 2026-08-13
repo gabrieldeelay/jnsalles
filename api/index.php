@@ -460,7 +460,19 @@ if (strpos($requestPath, "\0") !== false || strpos($requestPath, '..') !== false
 
 if ($requestPath === '/api/cron/orders') {
     $cronSecret = (string) getenv('CRON_SECRET');
-    $authorization = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+    $authorization = (string) (
+        $_SERVER['HTTP_AUTHORIZATION']
+        ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
+        ?? ''
+    );
+    if ($authorization === '' && function_exists('getallheaders')) {
+        foreach ((array) getallheaders() as $headerName => $headerValue) {
+            if (strcasecmp((string) $headerName, 'Authorization') === 0) {
+                $authorization = (string) $headerValue;
+                break;
+            }
+        }
+    }
 
     if ($cronSecret === '' || !hash_equals('Bearer ' . $cronSecret, $authorization)) {
         stop_request(401, 'Unauthorized');
