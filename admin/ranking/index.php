@@ -30,6 +30,19 @@ while ($product = $productsQuery->fetch_assoc()) {
     $products[] = $product;
 }
 
+$timerProductId = isset($_GET['timer_product_id']) && ctype_digit((string) $_GET['timer_product_id'])
+    ? (int) $_GET['timer_product_id']
+    : $product_id;
+if ($timerProductId === 0 && count($products) === 1) {
+    $timerProductId = (int) $products[0]['id'];
+}
+$timerPrefix = $timerProductId > 0 ? 'ranking_timer_' . $timerProductId . '_' : '';
+$timerEnabled = $timerPrefix !== '' && (string) $_settings->info($timerPrefix . 'enabled') === '1';
+$timerStart = $timerPrefix !== '' ? trim((string) $_settings->info($timerPrefix . 'start')) : '';
+$timerEnd = $timerPrefix !== '' ? trim((string) $_settings->info($timerPrefix . 'end')) : '';
+$timerStartValue = $timerStart !== '' ? date('Y-m-d\\TH:i', strtotime($timerStart)) : '';
+$timerEndValue = $timerEnd !== '' ? date('Y-m-d\\TH:i', strtotime($timerEnd)) : '';
+
 $conditions = ['o.status = 2'];
 if ($product_id > 0) {
     $conditions[] = 'o.product_id = ' . $product_id;
@@ -86,11 +99,56 @@ $paginationUrl = static function ($targetPage) use ($product_id, $start_date, $s
     @media all and (max-width: 40em) {
         .ranking-filters { grid-template-columns: 1fr; }
     }
+    .ranking-timer-card { margin-bottom: 1.5rem; }
+    .ranking-timer-grid { display: grid; grid-template-columns: 1.25fr 1fr 1fr auto; gap: .75rem; align-items: end; }
+    .ranking-timer-switch { display: flex; align-items: center; gap: .5rem; min-height: 42px; }
+    .ranking-timer-help { color: #9ca3af; font-size: .8rem; margin-top: .5rem; }
+    .ranking-timer-feedback { display: none; margin-top: .75rem; padding: .75rem 1rem; border-radius: .5rem; }
+    .ranking-timer-feedback.success { display: block; color: #065f46; background: #d1fae5; }
+    .ranking-timer-feedback.error { display: block; color: #991b1b; background: #fee2e2; }
+    @media all and (max-width: 64em) {
+        .ranking-timer-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media all and (max-width: 40em) {
+        .ranking-timer-grid { grid-template-columns: 1fr; }
+    }
 </style>
 
 <main class="h-full pb-16 overflow-y-auto">
     <div class="container grid px-6 mx-auto">
         <h2 class="my-6 text-2xl font-semibold text-gray-700 dark:text-gray-200">Top compradores</h2>
+
+        <div class="ranking-timer-card p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800">
+            <h3 class="mb-1 text-lg font-semibold text-gray-700 dark:text-gray-200">Contador visual do ranking</h3>
+            <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">Configure o perÃ­odo exibido no â€œTop Compradores DiÃ¡rioâ€. Este contador nÃ£o altera pedidos, pagamentos ou posiÃ§Ãµes.</p>
+            <form id="ranking-timer-form">
+                <div class="ranking-timer-grid">
+                    <label class="block text-sm text-gray-700 dark:text-gray-300">
+                        Campanha
+                        <select name="product_id" id="timer_product_id" required class="block w-full mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select">
+                            <option value="">Selecione</option>
+                            <?php foreach ($products as $product): ?>
+                                <option value="<?= (int) $product['id'] ?>" <?= $timerProductId === (int) $product['id'] ? 'selected' : '' ?>><?= $escape($product['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <label class="block text-sm text-gray-700 dark:text-gray-300">
+                        InÃ­cio
+                        <input name="start_at" id="timer_start_at" type="datetime-local" value="<?= $escape($timerStartValue) ?>" class="block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 form-input">
+                    </label>
+                    <label class="block text-sm text-gray-700 dark:text-gray-300">
+                        Encerramento
+                        <input name="end_at" id="timer_end_at" type="datetime-local" value="<?= $escape($timerEndValue) ?>" class="block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 form-input">
+                    </label>
+                    <div>
+                        <label class="ranking-timer-switch text-sm text-gray-700 dark:text-gray-300"><input type="checkbox" name="enabled" id="timer_enabled" value="1" <?= $timerEnabled ? 'checked' : '' ?>> Exibir contador</label>
+                        <button type="submit" class="w-full px-5 py-3 font-medium leading-5 text-white bg-purple-600 border border-transparent rounded-lg hover:bg-purple-700">Salvar contador</button>
+                    </div>
+                </div>
+                <p class="ranking-timer-help">HorÃ¡rio de BrasÃ­lia. Antes do inÃ­cio aparecerÃ¡ â€œComeÃ§a emâ€; durante o perÃ­odo, â€œTermina emâ€; depois, â€œEncerradoâ€.</p>
+                <div id="ranking-timer-feedback" class="ranking-timer-feedback" role="status"></div>
+            </form>
+        </div>
 
         <form action="./" class="mb-4" method="GET">
             <input type="hidden" name="page" value="ranking">
@@ -161,3 +219,42 @@ $paginationUrl = static function ($targetPage) use ($product_id, $start_date, $s
         </div>
     </div>
 </main>
+
+<script>
+    (function () {
+        var productSelect = document.getElementById('timer_product_id');
+        var form = document.getElementById('ranking-timer-form');
+        var feedback = document.getElementById('ranking-timer-feedback');
+
+        productSelect.addEventListener('change', function () {
+            var params = new URLSearchParams(window.location.search);
+            params.set('page', 'ranking');
+            params.set('timer_product_id', productSelect.value);
+            window.location.href = './?' + params.toString();
+        });
+
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            feedback.className = 'ranking-timer-feedback';
+            feedback.textContent = '';
+            var data = new FormData(form);
+            if (!document.getElementById('timer_enabled').checked) {
+                data.set('enabled', '0');
+            }
+
+            fetch(_base_url_ + 'class/System.php?action=save_ranking_timer', {
+                method: 'POST',
+                body: data,
+                credentials: 'same-origin'
+            }).then(function (response) {
+                return response.json();
+            }).then(function (result) {
+                feedback.textContent = result.msg || (result.status === 'success' ? 'Contador salvo.' : 'NÃ£o foi possÃ­vel salvar.');
+                feedback.classList.add(result.status === 'success' ? 'success' : 'error');
+            }).catch(function () {
+                feedback.textContent = 'NÃ£o foi possÃ­vel salvar o contador. Tente novamente.';
+                feedback.classList.add('error');
+            });
+        });
+    })();
+</script>

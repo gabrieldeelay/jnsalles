@@ -628,6 +628,71 @@ class System extends DBConnection
         return json_encode(payment_test_gateway($provider));
     }
 
+    public function save_ranking_timer()
+    {
+        if (empty($_SESSION['userdata']['firstname']) || (int) ($_SESSION['userdata']['type'] ?? 0) !== 1) {
+            http_response_code(403);
+            return json_encode(['status' => 'failed', 'msg' => 'NÃ£o autorizado.']);
+        }
+
+        $productId = filter_var($_POST['product_id'] ?? null, FILTER_VALIDATE_INT, [
+            'options' => ['min_range' => 1],
+        ]);
+        if (!$productId) {
+            return json_encode(['status' => 'failed', 'msg' => 'Selecione uma campanha.']);
+        }
+
+        $productStatement = $this->conn->prepare('SELECT id FROM product_list WHERE id = ? LIMIT 1');
+        $productStatement->bind_param('i', $productId);
+        $productStatement->execute();
+        $productExists = $productStatement->get_result()->num_rows > 0;
+        $productStatement->close();
+        if (!$productExists) {
+            return json_encode(['status' => 'failed', 'msg' => 'Campanha nÃ£o encontrada.']);
+        }
+
+        $enabled = isset($_POST['enabled']) && (string) $_POST['enabled'] === '1';
+        $timezone = new DateTimeZone('America/Sao_Paulo');
+        $startInput = trim((string) ($_POST['start_at'] ?? ''));
+        $endInput = trim((string) ($_POST['end_at'] ?? ''));
+        $start = DateTime::createFromFormat('Y-m-d\\TH:i', $startInput, $timezone);
+        $end = DateTime::createFromFormat('Y-m-d\\TH:i', $endInput, $timezone);
+
+        if ($enabled && (!$start || !$end)) {
+            return json_encode(['status' => 'failed', 'msg' => 'Informe a data e o horÃ¡rio inicial e final.']);
+        }
+        if ($enabled && $end <= $start) {
+            return json_encode(['status' => 'failed', 'msg' => 'O encerramento precisa ser posterior ao inÃ­cio.']);
+        }
+
+        $prefix = 'ranking_timer_' . $productId . '_';
+        $values = [
+            $prefix . 'enabled' => $enabled ? '1' : '0',
+            $prefix . 'start' => $start ? $start->format('Y-m-d H:i:s') : '',
+            $prefix . 'end' => $end ? $end->format('Y-m-d H:i:s') : '',
+        ];
+
+        $this->conn->begin_transaction();
+        try {
+            foreach ($values as $field => $value) {
+                if (!$this->save_gateway_meta($field, $value)) {
+                    throw new Exception('NÃ£o foi possÃ­vel salvar o contador.');
+                }
+            }
+            $this->conn->commit();
+            $this->update_system_info();
+        } catch (Throwable $error) {
+            $this->conn->rollback();
+            error_log('[ranking-timer] save failed product=' . $productId);
+            return json_encode(['status' => 'failed', 'msg' => 'NÃ£o foi possÃ­vel salvar o contador.']);
+        }
+
+        return json_encode([
+            'status' => 'success',
+            'msg' => $enabled ? 'Contador visual ativado com sucesso.' : 'Contador visual desativado.',
+        ]);
+    }
+
     public function set_userdata($field = '', $value = '')
     {
         if (!empty($field) && !empty($value)) {
@@ -740,6 +805,10 @@ switch ($action) {
     case 'test_gateway':
         header('Content-Type: application/json; charset=UTF-8');
         echo $sysset->test_gateway();
+        break;
+    case 'save_ranking_timer':
+        header('Content-Type: application/json; charset=UTF-8');
+        echo $sysset->save_ranking_timer();
         break;
     default:
         break;

@@ -27,6 +27,14 @@ $telegram_group_url = $_settings->info('telegram_group_url');
 $whatsapp_group_url = $_settings->info('whatsapp_group_url');
 $instagram_url = $_settings->info('instagram_footer');
 $support_number = $_settings->info('phone');
+$rankingTimerPrefix = 'ranking_timer_' . (int) $id . '_';
+$rankingTimerEnabled = (string) $_settings->info($rankingTimerPrefix . 'enabled') === '1';
+$rankingTimerStart = trim((string) $_settings->info($rankingTimerPrefix . 'start'));
+$rankingTimerEnd = trim((string) $_settings->info($rankingTimerPrefix . 'end'));
+$rankingTimerVisible = $rankingTimerEnabled
+    && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $rankingTimerStart)
+    && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $rankingTimerEnd)
+    && strtotime($rankingTimerEnd) > strtotime($rankingTimerStart);
 
 $max_discount = 0;
 if ($available < $min_purchase) {
@@ -900,6 +908,7 @@ if ($status == '1') { ?>
      data-bs-toggle="modal" data-bs-target="#modal-premios">
    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="MuiBox-root css-1wit1pw iconify iconify--carbon" sx="[object Object]" width="1.5em" height="1.5em" preserveAspectRatio="xMidYMid meet" viewBox="0 0 32 32"><path fill="currentColor" d="M30 6V4h-3V2h-2v2h-1c-1.103 0-2 .898-2 2v2c0 1.103.897 2 2 2h4v2h-6v2h3v2h2v-2h1c1.103 0 2-.897 2-2v-2c0-1.102-.897-2-2-2h-4V6zm-6 14v2h2.586L23 25.586l-2.292-2.293a1 1 0 0 0-.706-.293H20a1 1 0 0 0-.706.293L14 28.586L15.414 30l4.587-4.586l2.292 2.293a1 1 0 0 0 1.414 0L28 23.414V26h2v-6zM4 30H2v-5c0-3.86 3.14-7 7-7h6c1.989 0 3.89.85 5.217 2.333l-1.49 1.334A5 5 0 0 0 15 20H9c-2.757 0-5 2.243-5 5zm8-14a7 7 0 1 0 0-14a7 7 0 0 0 0 14m0-12a5 5 0 1 1 0 10a5 5 0 0 1 0-10"></path></svg>
     Top Compradores Diário
+    <?php if ($rankingTimerVisible): ?><span id="ranking-timer-summary" class="ms-2 fw-bold"></span><?php endif; ?>
 </div>
 
 <?php }
@@ -1752,6 +1761,12 @@ if ($available > 0 && $status == '1') {
                                                 <div class="modal-body">
                                                      
                                                  <p class="text-center"><small class="text-muted">Atualizado às <?= date('d/m/Y \à\s H:i') ?></small></p>
+                                                    <?php if ($rankingTimerVisible): ?>
+                                                        <div id="ranking-timer-box" class="text-center text-white fw-bolder rounded py-2 px-3 mb-3" style="background:#6c757d">
+                                                            <div id="ranking-timer-label" class="font-xss text-uppercase">Contador do ranking</div>
+                                                            <div id="ranking-timer-value" style="font-size:1.25rem;letter-spacing:.04em">--:--:--</div>
+                                                        </div>
+                                                    <?php endif; ?>
                                                     <?php if ($enable_ranking_definido == 1 && false): ?>
                                                         <?php if ($ranking_ini != '0000-00-00 00:00:00' && $ranking_fim != '0000-00-00 00:00:00') {
 
@@ -1828,6 +1843,54 @@ if ($available > 0 && $status == '1') {
                                             </div>
                                         </div>
                                     </div>
+                                    <?php if ($rankingTimerVisible): ?>
+                                        <script>
+                                            (function () {
+                                                var startAt = new Date('<?= date('Y-m-d\\TH:i:s', strtotime($rankingTimerStart)) ?>-03:00').getTime();
+                                                var endAt = new Date('<?= date('Y-m-d\\TH:i:s', strtotime($rankingTimerEnd)) ?>-03:00').getTime();
+                                                var label = document.getElementById('ranking-timer-label');
+                                                var value = document.getElementById('ranking-timer-value');
+                                                var summary = document.getElementById('ranking-timer-summary');
+
+                                                function twoDigits(number) {
+                                                    return String(number).padStart(2, '0');
+                                                }
+
+                                                function formatRemaining(milliseconds) {
+                                                    var totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+                                                    var days = Math.floor(totalSeconds / 86400);
+                                                    var hours = Math.floor((totalSeconds % 86400) / 3600);
+                                                    var minutes = Math.floor((totalSeconds % 3600) / 60);
+                                                    var seconds = totalSeconds % 60;
+                                                    return (days > 0 ? days + 'd ' : '') + twoDigits(hours) + ':' + twoDigits(minutes) + ':' + twoDigits(seconds);
+                                                }
+
+                                                function updateRankingTimer() {
+                                                    var now = Date.now();
+                                                    var phaseLabel;
+                                                    var timerText;
+
+                                                    if (now < startAt) {
+                                                        phaseLabel = 'ComeÃ§a em';
+                                                        timerText = formatRemaining(startAt - now);
+                                                    } else if (now < endAt) {
+                                                        phaseLabel = 'Termina em';
+                                                        timerText = formatRemaining(endAt - now);
+                                                    } else {
+                                                        phaseLabel = 'Encerrado';
+                                                        timerText = '00:00:00';
+                                                    }
+
+                                                    if (label) label.textContent = phaseLabel;
+                                                    if (value) value.textContent = timerText;
+                                                    if (summary) summary.textContent = 'â€¢ ' + phaseLabel + ' ' + timerText;
+                                                }
+
+                                                updateRankingTimer();
+                                                window.setInterval(updateRankingTimer, 1000);
+                                            })();
+                                        </script>
+                                    <?php endif; ?>
                                     <div style="color:#fff;max-height:100%" class="modal fade" tabindex="-1" id="modal-cotas">
                                         <div class="modal-dialog cotas">
                                             <div style="background-color:#343a40" class="modal-content">
