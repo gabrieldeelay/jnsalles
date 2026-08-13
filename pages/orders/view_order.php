@@ -1283,7 +1283,7 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
         }, 1000);
 
         <?php if ($status == 1) { ?>
-            setInterval(function() {
+            var paymentStatusInterval = setInterval(function() {
                 var check = {
                     order_token: '<?= $order_token ?>',
                 };
@@ -1294,13 +1294,17 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
                     data: check,
 
                     success: function(resp) {
+                        if (resp.status == '2') {
+                            clearInterval(paymentStatusInterval);
+                        }
                         <?php if ($_SESSION['ads']) { ?>
                             if (resp.status == '2') {
-                                window.location.href = '<?= BASE_URL ?>sucesso/<?= $order_token ?>';
+                                window.location.replace('<?= BASE_URL ?>sucesso/<?= $order_token ?>');
                             }
                         <?php } else { ?>
                             if (resp.status == '2') {
-                                window.location.reload();
+                                var separator = window.location.search ? '&' : '?';
+                                window.location.replace(window.location.href + separator + 'payment_confirmed=' + Date.now());
                             }
                         <?php } ?>
                     },

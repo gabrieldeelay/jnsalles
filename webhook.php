@@ -15,6 +15,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 $provider = strtolower(trim((string) ($_GET['notify'] ?? '')));
 $raw = file_get_contents('php://input');
 $result = payment_process_webhook($provider, is_string($raw) ? $raw : '', payment_request_headers());
+$notificationId = (string) ($_GET['data.id'] ?? ($_GET['data_id'] ?? ($_GET['id'] ?? '')));
+error_log(
+    '[payments] webhook provider=' . preg_replace('/[^a-z0-9_-]/i', '', $provider)
+    . ' notification=' . preg_replace('/[^a-z0-9_-]/i', '', $notificationId)
+    . ' result=' . (!empty($result['ok']) ? 'accepted' : 'rejected')
+    . ' http=' . (int) ($result['http'] ?? (!empty($result['ok']) ? 200 : 400))
+);
 
 http_response_code((int) ($result['http'] ?? (!empty($result['ok']) ? 200 : 400)));
 echo json_encode([

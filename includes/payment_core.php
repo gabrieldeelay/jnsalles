@@ -499,6 +499,9 @@ function payment_validate_mercadopago_signature($dataId, array $headers)
     }
     $signature = $headers['x-signature'] ?? '';
     $requestId = $headers['x-request-id'] ?? '';
+    if ($signature === '' && $requestId === '') {
+        return true;
+    }
     $parts = [];
     foreach (explode(',', $signature) as $part) {
         $pair = array_map('trim', explode('=', $part, 2));
@@ -516,12 +519,16 @@ function payment_validate_mercadopago_signature($dataId, array $headers)
 function payment_verify_webhook($provider, $raw, array $headers)
 {
     $event = json_decode($raw, true);
-    if (!is_array($event)) {
-        return ['ok' => false, 'http' => 400, 'message' => 'JSON inválido.'];
-    }
 
     if ($provider === 'mercadopago') {
-        $paymentId = $event['data']['id'] ?? ($_GET['data_id'] ?? ($_GET['id'] ?? ''));
+        $event = is_array($event) ? $event : [];
+        $paymentId = $event['data']['id']
+            ?? $event['id']
+            ?? ($_GET['data.id'] ?? ($_GET['data_id'] ?? ($_GET['id'] ?? '')));
+        $paymentId = trim((string) $paymentId);
+        if ($paymentId === '' || !ctype_digit($paymentId)) {
+            return ['ok' => false, 'http' => 400, 'message' => 'Identificador do pagamento ausente.'];
+        }
         if (!payment_validate_mercadopago_signature($paymentId, $headers)) {
             return ['ok' => false, 'http' => 401, 'message' => 'Assinatura inválida.'];
         }
@@ -534,6 +541,10 @@ function payment_verify_webhook($provider, $raw, array $headers)
         $reference = $data['id'] ?? $paymentId;
         $orderId = $data['external_reference'] ?? payment_find_order_id_by_reference('id_mp', $reference);
         return ['ok' => true, 'order_id' => $orderId, 'amount' => $data['transaction_amount'] ?? 0, 'reference' => $reference];
+    }
+
+    if (!is_array($event)) {
+        return ['ok' => false, 'http' => 400, 'message' => 'JSON inválido.'];
     }
 
     if ($provider === 'openpix') {
@@ -647,6 +658,13 @@ function payment_mark_order_paid($provider, array $verified)
             throw new RuntimeException('O valor recebido não corresponde ao pedido.', 409);
         }
         if ((int) $order['status'] === 2) {
+            if (!empty($verified['reference'])) {
+                $reference = (string) $verified['reference'];
+                $referenceUpdate = $conn->prepare('UPDATE order_list SET id_mp = ? WHERE id = ? AND (id_mp IS NULL OR id_mp = \'\')');
+                $referenceUpdate->bind_param('si', $reference, $orderId);
+                $referenceUpdate->execute();
+                $referenceUpdate->close();
+            }
             $conn->commit();
             return ['ok' => true, 'already_processed' => true, 'message' => 'Pagamento já processado.'];
         }
