@@ -132,6 +132,15 @@ function payment_customer_email($email)
     return 'no-reply@' . ($host ?: 'localhost');
 }
 
+function payment_expiration_datetime($minutes)
+{
+    $minutes = max(5, min(1440, (int) $minutes));
+    $timezone = new DateTimeZone('America/Sao_Paulo');
+    return (new DateTimeImmutable('now', $timezone))
+        ->modify('+' . $minutes . ' minutes')
+        ->format('Y-m-d\\TH:i:s.vP');
+}
+
 function payment_create_pix($orderId, $amount, $name, $email, $cpf, $expiration, $phone = '')
 {
     $provider = payment_active_provider();
@@ -160,7 +169,7 @@ function payment_create_mercadopago($orderId, $amount, $name, $email, $cpf, $exp
         'payment_method_id' => 'pix',
         'external_reference' => (string) $orderId,
         'notification_url' => rtrim(BASE_URL, '/') . '/webhook.php?notify=mercadopago',
-        'date_of_expiration' => date('c', time() + ($expiration * 60)),
+        'date_of_expiration' => payment_expiration_datetime($expiration),
         'payer' => ['email' => payment_customer_email($email), 'first_name' => trim((string) $name)],
     ];
     $response = payment_http('POST', 'https://api.mercadopago.com/v1/payments', [
@@ -171,7 +180,13 @@ function payment_create_mercadopago($orderId, $amount, $name, $email, $cpf, $exp
     $data = $response['json'];
     $transaction = $data['point_of_interaction']['transaction_data'] ?? [];
     if (!$response['ok'] || empty($data['id']) || empty($transaction['qr_code'])) {
-        return ['ok' => false, 'message' => payment_safe_provider_error($response, 'Não foi possível gerar o PIX no Mercado Pago.')];
+        $message = payment_safe_provider_error($response, 'Não foi possível gerar o PIX no Mercado Pago.');
+        error_log(
+            '[payments] mercadopago charge rejected order=' . (int) $orderId
+            . ' http=' . (int) ($response['status'] ?? 0)
+            . ' reason=' . preg_replace('/\\s+/', ' ', $message)
+        );
+        return ['ok' => false, 'message' => $message];
     }
     if (!payment_store_pix($orderId, 'MercadoPago', $transaction['qr_code'], $data['id'], $expiration)) {
         return ['ok' => false, 'message' => 'O PIX foi criado, mas não pôde ser salvo.'];
