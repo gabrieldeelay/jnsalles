@@ -1,0 +1,10 @@
+.git
+.agents
+.codex
+.vercel
+/vendor
+/banco_de_dados.sql
+/Instruções.txt
+/deploy.php
+/pedido.lock
+*.log
