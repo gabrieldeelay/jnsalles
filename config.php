@@ -1287,5 +1287,6 @@ if (!defined('CONTACT_TYPE')) {
     define('CONTACT_TYPE', '1');
 }
 ob_end_flush();
+require_once __DIR__ . '/includes/payment_core.php';
 
 ?>

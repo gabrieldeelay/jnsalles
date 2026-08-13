@@ -2110,75 +2110,27 @@ class Main extends DBConnection
 
 
 
-                if (
-                    $this->settings->info("mercadopago") == 1 &&
-                    $total_amount > 0
-                ) {
-                    mercadopago_generate_pix(
+                if ($total_amount > 0) {
+                    $payment = payment_create_pix(
                         $oid,
                         $total_amount,
                         $customer_name,
                         $customer_email,
-                        $order_expiration
-                    );
-                }
-
-                if (
-                    $this->settings->info("bestfy") == 1 &&
-                    $total_amount > 0
-                ) {
-                    bestfy_generate_pix(
-                        $oid,
-                        $total_amount,
-                        $customer_name,
-                        $customer_email,
-                        $order_expiration
-                    );
-                }
-
-
-                if (
-                    $this->settings->info("gerencianet") == 1 &&
-                    0 < $total_amount
-                ) {
-                    gerencianet_generate_pix(
-                        $oid,
-                        $total_amount,
-                        $customer_name,
-                        $customer_email,
-                        $order_expiration
-                    );
-                }
-                if ($this->settings->info("paggue") == 1 && $total_amount > 0) {
-                    paggue_generate_pix(
-                        $oid,
-                        $total_amount,
-                        $customer_name,
-                        $customer_email,
-                        $order_expiration
-                    );
-                }
-                if (
-                    $this->settings->info("openpix") == 1 &&
-                    0 < $total_amount
-                ) {
-                    openpix_generate_pix(
-                        $oid,
-                        $total_amount,
-                        $customer_name,
-                        $customer_email,
+                        $customer_cpf,
                         $order_expiration,
                         $customer_phone
                     );
-                }
-                if ($this->settings->info("pay2m") == 1 && 0 < $total_amount) {
-                    pay2m_generate_pix(
-                        $oid,
-                        $total_amount,
-                        $customer_name,
-                        $customer_cpf,
-                        $order_expiration
-                    );
+                    if (empty($payment['ok'])) {
+                        $this->conn->query("UPDATE order_list SET status = 3 WHERE id = " . (int) $oid . " AND status = 1");
+                        $this->correct_stock($product_id);
+                        flock($lock, LOCK_UN);
+                        fclose($lock);
+                        return json_encode([
+                            "status" => "failed",
+                            "error" => $payment['message'] ?? "Não foi possível gerar o PIX. Tente novamente.",
+                        ]);
+                    }
+                    $resp['gateway'] = $payment['provider'];
                 }
 
                 if (!empty($ref)) {
@@ -2876,45 +2828,21 @@ class Main extends DBConnection
             return json_encode($resp);
         }
 
-        extract($_POST);
-        $qry = $this->conn->query(
-            'SELECT * FROM order_list WHERE order_token = \'' .
-                $order_token .
-                '\''
-        );
-        $order_id = "";
-        $customer_id = "";
-
-        if (0 < $qry->num_rows) {
-            while ($row = $qry->fetch_assoc()) {
-                $resp["status"] = $row["status"];
-                $order_id = $row["id"];
-                $payment_method = $row["payment_method"];
-                $id_mp = $row["id_mp"];
-
-                if ($payment_method == "MercadoPago") {
-                    check_order_mp($order_id, $id_mp);
-                }
-
-                if ($payment_method == "Paggue") {
-                    check_order_pg($order_id, $id_mp);
-                }
-
-                if ($payment_method == "OpenPix") {
-                    check_order_op($order_id);
-                }
-
-                if ($payment_method == "Pay2m") {
-                    check_order_pay2m($order_id, $id_mp);
-                }
-
-                if ($payment_method == "Bestfy") {
-                    check_order_bf($order_id, $id_mp);
-                }
-            }
+        $orderToken = trim((string) ($_POST['order_token'] ?? ''));
+        $statement = $this->conn->prepare('SELECT id, status FROM order_list WHERE order_token = ? LIMIT 1');
+        $statement->bind_param('s', $orderToken);
+        $statement->execute();
+        $result = $statement->get_result();
+        $order = $result ? $result->fetch_assoc() : null;
+        $statement->close();
+        if (!$order) {
+            return json_encode(['status' => 'failed', 'msg' => 'Pedido não encontrado.']);
         }
-
-        return json_encode($resp);
+        if ((int) $order['status'] === 1) {
+            $check = payment_check_order((int) $order['id']);
+            return json_encode(['status' => $check['status'], 'msg' => $check['message'] ?? '']);
+        }
+        return json_encode(['status' => (int) $order['status']]);
     }
 
     public function export_raffle_contacts()

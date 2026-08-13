@@ -539,26 +539,16 @@ $order_numbers = implode(",", $numeris) . ",";
                             '\''
                     );
                 }
-				if (($this->settings->info('mercadopago') == 1) && 0 < $total_amount) {
-		 mercadopago_generate_pix($oid, $total_amount, $customer_name, $customer_email, $order_expiration);
-
-                    $resp['gateway'] = 'mercadopago';
-				}
-				if (($this->settings->info('gerencianet') == 1) && 0 < $total_amount) {
-					gerencianet_generate_pix($oid, $total_amount, $customer_name, $customer_email, $order_expiration);
-                    $resp['gateway'] = 'gerencianet';
-				}
-				if (($this->settings->info('paggue') == 1) && 0 < $total_amount) {
-					paggue_generate_pix($oid, $total_amount, $customer_name, $customer_email, $order_expiration);
-                    $resp['gateway'] = 'paggue';
-				}
-				if (($this->settings->info('openpix') == 1) && 0 < $total_amount) {
-					openpix_generate_pix($oid, $total_amount, $customer_name, $customer_email, $order_expiration, $customer_phone);
-                    $resp['gateway'] = 'openpix';
-				}
-				if (($this->settings->info('pay2m') == 1) && 0 < $total_amount) {
-					pay2m_generate_pix($oid, $total_amount, $customer_name, $customer_cpf, $order_expiration);
-                    $resp['gateway'] = 'pay2m';
+				if (0 < $total_amount) {
+					$payment = payment_create_pix($oid, $total_amount, $customer_name, $customer_email, $customer_cpf, $order_expiration, $customer_phone);
+					if (empty($payment['ok'])) {
+						$this->conn->query('UPDATE order_list SET status = 3 WHERE id = ' . (int) $oid . ' AND status = 1');
+						$this->correct_stock($product_id);
+						flock($lock, LOCK_UN);
+						fclose($lock);
+						return json_encode(['status' => 'failed', 'error' => $payment['message'] ?? 'Não foi possível gerar o PIX. Tente novamente.']);
+					}
+					$resp['gateway'] = $payment['provider'];
 				}
 
 				if (!empty($ref)) {

@@ -1,4 +1,3 @@
 .vercel
 .env*
 /banco_de_dados.sql
-/admin/gateway/index.php

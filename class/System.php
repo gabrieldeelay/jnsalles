@@ -56,8 +56,12 @@ class System extends DBConnection
             return json_encode($resp);
         }
 
-        $data = '';
         if (isset($_POST['gateway'])) {
+            return $this->update_gateway_settings();
+        }
+
+        $data = '';
+        if (isset($_POST['gateway_legacy'])) {
             if (isset($_POST['mercadopago'])) {
                 $_POST['mercadopago'] = '1';
             } else {
@@ -442,6 +446,110 @@ class System extends DBConnection
         return json_encode($resp);
     }
 
+    private function save_gateway_meta($field, $value)
+    {
+        $select = $this->conn->prepare('SELECT id FROM system_info WHERE meta_field = ? LIMIT 1');
+        $select->bind_param('s', $field);
+        $select->execute();
+        $result = $select->get_result();
+        $exists = $result && $result->num_rows > 0;
+        $select->close();
+
+        if ($exists) {
+            $statement = $this->conn->prepare('UPDATE system_info SET meta_value = ? WHERE meta_field = ?');
+            $statement->bind_param('ss', $value, $field);
+        } else {
+            $statement = $this->conn->prepare('INSERT INTO system_info (meta_field, meta_value) VALUES (?, ?)');
+            $statement->bind_param('ss', $field, $value);
+        }
+
+        $saved = $statement->execute();
+        $statement->close();
+        return $saved;
+    }
+
+    private function update_gateway_settings()
+    {
+        $providers = ['none', 'mercadopago', 'gerencianet', 'paggue', 'openpix', 'pay2m'];
+        $provider = strtolower(trim((string) ($_POST['gateway_provider'] ?? 'none')));
+
+        if (!in_array($provider, $providers, true)) {
+            return json_encode(['status' => 'failed', 'msg' => 'Gateway inválido.']);
+        }
+
+        $required = [
+            'mercadopago' => ['mercadopago_access_token'],
+            'gerencianet' => ['gerencianet_client_id', 'gerencianet_client_secret', 'gerencianet_pix_key'],
+            'paggue' => ['paggue_client_key', 'paggue_client_secret'],
+            'openpix' => ['openpix_app_id'],
+            'pay2m' => ['pay2m_client_id', 'pay2m_client_secret'],
+        ];
+        $secrets = [
+            'mercadopago_access_token', 'mercadopago_webhook_secret',
+            'gerencianet_client_id', 'gerencianet_client_secret', 'gerencianet_pix_key',
+            'paggue_client_key', 'paggue_client_secret', 'openpix_app_id',
+            'pay2m_client_id', 'pay2m_client_secret', 'pay2m_webhook_secret',
+        ];
+        $taxes = ['mercadopago_tax', 'gerencianet_tax', 'paggue_tax', 'openpix_tax', 'pay2m_tax'];
+        $values = ['gateway_provider' => $provider, 'gateway' => '1'];
+
+        foreach (array_slice($providers, 1) as $flag) {
+            $values[$flag] = ($provider === $flag) ? '1' : '2';
+        }
+
+        foreach ($secrets as $field) {
+            $posted = trim((string) ($_POST[$field] ?? ''));
+            $values[$field] = $posted !== '' ? $posted : (string) $this->info($field);
+        }
+
+        if ($values['pay2m_webhook_secret'] === '') {
+            $values['pay2m_webhook_secret'] = bin2hex(random_bytes(24));
+        }
+
+        foreach ($taxes as $field) {
+            $tax = (float) str_replace(',', '.', (string) ($_POST[$field] ?? $this->info($field)));
+            $values[$field] = number_format(max(0, min(100, $tax)), 2, '.', '');
+        }
+
+        if ($provider !== 'none') {
+            foreach ($required[$provider] as $field) {
+                if ($values[$field] === '') {
+                    return json_encode(['status' => 'failed', 'msg' => 'Preencha todas as credenciais obrigatórias antes de ativar o gateway.']);
+                }
+            }
+        }
+
+        $this->conn->begin_transaction();
+        try {
+            foreach ($values as $field => $value) {
+                if (!$this->save_gateway_meta($field, $value)) {
+                    throw new Exception('Não foi possível salvar a configuração.');
+                }
+            }
+            $this->conn->commit();
+            $this->update_system_info();
+        } catch (Throwable $error) {
+            $this->conn->rollback();
+            error_log('[payments] gateway settings save failed');
+            return json_encode(['status' => 'failed', 'msg' => 'Não foi possível salvar as configurações.']);
+        }
+
+        return json_encode(['status' => 'success', 'msg' => 'Configurações salvas com segurança.']);
+    }
+
+    public function test_gateway()
+    {
+        if (empty($_SESSION['userdata']['firstname']) || $_SESSION['userdata']['type'] != 1) {
+            return json_encode(['status' => 'failed', 'msg' => 'Não autorizado.']);
+        }
+
+        $provider = strtolower(trim((string) ($_POST['provider'] ?? '')));
+        if (!function_exists('payment_test_gateway')) {
+            require_once dirname(__DIR__) . '/includes/payment_core.php';
+        }
+        return json_encode(payment_test_gateway($provider));
+    }
+
     public function set_userdata($field = '', $value = '')
     {
         if (!empty($field) && !empty($value)) {
@@ -550,6 +658,10 @@ $sysset = new System();
 switch ($action) {
     case 'update_system':
         echo $sysset->update_settings_info();
+        break;
+    case 'test_gateway':
+        header('Content-Type: application/json; charset=UTF-8');
+        echo $sysset->test_gateway();
         break;
     default:
         break;
