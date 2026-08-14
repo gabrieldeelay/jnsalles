@@ -617,7 +617,10 @@ class System extends DBConnection
             return json_encode(['status' => 'failed', 'msg' => 'Não foi possível salvar as configurações.']);
         }
 
-        return json_encode(['status' => 'success', 'msg' => 'Configurações salvas com segurança.']);
+        $message = $provider === 'none'
+            ? 'Gateway desativado. Todas as credenciais e configurações continuam salvas.'
+            : 'Gateway ativado. As credenciais foram salvas com segurança.';
+        return json_encode(['status' => 'success', 'msg' => $message]);
     }
 
     public function test_gateway()
