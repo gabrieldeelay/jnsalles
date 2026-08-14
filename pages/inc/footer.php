@@ -4,7 +4,7 @@
 $enable_footer = $_settings->info('enable_footer');
 $enable_password = $_settings->info('enable_password');
 $enable_email = $_settings->info('enable_email');
-$enable_cpf = $_settings->info('enable_cpf');
+$enable_cpf = $_settings->info('enable_cpf') == 1 || payment_requires_customer_document();
 $enable_two_phone = $_settings->info('enable_two_phone');
 $text_footer = $_settings->info('text_footer');
 $whatsapp_footer = $_settings->info('whatsapp_footer');
@@ -571,6 +571,8 @@ if (!$user_id) { ?>
 							alert(resp.msg);
 						} else if (resp.status == 'cpf_already') {
 							alert(resp.msg);
+						} else if (resp.status == 'cpf_invalid') {
+							alert(resp.msg);
 						} else if (resp.status == 'email_already') {
 							alert(resp.msg);
 						} else {
@@ -866,6 +868,10 @@ if (!$user_id) { ?>
 								$('#overlay').fadeOut(300);
 								return false
 							} else if (resp.status == 'cpf_already') {
+								alert(resp.msg);
+								$('#overlay').fadeOut(300);
+								return false
+							} else if (resp.status == 'cpf_invalid') {
 								alert(resp.msg);
 								$('#overlay').fadeOut(300);
 								return false

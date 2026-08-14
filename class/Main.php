@@ -1446,6 +1446,16 @@ class Main extends DBConnection
                 error_log('[payments] expired order cleanup failed product=' . (int) $product_id);
             }
 
+            if (payment_requires_customer_document() && !payment_customer_document_is_valid($customer_cpf)) {
+                error_log('[payments] order blocked customer=' . (int) $customer_id . ' provider=venopag reason=invalid_customer_document');
+                $resp["status"] = "pay2m";
+                $resp["error"] = "Seu cadastro precisa ser atualizado. Informe um CPF válido para gerar o PIX.";
+                $resp["redirect"] = BASE_URL . "user/atualizar-cadastro";
+                flock($lock, LOCK_UN);
+                fclose($lock);
+                return json_encode($resp);
+            }
+
             if ($this->settings->info("pay2m") == 1) {
                 // Se CPF for obrigatório e estiver vazio, bloqueia
                 if ($this->settings->info("habilitar_cpf") == 1 && empty($customer_cpf)) {

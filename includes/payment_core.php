@@ -46,6 +46,51 @@ function payment_active_provider()
     return count($enabled) === 1 ? $enabled[0] : null;
 }
 
+function payment_requires_customer_document()
+{
+    return payment_active_provider() === 'venopag';
+}
+
+function payment_customer_document_is_valid($value)
+{
+    $document = preg_replace('/\D+/', '', (string) $value);
+    $length = strlen($document);
+    if (!in_array($length, [11, 14], true) || preg_match('/^(\d)\1+$/', $document)) {
+        return false;
+    }
+
+    if ($length === 11) {
+        for ($digit = 9; $digit < 11; $digit++) {
+            $sum = 0;
+            for ($index = 0; $index < $digit; $index++) {
+                $sum += (int) $document[$index] * (($digit + 1) - $index);
+            }
+            $expected = (($sum * 10) % 11) % 10;
+            if ($expected !== (int) $document[$digit]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    $weights = [
+        [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2],
+        [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2],
+    ];
+    foreach ($weights as $offset => $sequence) {
+        $sum = 0;
+        foreach ($sequence as $index => $weight) {
+            $sum += (int) $document[$index] * $weight;
+        }
+        $remainder = $sum % 11;
+        $expected = $remainder < 2 ? 0 : 11 - $remainder;
+        if ($expected !== (int) $document[12 + $offset]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 function payment_amount($amount, $provider)
 {
     $definitions = payment_provider_definitions();
@@ -512,7 +557,8 @@ function payment_venopag_consult($requestNumber, $timeout = 7)
 function payment_create_venopag($orderId, $amount, $name, $email, $cpf, $expiration, $phone)
 {
     $document = preg_replace('/\D+/', '', (string) $cpf);
-    if (!in_array(strlen($document), [11, 14], true)) {
+    if (!payment_customer_document_is_valid($document)) {
+        error_log('[payments] venopag charge blocked order=' . (int) $orderId . ' reason=invalid_customer_document');
         return ['ok' => false, 'message' => 'Informe um CPF ou CNPJ válido para gerar o PIX na VenoPag.'];
     }
     $webhookUrl = payment_venopag_webhook_url();

@@ -238,6 +238,12 @@ class Customer extends DBConnection
         extract($_POST);
         $id = (isset($id) != '' && isset($id) != null && isset($id) > 0 ? $id : null);
         $data = '';
+
+        if (payment_requires_customer_document() && empty($_POST['cpf'])) {
+            $resp['status'] = 'cpf_invalid';
+            $resp['msg'] = 'Informe um CPF válido para continuar com o pagamento via VenoPag.';
+            return json_encode($resp);
+        }
         if ($this->settings->info('enable_legal_age') == 1) {
             $year = date('Y');
             $birth = date('Y', strtotime($birth));
@@ -395,6 +401,12 @@ class Customer extends DBConnection
         $_POST['phone'] = preg_replace('/[^0-9]/', '', $_POST['phone']);
         extract($_POST);
         $data = '';
+
+        if (payment_requires_customer_document() && empty($_POST['cpf'])) {
+            $resp['status'] = 'cpf_invalid';
+            $resp['msg'] = 'Informe um CPF válido para continuar com o pagamento via VenoPag.';
+            return json_encode($resp);
+        }
 
         if ($_POST['phone']) {
             $checkPhone = $this->conn->query('SELECT * FROM `customer_list` where phone = \'' . $phone . '\' ' . (0 < $id ? ' and id != \'' . $id . '\'' : '') . ' ')->num_rows;

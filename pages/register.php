@@ -2,7 +2,7 @@
 
 
 require_once './settings.php';
-$enable_cpf = $_settings->info('enable_cpf');
+$enable_cpf = $_settings->info('enable_cpf') == 1 || payment_requires_customer_document();
 $enable_email = $_settings->info('enable_email');
 $enable_address = $_settings->info('enable_address');
 $enable_password = $_settings->info('enable_password');
