@@ -670,9 +670,15 @@ echo '"), numbers: valores},' .
     "\r\n" .
     '    dataType:\'json\',' .
     "\r\n" .
-    '    error:err=>{' .
+    '    timeout:60000,' .
     "\r\n" .
-    '     console.log(err)          ' .
+    '    error:(xhr,status)=>{' .
+    "\r\n" .
+    '     console.log(xhr);' .
+    "\r\n" .
+    '     $(\'#overlay\').stop(true,true).hide();' .
+    "\r\n" .
+    '     alert(status === \'timeout\' ? \'O gateway demorou para responder. Tente novamente.\' : \'Não foi possível finalizar a compra. Tente novamente.\');' .
     "\r\n" .
     '  },' .
     "\r\n" .
@@ -684,19 +690,27 @@ echo '"), numbers: valores},' .
     "\r\n" .
     '          } else if (resp.status == \'pay2m\') {' .
     "\r\n" .
-    '          alert(resp.error);' .
+    '          $(\'#overlay\').stop(true,true).hide();' .
+    "\r\n" .
+    '          alert(resp.error || \'Atualize seu cadastro para continuar.\');' .
     "\r\n" .
     '          location.replace(resp.redirect)' .
     "\r\n" .
     '        } else{' .
     "\r\n" .
-    '            alert(resp.error);' .
+    '            $(\'#overlay\').stop(true,true).hide();' .
     "\r\n" .
-    '            location.reload();' .
+    '            alert(resp.error || \'Não foi possível gerar o PIX. Tente novamente.\');' .
     "\r\n" .
     '         }' .
     "\r\n" .
-    '      } ' .
+    '      },' .
+    "\r\n" .
+    '      complete:function(xhr){' .
+    "\r\n" .
+    '        if(!xhr.responseJSON || xhr.responseJSON.status !== \'success\') $(\'#overlay\').stop(true,true).hide();' .
+    "\r\n" .
+    '      }' .
     "\r\n\r\n" .
     '})' .
     "\r\n" .

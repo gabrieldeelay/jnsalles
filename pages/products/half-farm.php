@@ -1166,19 +1166,30 @@ if ($enable_cpf == 1) {
                     numbers: valores
                 },
                 dataType: 'json',
-                error: err => {
-                    console.log(err)
+                timeout: 60000,
+                error: (xhr, status) => {
+                    console.log(xhr)
+                    $('#overlay').stop(true, true).hide();
+                    alert(status === 'timeout'
+                        ? 'O gateway demorou para responder. Tente novamente.'
+                        : 'Não foi possível finalizar a compra. Tente novamente.');
                 },
                 success: function(resp) {
                     console.log(resp)
                     if (resp.status == 'success') {
                         location.replace(resp.redirect)
                     } else if (resp.status == 'pay2m') {
-                        alert(resp.error);
+                        $('#overlay').stop(true, true).hide();
+                        alert(resp.error || 'Atualize seu cadastro para continuar.');
                         location.replace(resp.redirect)
                     } else {
-                        alert(resp.error);
-                        location.reload();
+                        $('#overlay').stop(true, true).hide();
+                        alert(resp.error || 'Não foi possível gerar o PIX. Tente novamente.');
+                    }
+                },
+                complete: function(xhr) {
+                    if (!xhr.responseJSON || xhr.responseJSON.status !== 'success') {
+                        $('#overlay').stop(true, true).hide();
                     }
                 }
 

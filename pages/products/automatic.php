@@ -2179,20 +2179,30 @@ if ($available > 0 && $status == '1') {
                                                 qtdUpsell: qtdUpsell
                                             },
                                             dataType: 'json',
-                                            timeout: 60000, // Define o timeout para 30 segundos (30000 ms)
-                                            error: err => {
-                                                console.error(err)
+                                            timeout: 60000,
+                                            error: (xhr, status) => {
+                                                console.error(xhr)
+                                                $("#overlay").stop(true, true).hide();
+                                                alert(status === 'timeout'
+                                                    ? 'O gateway demorou para responder. Tente novamente.'
+                                                    : 'Não foi possível finalizar a compra. Tente novamente.');
                                             },
                                             success: function(resp) {
                                                 console.log(resp)
                                                 if (resp.status == 'success') {
                                                     location.replace(resp.redirect)
                                                 } else if (resp.status == 'pay2m') {
-                                                    alert(resp.error);
+                                                    $("#overlay").stop(true, true).hide();
+                                                    alert(resp.error || 'Atualize seu cadastro para continuar.');
                                                     location.replace(resp.redirect)
                                                 } else {
-                                                    alert(resp.error);
-                                                    location.reload();
+                                                    $("#overlay").stop(true, true).hide();
+                                                    alert(resp.error || 'Não foi possível gerar o PIX. Tente novamente.');
+                                                }
+                                            },
+                                            complete: function(xhr) {
+                                                if (!xhr.responseJSON || xhr.responseJSON.status !== 'success') {
+                                                    $("#overlay").stop(true, true).hide();
                                                 }
                                             }
                                         })

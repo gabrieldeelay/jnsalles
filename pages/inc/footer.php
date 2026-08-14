@@ -553,7 +553,8 @@ if (!$user_id) { ?>
 					contentType: false,
 					error: err => {
 						console.log(err)
-						alert('An error occurred')
+						$('#overlay').stop(true, true).hide();
+						alert('Não foi possível concluir o cadastro. Tente novamente.')
 					},
 					success: function(resp) {
 						if (resp.status == 'success') {
@@ -743,7 +744,8 @@ if (!$user_id) { ?>
 						contentType: false,
 						error: err => {
 							console.log(err)
-							alert('An error occurred')
+							$('#overlay').stop(true, true).hide();
+							alert('Não foi possível entrar. Tente novamente.')
 						},
 						success: function(resp) {
 							console.log(resp)
@@ -842,7 +844,8 @@ if (!$user_id) { ?>
 						contentType: false,
 						error: err => {
 							console.log(err)
-							alert('An error occurred')
+							$('#overlay').stop(true, true).hide();
+							alert('Não foi possível concluir o cadastro. Tente novamente.')
 						},
 						success: function(resp) {
 							console.log(resp)

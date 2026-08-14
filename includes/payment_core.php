@@ -526,12 +526,17 @@ function payment_venopag_webhook_url()
 
 function payment_venopag_request($method, $path, $body = null, $timeout = 25)
 {
+    $safeMethod = strtoupper((string) $method);
+    $safePath = (string) (parse_url((string) $path, PHP_URL_PATH) ?: '/');
     $credentials = payment_venopag_credentials();
     if (empty($credentials['ok'])) {
+        error_log('[payments] venopag request blocked method=' . $safeMethod . ' path=' . $safePath . ' reason=credentials_missing');
         return $credentials + ['status' => 0, 'json' => [], 'headers' => []];
     }
     $response = payment_http($method, payment_venopag_base_url() . $path, $credentials['headers'], $body, null, $timeout);
     if (!array_key_exists('ok', $response['json'] ?? [])) {
+        $transportReason = ($response['error'] ?? '') !== '' ? 'transport_error' : 'invalid_json';
+        error_log('[payments] venopag invalid response method=' . $safeMethod . ' path=' . $safePath . ' http=' . (int) ($response['status'] ?? 0) . ' reason=' . $transportReason);
         $response['ok'] = false;
         $response['message'] = 'A VenoPag retornou uma resposta inválida.';
         return $response;
@@ -540,6 +545,17 @@ function payment_venopag_request($method, $path, $body = null, $timeout = 25)
     if (!$response['ok']) {
         $appCode = (int) ($response['headers']['x-app-error-code'] ?? 0);
         $response['app_error_code'] = $appCode;
+        $reason = 'provider_rejected';
+        if ($appCode === 401) {
+            $reason = 'credentials_rejected';
+        } elseif ($appCode === 403) {
+            $reason = 'account_or_permission_blocked';
+        } elseif ($appCode === 400 || $appCode === 422) {
+            $reason = 'request_rejected';
+        } elseif ($appCode === 502 || $appCode === 503) {
+            $reason = 'provider_unavailable';
+        }
+        error_log('[payments] venopag request refused method=' . $safeMethod . ' path=' . $safePath . ' http=' . (int) ($response['status'] ?? 0) . ' app_code=' . $appCode . ' reason=' . $reason);
         $response['message'] = payment_safe_provider_error($response, 'A VenoPag recusou a operação.');
     }
     return $response;
