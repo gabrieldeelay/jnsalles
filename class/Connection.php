@@ -30,7 +30,7 @@ class DBConnection
 			if (!$this->conn) {
 				http_response_code(503);
 				header('Retry-After: 2');
-				exit('O site estÃ¡ reconectando ao banco de dados. Atualize a pÃ¡gina em alguns segundos.');
+				exit('O site esta reconectando ao banco de dados. Atualize a pagina em alguns segundos.');
 			}
 			$this->conn->set_charset('utf8mb4');
 		}
