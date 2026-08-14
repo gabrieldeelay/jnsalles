@@ -12,19 +12,35 @@ class DBConnection
 	public function __construct()
 	{
 		if (!isset($this->conn)) {
-			$this->conn = new mysqli($this->host, $this->username, $this->password, $this->database);
-			$this->conn->set_charset('utf8mb4');
+			for ($attempt = 1; $attempt <= 3; $attempt++) {
+				try {
+					$connection = new mysqli($this->host, $this->username, $this->password, $this->database);
+					if (!$connection->connect_errno) {
+						$this->conn = $connection;
+						break;
+					}
+				} catch (Throwable $error) {
+					error_log('[database] application connection attempt=' . $attempt . ' failed');
+				}
+				if ($attempt < 3) {
+					usleep(250000 * $attempt);
+				}
+			}
 
 			if (!$this->conn) {
-				echo 'Cannot connect to database server';
-				exit();
+				http_response_code(503);
+				header('Retry-After: 2');
+				exit('O site estÃ¡ reconectando ao banco de dados. Atualize a pÃ¡gina em alguns segundos.');
 			}
+			$this->conn->set_charset('utf8mb4');
 		}
 	}
 
 	public function __destruct()
 	{
-		$this->conn->close();
+		if ($this->conn instanceof mysqli) {
+			$this->conn->close();
+		}
 	}
 }
 
