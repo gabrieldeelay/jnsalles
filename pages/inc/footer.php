@@ -437,7 +437,7 @@ if (!$user_id) { ?>
 
 					<!-- Etapa 3 -->
 					<div class="step" id="step3" style="display:none;">
-						<div class="card mb-3" style="background-color: #c4c4c4;">
+						<div class="card mb-3 border-0 checkout-summary-card">
 							<div class="card-body text-center row align-items-center justify-content-between">
 								<?php if ($enable_upsell == 1) { ?>
 									<div class="col-md-6 mb-3">
@@ -475,8 +475,8 @@ if (!$user_id) { ?>
 										</div>
 									</div>
 								<?php } ?>
-								<div class="col-md-6">
-									<div class="mb-2 d-flex justify-content-end align-items-center gap-2">
+								<div class="<?= $enable_upsell == 1 ? 'col-md-6' : 'col-12' ?>">
+									<div class="mb-2 d-flex justify-content-center align-items-center gap-2 flex-wrap">
 										<i class="bi bi-ticket-perforated fs-3 "></i>
 										<div class="fs-5 fw-bold"><span class="qtd"><?= isset($min_purchase) ? $min_purchase : '' ?></span> x <span class="preco">R$ <?= $price ?></span> =</div>
 										<span class="total fs-5 fw-bold">R$
@@ -500,10 +500,16 @@ if (!$user_id) { ?>
 						<div class="d-flex justify-content-center align-items-center gap-3">
 							<button type="button" id="submitFormNew" class="btn w-100 btn-success font-weight-500 rounded-pill mb-2">FINALIZAR<i class="ms-2 bi bi-arrow-right"></i></button>
 						</div>
-						<div class="text-center">
+						<div class="text-center text-secondary small checkout-session-note">
 							<span>Você esta realizando a compra como <?= $_settings->userdata('firstname') ? $_settings->userdata('firstname') : '' ?> <?= $_settings->userdata('lastname') ? $_settings->userdata('lastname') : '' ?></span>
 						</div>
 					</div>
+					<style>
+						.checkout-summary-card { background: linear-gradient(135deg, #f8fafc, #eef2f4); color: #172029; }
+						.checkout-summary-card .card-body { min-height: 0; padding: 1.25rem 1rem; }
+						.checkout-summary-card hr { margin: .75rem auto; max-width: 360px; opacity: .18; }
+						.checkout-session-note { margin-top: .25rem; opacity: .8; }
+					</style>
 
 					<!-- Etapa 4 -->
 					<div class="step" id="step4" style="display:none;">

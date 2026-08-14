@@ -330,13 +330,13 @@ function payment_create_pay2m($orderId, $amount, $name, $email, $cpf, $expiratio
     }
     $payload = [
         'value' => $amount,
-        'generator_name' => trim((string) $name),
         'external_reference' => (string) $orderId,
         'expiration_time' => min(3600, $expiration * 60),
         'payer_message' => 'Pedido #' . $orderId,
     ];
     $document = preg_replace('/\D+/', '', (string) $cpf);
-    if (strlen($document) === 11 && $document !== '00000000000') {
+    if (payment_customer_document_is_valid($document)) {
+        $payload['generator_name'] = trim((string) $name);
         $payload['generator_document'] = $document;
     }
     $response = payment_http('POST', 'https://portal.pay2m.com.br/api/v1/pix/qrcode', [
@@ -624,6 +624,12 @@ function payment_test_gateway($provider)
         $result = $appId === '' ? ['ok' => false] : payment_http('GET', 'https://api.openpix.com.br/api/v1/charge?limit=1', ['Authorization: ' . $appId]);
     } elseif ($provider === 'pay2m') {
         $result = payment_pay2m_token();
+        if (!empty($result['ok'])) {
+            $result = payment_pay2m_register_webhook($result['authorization']);
+            if (empty($result['ok'])) {
+                $result = ['ok' => false, 'message' => payment_safe_provider_error($result, 'Credenciais aceitas, mas o webhook da Pay2M nÃ£o pÃ´de ser configurado.')];
+            }
+        }
     } elseif ($provider === 'gerencianet') {
         $result = payment_efi_token();
     } elseif ($provider === 'venopag') {

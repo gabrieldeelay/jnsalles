@@ -287,6 +287,18 @@ echo "\r\n" .
     "\r\n" .
     '            </li>' .
     "\r\n" .
+    '            <li class="relative px-6 py-3">' .
+    "\r\n" .
+    '              <a class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200" href="./?page=admin_accounts">' .
+    "\r\n" .
+    '<i class="fa-duotone w-6 fa-user-shield text-lg"></i>' .
+    "\r\n" .
+    '                <span class="ml-4">Administradores</span>' .
+    "\r\n" .
+    '              </a>' .
+    "\r\n" .
+    '            </li>' .
+    "\r\n" .
     '            <li class="relative px-6 py-3 hidden">' .
     "\r\n" .
     '              <a class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200"' .
@@ -581,6 +593,18 @@ echo '        </a>' .
     "\r\n" .
     '            </a>' .
     "\r\n\r\n" .
+    '          </li>' .
+    "\r\n\r\n" .
+    '          <li class="relative px-6 py-3">' .
+    "\r\n" .
+    '            <a class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200" href="./?page=admin_accounts">' .
+    "\r\n" .
+    '<i class="fa-duotone w-6 fa-user-shield text-lg mr-4"></i>' .
+    "\r\n" .
+    '              <span>Administradores</span>' .
+    "\r\n" .
+    '            </a>' .
+    "\r\n" .
     '          </li>' .
     "\r\n\r\n" .
     '          ';

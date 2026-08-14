@@ -963,6 +963,12 @@ class Main extends DBConnection
 
     public function add_to_card()
     {
+        if ((int) $this->settings->userdata("login_type") === 1) {
+            return json_encode([
+                "status" => "failed",
+                "msg" => "Para fazer uma compra, saia do painel administrativo e entre como cliente.",
+            ]);
+        }
         extract($_POST);
         $customer_id = $this->settings->userdata("id");
         $delete = $this->conn->query(

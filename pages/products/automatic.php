@@ -2358,7 +2358,7 @@ if ($available > 0 && $status == '1') {
                                         dataType: "json",
                                         error: err => {
                                             console.log(err)
-                                            alert("[PP01] - An error occured.", 'error');
+                                            alert("NÃ£o foi possÃ­vel preparar a compra. Tente novamente.", 'error');
 
                                         },
                                         success: function(resp) {
@@ -2366,8 +2366,10 @@ if ($available > 0 && $status == '1') {
                                                 //location.reload();
                                             } else if (!!resp.msg) {
                                                 alert(resp.msg, 'error');
+                                            } else if (!!resp.error) {
+                                                alert(resp.error, 'error');
                                             } else {
-                                                alert("[PP02] - An error occured.", 'error');
+                                                alert("NÃ£o foi possÃ­vel preparar a compra. Tente novamente.", 'error');
                                             }
                                         }
                                     })

