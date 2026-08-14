@@ -2667,6 +2667,10 @@ if ($available > 0 && $status == '1') {
 
                                     // Função para atualizar o contador
                                     function atualizarContadorRanking() {
+                                        var contadorRanking = document.getElementById("contadorsegranking");
+                                        if (!contadorRanking) {
+                                            return;
+                                        }
                                         // Data atual
                                         var dataAtual = new Date();
 
@@ -2684,11 +2688,11 @@ if ($available > 0 && $status == '1') {
                                             var segundos = Math.floor((diferença % (1000 * 60)) / 1000);
 
                                             // Exibindo o contador no formato: "X dias, Y horas, Z minutos, W segundos"
-                                            document.getElementById("contadorsegranking").innerHTML =
+                                            contadorRanking.innerHTML =
                                                 "<i class='bi bi-alarm me-2'></i>" + dias + " dias, " + horas + ":" + minutos + ":" + segundos;
                                         } else {
                                             // Caso o tempo tenha expirado
-                                            document.getElementById("contadorsegranking").innerHTML = "🔒 O ranking diário está fechado!";
+                                            contadorRanking.innerHTML = "🔒 O ranking diário está fechado!";
                                         }
                                     }
 
@@ -2824,6 +2828,10 @@ if ($enable_ranking_definido == 1) { ?>
 
         // Função para atualizar o contador
         function atualizarContadorRanking() {
+            var contadorRanking = document.getElementById("contadorsegranking");
+            if (!contadorRanking) {
+                return;
+            }
             // Data atual
             var dataAtual = new Date();
 
@@ -2841,11 +2849,11 @@ if ($enable_ranking_definido == 1) { ?>
                 var segundos = Math.floor((diferença % (1000 * 60)) / 1000);
 
                 // Exibindo o contador no formato: "X dias, Y horas, Z minutos, W segundos"
-                document.getElementById("contadorsegranking").innerHTML =
+                contadorRanking.innerHTML =
                     "<i class='bi bi-alarm me-2'></i>" + dias + " dias, " + horas + ":" + minutos + ":" + segundos;
             } else {
                 // Caso o tempo tenha expirado
-                document.getElementById("contadorsegranking").innerHTML = "❌ sorteio finalizado!";
+                contadorRanking.innerHTML = "❌ sorteio finalizado!";
             }
         }
 

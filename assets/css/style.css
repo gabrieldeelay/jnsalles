@@ -13965,18 +13965,35 @@ drope-tab .drope-content p {
 }
 
 .custom-content-wrapper-details {
-  padding: 0 !important;
+  padding: 18px 16px 0 !important;
+  background: linear-gradient(180deg, rgba(12, 14, 18, 0) 0%, rgba(12, 14, 18, 0.78) 32%, rgba(12, 14, 18, 0.98) 100%) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
 }
 
 .custom-content-wrapper-details h1,
 .custom-content-wrapper-details p {
-  padding: 0 16px;
+  padding: 0;
+  width: 100%;
+}
+
+.custom-content-wrapper-details h1 {
+  margin-bottom: 3px !important;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.custom-content-wrapper-details p {
+  margin: 0 !important;
+  line-height: 1.35;
+  opacity: 0.92;
 }
 
 .custom-content-wrapper-details .btn {
-  margin-top: 16px;
+  margin: 14px -16px 0;
+  width: calc(100% + 32px) !important;
   border-top-left-radius: 0;
   border-top-right-radius: 0;
+  text-shadow: none;
 }
 
 .custom-content-wrapper h1 {
