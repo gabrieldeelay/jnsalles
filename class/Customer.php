@@ -273,7 +273,7 @@ class Customer extends DBConnection
             }
 
             $cpf = $_POST['cpf'];
-            $check = $this->conn->query('SELECT * FROM `customer_list` where cpf = \'' . $cpf . '\'')->num_rows;
+            $check = $this->conn->query('SELECT * FROM `customer_list` where cpf = \'' . $cpf . '\' ' . (0 < $id ? ' and id != \'' . $id . '\'' : '') . ' ')->num_rows;
 
             if (0 < $check) {
                 $resp['status'] = 'cpf_already';
@@ -284,7 +284,7 @@ class Customer extends DBConnection
 
         if (!empty($_POST['email'])) {
             $email = $_POST['email'];
-            $check = $this->conn->query('SELECT * FROM `customer_list` where email = \'' . $email . '\'')->num_rows;
+            $check = $this->conn->query('SELECT * FROM `customer_list` where email = \'' . $email . '\' ' . (0 < $id ? ' and id != \'' . $id . '\'' : '') . ' ')->num_rows;
 
             if (0 < $check) {
                 $resp['status'] = 'email_already';

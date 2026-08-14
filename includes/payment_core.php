@@ -524,7 +524,7 @@ function payment_venopag_webhook_url()
     return rtrim(BASE_URL, '/') . '/webhook.php?notify=venopag&token=' . rawurlencode($secret);
 }
 
-function payment_venopag_request($method, $path, $body = null, $timeout = 25)
+function payment_venopag_request($method, $path, $body = null, $timeout = 25, $retryUnavailable = true)
 {
     $safeMethod = strtoupper((string) $method);
     $safePath = (string) (parse_url((string) $path, PHP_URL_PATH) ?: '/');
@@ -545,6 +545,11 @@ function payment_venopag_request($method, $path, $body = null, $timeout = 25)
     if (!$response['ok']) {
         $appCode = (int) ($response['headers']['x-app-error-code'] ?? 0);
         $response['app_error_code'] = $appCode;
+        if ($retryUnavailable && $safeMethod === 'POST' && $safePath === '/api/cashin' && in_array($appCode, [502, 503], true)) {
+            error_log('[payments] venopag cashin retry app_code=' . $appCode . ' reason=provider_unavailable');
+            usleep(300000);
+            return payment_venopag_request($method, $path, $body, $timeout, false);
+        }
         $reason = 'provider_rejected';
         if ($appCode === 401) {
             $reason = 'credentials_rejected';
