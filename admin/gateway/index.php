@@ -24,6 +24,7 @@ $required = [
     'paggue' => ['paggue_client_key', 'paggue_client_secret'],
     'openpix' => ['openpix_app_id'],
     'pay2m' => ['pay2m_client_id', 'pay2m_client_secret'],
+    'venopag' => ['venopag_client_id', 'venopag_client_secret'],
 ];
 $configured = [];
 foreach ($required as $provider => $fields) {
@@ -50,6 +51,8 @@ function gateway_tax_value($field)
 }
 
 $webhookBase = rtrim(BASE_URL, '/') . '/webhook.php?notify=';
+$venopagWebhookSecret = trim((string) $_settings->info('venopag_webhook_secret'));
+$venopagWebhook = $webhookBase . 'venopag' . ($venopagWebhookSecret !== '' ? '&token=' . rawurlencode($venopagWebhookSecret) : '&token=GERADO_AO_SALVAR');
 ?>
 
 <style>
@@ -126,6 +129,16 @@ $webhookBase = rtrim(BASE_URL, '/') . '/webhook.php?notify=';
                     <div class="gateway-field"><label>Client Secret</label><input class="form-input block w-full dark:bg-gray-700 dark:text-gray-300" type="password" name="pay2m_client_secret" placeholder="<?= gateway_secret_placeholder(trim((string) $_settings->info('pay2m_client_secret')) !== '') ?>"></div>
                     <div class="gateway-field"><label>Taxa adicional (%)</label><input class="form-input block w-full dark:bg-gray-700 dark:text-gray-300" type="number" min="0" max="100" step="0.01" name="pay2m_tax" value="<?= gateway_tax_value('pay2m_tax') ?>"></div>
                     <div class="gateway-field"><label>Webhook</label><input class="form-input block w-full dark:bg-gray-700 dark:text-gray-300" readonly value="<?= htmlspecialchars($webhookBase . 'pay2m', ENT_QUOTES, 'UTF-8') ?>"></div>
+                </section>
+
+                <section class="gateway-panel" data-provider="venopag">
+                    <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-200">VenoPag</h3>
+                    <div class="gateway-note">Use as credenciais de uma chave com a permissão <strong>cashin</strong>. O webhook recebe uma URL secreta e toda confirmação é consultada novamente na VenoPag antes de liberar o pedido.</div>
+                    <div class="gateway-field"><label>Client ID</label><input class="form-input block w-full dark:bg-gray-700 dark:text-gray-300" type="password" name="venopag_client_id" placeholder="<?= gateway_secret_placeholder(trim((string) $_settings->info('venopag_client_id')) !== '') ?>" autocomplete="new-password"></div>
+                    <div class="gateway-field"><label>Client Secret</label><input class="form-input block w-full dark:bg-gray-700 dark:text-gray-300" type="password" name="venopag_client_secret" placeholder="<?= gateway_secret_placeholder(trim((string) $_settings->info('venopag_client_secret')) !== '') ?>" autocomplete="new-password"></div>
+                    <div class="gateway-field"><label>Taxa adicional (%)</label><input class="form-input block w-full dark:bg-gray-700 dark:text-gray-300" type="number" min="0" max="100" step="0.01" name="venopag_tax" value="<?= gateway_tax_value('venopag_tax') ?>"></div>
+                    <div class="gateway-field"><label>Webhook protegido</label><input class="form-input block w-full dark:bg-gray-700 dark:text-gray-300" readonly value="<?= htmlspecialchars($venopagWebhook, ENT_QUOTES, 'UTF-8') ?>"></div>
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">A URL é enviada automaticamente em cada nova cobrança; não é necessário cadastrá-la manualmente.</p>
                 </section>
 
                 <div class="gateway-actions">

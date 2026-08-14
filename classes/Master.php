@@ -620,6 +620,7 @@ class Master extends DBConnection
 		$customer_fname = $this->settings->userdata('firstname');
 		$customer_lname = $this->settings->userdata('lastname');
 		$customer_phone = $this->settings->userdata('phone');
+		$customer_cpf = $this->settings->userdata('cpf');
 		$customer_email = $this->settings->userdata('email');
 		$customer_name = $customer_fname . ' ' . $customer_lname;
 		$dateCreated = date('Y-m-d H:i:s');
@@ -863,7 +864,7 @@ class Master extends DBConnection
 				$update = $this->conn->query('UPDATE `order_list` SET `order_numbers` = \'' . $order_numbers . '\' WHERE `code` = \'' . $code . '\'');
 			}
 			if (0 < $total_amount) {
-				$payment = payment_create_pix($oid, $total_amount, $customer_name, $customer_email, '', $order_expiration, $customer_phone);
+				$payment = payment_create_pix($oid, $total_amount, $customer_name, $customer_email, $customer_cpf, $order_expiration, $customer_phone);
 				if (empty($payment['ok'])) {
 					$this->conn->query('UPDATE order_list SET status = 3 WHERE id = ' . (int) $oid . ' AND status = 1');
 					return json_encode(['status' => 'failed', 'error' => $payment['message'] ?? 'Não foi possível gerar o PIX. Tente novamente.']);

@@ -15,6 +15,7 @@ function payment_provider_definitions()
         'paggue' => ['label' => 'Paggue', 'method' => 'Paggue', 'tax' => 'paggue_tax'],
         'openpix' => ['label' => 'OpenPix / Woovi', 'method' => 'OpenPix', 'tax' => 'openpix_tax'],
         'pay2m' => ['label' => 'Pay2M', 'method' => 'Pay2m', 'tax' => 'pay2m_tax'],
+        'venopag' => ['label' => 'VenoPag', 'method' => 'VenoPag', 'tax' => 'venopag_tax'],
     ];
 }
 
@@ -61,19 +62,28 @@ function payment_uuid_v4()
     return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
 }
 
-function payment_http($method, $url, array $headers = [], $body = null, $certificate = null)
+function payment_http($method, $url, array $headers = [], $body = null, $certificate = null, $timeout = 25)
 {
     $curl = curl_init($url);
+    $responseHeaders = [];
     $options = [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_MAXREDIRS => 3,
         CURLOPT_CONNECTTIMEOUT => 7,
-        CURLOPT_TIMEOUT => 25,
+        CURLOPT_TIMEOUT => max(3, min(60, (int) $timeout)),
         CURLOPT_CUSTOMREQUEST => strtoupper($method),
         CURLOPT_HTTPHEADER => $headers,
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_HEADERFUNCTION => function ($curlHandle, $headerLine) use (&$responseHeaders) {
+            $length = strlen($headerLine);
+            $parts = explode(':', $headerLine, 2);
+            if (count($parts) === 2) {
+                $responseHeaders[strtolower(trim($parts[0]))] = trim($parts[1]);
+            }
+            return $length;
+        },
     ];
     if ($body !== null) {
         $options[CURLOPT_POSTFIELDS] = is_string($body) ? $body : json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -94,7 +104,7 @@ function payment_http($method, $url, array $headers = [], $body = null, $certifi
 
     $json = is_string($raw) ? json_decode($raw, true) : null;
     $ok = $error === '' && $status >= 200 && $status < 300;
-    return ['ok' => $ok, 'status' => $status, 'json' => is_array($json) ? $json : [], 'error' => $error];
+    return ['ok' => $ok, 'status' => $status, 'json' => is_array($json) ? $json : [], 'headers' => $responseHeaders, 'error' => $error];
 }
 
 function payment_safe_provider_error($response, $fallback = 'O gateway recusou a operação.')
@@ -436,6 +446,104 @@ function payment_create_paggue($orderId, $amount, $name, $email, $cpf, $expirati
     return ['ok' => true, 'provider' => 'paggue'];
 }
 
+function payment_venopag_base_url()
+{
+    $custom = getenv('VENOPAG_API_URL');
+    return rtrim($custom !== false && $custom !== '' ? $custom : 'https://venopagments.com', '/');
+}
+
+function payment_venopag_credentials()
+{
+    $clientId = trim((string) payment_setting('venopag_client_id'));
+    $clientSecret = trim((string) payment_setting('venopag_client_secret'));
+    if ($clientId === '' || $clientSecret === '') {
+        return ['ok' => false, 'message' => 'Client ID e Client Secret da VenoPag não configurados.'];
+    }
+    return [
+        'ok' => true,
+        'headers' => [
+            'X-Client-Id: ' . $clientId,
+            'X-Client-Secret: ' . $clientSecret,
+            'Accept: application/json',
+            'Content-Type: application/json',
+        ],
+    ];
+}
+
+function payment_venopag_webhook_url()
+{
+    $secret = trim((string) payment_setting('venopag_webhook_secret'));
+    if ($secret === '') {
+        return '';
+    }
+    return rtrim(BASE_URL, '/') . '/webhook.php?notify=venopag&token=' . rawurlencode($secret);
+}
+
+function payment_venopag_request($method, $path, $body = null, $timeout = 25)
+{
+    $credentials = payment_venopag_credentials();
+    if (empty($credentials['ok'])) {
+        return $credentials + ['status' => 0, 'json' => [], 'headers' => []];
+    }
+    $response = payment_http($method, payment_venopag_base_url() . $path, $credentials['headers'], $body, null, $timeout);
+    if (!array_key_exists('ok', $response['json'] ?? [])) {
+        $response['ok'] = false;
+        $response['message'] = 'A VenoPag retornou uma resposta inválida.';
+        return $response;
+    }
+    $response['ok'] = !empty($response['json']['ok']);
+    if (!$response['ok']) {
+        $appCode = (int) ($response['headers']['x-app-error-code'] ?? 0);
+        $response['app_error_code'] = $appCode;
+        $response['message'] = payment_safe_provider_error($response, 'A VenoPag recusou a operação.');
+    }
+    return $response;
+}
+
+function payment_venopag_consult($requestNumber, $timeout = 7)
+{
+    $requestNumber = trim((string) $requestNumber);
+    if ($requestNumber === '') {
+        return ['ok' => false, 'message' => 'Referência VenoPag ausente.', 'json' => [], 'status' => 0];
+    }
+    return payment_venopag_request('GET', '/api/consult-transaction?request_number=' . rawurlencode($requestNumber), null, $timeout);
+}
+
+function payment_create_venopag($orderId, $amount, $name, $email, $cpf, $expiration, $phone)
+{
+    $document = preg_replace('/\D+/', '', (string) $cpf);
+    if (!in_array(strlen($document), [11, 14], true)) {
+        return ['ok' => false, 'message' => 'Informe um CPF ou CNPJ válido para gerar o PIX na VenoPag.'];
+    }
+    $webhookUrl = payment_venopag_webhook_url();
+    if ($webhookUrl === '') {
+        return ['ok' => false, 'message' => 'Proteção do webhook VenoPag não configurada. Salve novamente o gateway.'];
+    }
+    $payload = [
+        'amount' => round((float) $amount, 2),
+        'name' => trim((string) $name),
+        'document' => $document,
+        'description' => 'Pedido #' . (int) $orderId,
+        'webhook_url' => $webhookUrl,
+    ];
+    $response = payment_venopag_request('POST', '/api/cashin', $payload);
+    $data = $response['json'] ?? [];
+    if (empty($response['ok']) || ($data['status'] ?? '') !== 'pending' || empty($data['copyPaste']) || empty($data['request_number'])) {
+        $code = (int) ($response['app_error_code'] ?? 0);
+        $message = $response['message'] ?? 'Não foi possível gerar o PIX na VenoPag.';
+        if ($message === 'Falha ao gerar PIX') {
+            $message = $code === 502
+                ? 'A VenoPag está temporariamente indisponível. Tente novamente.'
+                : 'A VenoPag recusou os dados do pagamento. Confira o CPF/CNPJ e tente novamente.';
+        }
+        return ['ok' => false, 'message' => $message];
+    }
+    if (!payment_store_pix($orderId, 'VenoPag', $data['copyPaste'], $data['request_number'], (int) ($data['expire_minutes'] ?? $expiration), (string) ($data['transaction_id'] ?? ''))) {
+        return ['ok' => false, 'message' => 'O PIX foi criado, mas não pôde ser salvo.'];
+    }
+    return ['ok' => true, 'provider' => 'venopag'];
+}
+
 function payment_test_gateway($provider)
 {
     if (!isset(payment_provider_definitions()[$provider])) {
@@ -451,6 +559,17 @@ function payment_test_gateway($provider)
         $result = payment_pay2m_token();
     } elseif ($provider === 'gerencianet') {
         $result = payment_efi_token();
+    } elseif ($provider === 'venopag') {
+        $credentials = payment_venopag_credentials();
+        if (empty($credentials['ok'])) {
+            $result = $credentials;
+        } else {
+            $probe = payment_venopag_request('GET', '/api/consult-transaction?request_number=codex_connection_test');
+            $appCode = (int) ($probe['app_error_code'] ?? 0);
+            $message = (string) ($probe['message'] ?? '');
+            $acceptedProbe = $appCode === 404 || stripos($message, 'não encontrado') !== false;
+            $result = $acceptedProbe ? ['ok' => true] : $probe;
+        }
     } else {
         $result = payment_paggue_token();
     }
@@ -558,6 +677,42 @@ function payment_verify_webhook($provider, $raw, array $headers)
         $reference = $charge['globalID'] ?? '';
         $orderId = $charge['correlationID'] ?? payment_find_order_id_by_reference('id_mp', $reference);
         return ['ok' => true, 'order_id' => $orderId, 'amount' => ((float) ($charge['value'] ?? 0)) / 100, 'reference' => $reference];
+    }
+
+    if ($provider === 'venopag') {
+        $expectedSecret = trim((string) payment_setting('venopag_webhook_secret'));
+        $receivedSecret = trim((string) ($_GET['token'] ?? ''));
+        if ($expectedSecret === '' || $receivedSecret === '' || !hash_equals($expectedSecret, $receivedSecret)) {
+            return ['ok' => false, 'http' => 401, 'message' => 'Webhook não autorizado.'];
+        }
+        if (strtolower((string) ($event['type'] ?? '')) !== 'cashin') {
+            return ['ok' => false, 'http' => 200, 'message' => 'Evento VenoPag ignorado.'];
+        }
+        $requestNumber = trim((string) ($event['request_number'] ?? ''));
+        if ($requestNumber === '') {
+            return ['ok' => false, 'http' => 400, 'message' => 'Referência VenoPag ausente.'];
+        }
+        $consult = payment_venopag_consult($requestNumber);
+        $data = $consult['json'] ?? [];
+        if (empty($consult['ok'])) {
+            return ['ok' => false, 'http' => 502, 'message' => 'Falha ao confirmar a transação na VenoPag.'];
+        }
+        $status = strtolower((string) ($data['status'] ?? ''));
+        if ($status !== 'confirmed') {
+            $validNonPaid = ['pending', 'expired', 'canceled', 'contested', 'chargedback', 'refunded'];
+            return [
+                'ok' => false,
+                'http' => 200,
+                'message' => in_array($status, $validNonPaid, true) ? 'Pagamento VenoPag não liberável.' : 'Status VenoPag desconhecido.',
+            ];
+        }
+        $reference = (string) ($data['request_number'] ?? $requestNumber);
+        return [
+            'ok' => true,
+            'order_id' => payment_find_order_id_by_reference('id_mp', $reference),
+            'amount' => $data['amount'] ?? 0,
+            'reference' => $reference,
+        ];
     }
 
     if ($provider === 'pay2m') {
@@ -736,11 +891,83 @@ function payment_mark_order_paid($provider, array $verified)
     return ['ok' => true, 'message' => 'Pagamento confirmado.'];
 }
 
+function payment_reconcile_venopag_reversal($requestNumber, $status)
+{
+    global $conn;
+    $requestNumber = trim((string) $requestNumber);
+    $status = strtolower(trim((string) $status));
+    if ($requestNumber === '' || !in_array($status, ['contested', 'chargedback', 'refunded'], true)) {
+        return ['ok' => false, 'http' => 400, 'message' => 'Reversão VenoPag inválida.'];
+    }
+
+    $conn->begin_transaction();
+    try {
+        $statement = $conn->prepare("SELECT id, status, product_id, quantity FROM order_list WHERE id_mp = ? AND payment_method = 'VenoPag' LIMIT 1 FOR UPDATE");
+        $statement->bind_param('s', $requestNumber);
+        $statement->execute();
+        $result = $statement->get_result();
+        $order = $result ? $result->fetch_assoc() : null;
+        $statement->close();
+        if (!$order) {
+            throw new RuntimeException('Pedido VenoPag não encontrado.', 404);
+        }
+        if ((int) $order['status'] !== 2) {
+            $conn->commit();
+            return ['ok' => true, 'message' => 'Reversão já conciliada.'];
+        }
+
+        $orderId = (int) $order['id'];
+        $quantity = max(0, (int) $order['quantity']);
+        $productId = (int) $order['product_id'];
+        $update = $conn->prepare('UPDATE order_list SET status = 3, date_updated = NOW() WHERE id = ? AND status = 2');
+        $update->bind_param('i', $orderId);
+        $update->execute();
+        if ($update->affected_rows !== 1) {
+            throw new RuntimeException('O pedido já foi alterado.', 409);
+        }
+        $update->close();
+
+        $product = $conn->prepare('UPDATE product_list SET paid_numbers = GREATEST(0, CAST(paid_numbers AS SIGNED) - ?) WHERE id = ?');
+        $product->bind_param('ii', $quantity, $productId);
+        $product->execute();
+        $product->close();
+        $conn->commit();
+    } catch (Throwable $error) {
+        $conn->rollback();
+        $http = (int) $error->getCode();
+        return ['ok' => false, 'http' => ($http >= 400 && $http <= 599) ? $http : 500, 'message' => $error->getMessage()];
+    }
+
+    error_log('[payments] venopag reversal reconciled order=' . $orderId . ' status=' . $status);
+    return ['ok' => true, 'message' => 'Reversão VenoPag conciliada.'];
+}
+
 function payment_process_webhook($provider, $raw, array $headers)
 {
     if (!isset(payment_provider_definitions()[$provider])) {
         return ['ok' => false, 'http' => 404, 'message' => 'Gateway desconhecido.'];
     }
+    if ($provider === 'venopag') {
+        $event = json_decode($raw, true);
+        $expectedSecret = trim((string) payment_setting('venopag_webhook_secret'));
+        $receivedSecret = trim((string) ($_GET['token'] ?? ''));
+        if (!is_array($event) || $expectedSecret === '' || $receivedSecret === '' || !hash_equals($expectedSecret, $receivedSecret)) {
+            return ['ok' => false, 'http' => 401, 'message' => 'Webhook não autorizado.'];
+        }
+        $requestNumber = trim((string) ($event['request_number'] ?? ''));
+        if ($requestNumber === '') {
+            return ['ok' => false, 'http' => 400, 'message' => 'Referência VenoPag ausente.'];
+        }
+        $consult = payment_venopag_consult($requestNumber, 7);
+        if (empty($consult['ok'])) {
+            return ['ok' => false, 'http' => 502, 'message' => 'Falha ao confirmar a transação na VenoPag.'];
+        }
+        $confirmedStatus = strtolower((string) ($consult['json']['status'] ?? ''));
+        if (in_array($confirmedStatus, ['contested', 'chargedback', 'refunded'], true)) {
+            return payment_reconcile_venopag_reversal((string) ($consult['json']['request_number'] ?? $requestNumber), $confirmedStatus);
+        }
+    }
+
     $verified = payment_verify_webhook($provider, $raw, $headers);
     if (empty($verified['ok'])) {
         return $verified;
@@ -768,7 +995,7 @@ function payment_check_order($orderId)
         return ['ok' => true, 'status' => (int) $order['status']];
     }
 
-    $methodMap = ['MercadoPago' => 'mercadopago', 'Gerencianet' => 'gerencianet', 'Paggue' => 'paggue', 'OpenPix' => 'openpix', 'Pay2m' => 'pay2m'];
+    $methodMap = ['MercadoPago' => 'mercadopago', 'Gerencianet' => 'gerencianet', 'Paggue' => 'paggue', 'OpenPix' => 'openpix', 'Pay2m' => 'pay2m', 'VenoPag' => 'venopag'];
     $provider = $methodMap[$order['payment_method']] ?? null;
     if (!$provider) {
         return ['ok' => false, 'status' => 1, 'message' => 'Gateway do pedido inválido.'];
@@ -794,6 +1021,21 @@ function payment_check_order($orderId)
             return ['ok' => true, 'status' => 1];
         }
         $verified = ['order_id' => $charge['correlationID'] ?? $orderId, 'amount' => ((float) ($charge['value'] ?? 0)) / 100, 'reference' => $charge['globalID'] ?? $order['id_mp']];
+    } elseif ($provider === 'venopag') {
+        $response = payment_venopag_consult((string) $order['id_mp']);
+        $data = $response['json'] ?? [];
+        if (empty($response['ok'])) {
+            return ['ok' => false, 'status' => 1, 'message' => 'Falha ao consultar a VenoPag.'];
+        }
+        $venoStatus = strtolower((string) ($data['status'] ?? ''));
+        if ($venoStatus !== 'confirmed') {
+            return ['ok' => true, 'status' => 1, 'provider_status' => $venoStatus];
+        }
+        $verified = [
+            'order_id' => $orderId,
+            'amount' => $data['amount'] ?? 0,
+            'reference' => $data['request_number'] ?? $order['id_mp'],
+        ];
     } elseif ($provider === 'pay2m') {
         $token = payment_pay2m_token();
         if (empty($token['ok'])) {
@@ -866,7 +1108,7 @@ function payment_expire_pending_orders($productId = null, $limit = 10)
     $expired = 0;
     $products = [];
     $deadline = microtime(true) + 45;
-    $gatewayMethods = ['MercadoPago', 'Gerencianet', 'Paggue', 'OpenPix', 'Pay2m'];
+    $gatewayMethods = ['MercadoPago', 'Gerencianet', 'Paggue', 'OpenPix', 'Pay2m', 'VenoPag'];
     while ($order = $result->fetch_assoc()) {
         if (microtime(true) >= $deadline) {
             break;

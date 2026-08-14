@@ -548,7 +548,7 @@ class System extends DBConnection
 
     private function update_gateway_settings()
     {
-        $providers = ['none', 'mercadopago', 'gerencianet', 'paggue', 'openpix', 'pay2m'];
+        $providers = ['none', 'mercadopago', 'gerencianet', 'paggue', 'openpix', 'pay2m', 'venopag'];
         $provider = strtolower(trim((string) ($_POST['gateway_provider'] ?? 'none')));
 
         if (!in_array($provider, $providers, true)) {
@@ -561,14 +561,16 @@ class System extends DBConnection
             'paggue' => ['paggue_client_key', 'paggue_client_secret'],
             'openpix' => ['openpix_app_id'],
             'pay2m' => ['pay2m_client_id', 'pay2m_client_secret'],
+            'venopag' => ['venopag_client_id', 'venopag_client_secret'],
         ];
         $secrets = [
             'mercadopago_access_token', 'mercadopago_webhook_secret',
             'gerencianet_client_id', 'gerencianet_client_secret', 'gerencianet_pix_key',
             'paggue_client_key', 'paggue_client_secret', 'openpix_app_id',
             'pay2m_client_id', 'pay2m_client_secret', 'pay2m_webhook_secret',
+            'venopag_client_id', 'venopag_client_secret', 'venopag_webhook_secret',
         ];
-        $taxes = ['mercadopago_tax', 'gerencianet_tax', 'paggue_tax', 'openpix_tax', 'pay2m_tax'];
+        $taxes = ['mercadopago_tax', 'gerencianet_tax', 'paggue_tax', 'openpix_tax', 'pay2m_tax', 'venopag_tax'];
         $values = ['gateway_provider' => $provider, 'gateway' => '1'];
 
         foreach (array_slice($providers, 1) as $flag) {
@@ -582,6 +584,9 @@ class System extends DBConnection
 
         if ($values['pay2m_webhook_secret'] === '') {
             $values['pay2m_webhook_secret'] = bin2hex(random_bytes(24));
+        }
+        if ($values['venopag_webhook_secret'] === '') {
+            $values['venopag_webhook_secret'] = bin2hex(random_bytes(32));
         }
 
         foreach ($taxes as $field) {
