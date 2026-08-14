@@ -19,7 +19,7 @@ $totalResults = $conn->query('SELECT r.* FROM referral r ' . $where)->num_rows;
 $totalPages = ceil($totalResults / $perPage);
 $g_total = 0;
 $i = 1;
-$requests = $conn->query("\n" . '                SELECT r.id, c.firstname, c.lastname, c.phone, r.amount_pending, r.amount_paid, r.status, r.percentage' . "\n" . '                FROM referral r' . "\n" . '                INNER JOIN customer_list c ON r.customer_id = c.id' . "\n" . '                ' . $where . "\n" . '                GROUP BY r.customer_id' . "\n" . '                ORDER BY r.id DESC' . "\n" . '                LIMIT ' . $perPage . ' OFFSET ' . $offset . "\n" . '                ');
+$requests = $conn->query("\n" . '                SELECT r.id, c.firstname, c.lastname, c.phone, r.amount_pending, r.amount_paid, r.status, r.percentage' . "\n" . '                FROM referral r' . "\n" . '                INNER JOIN customer_list c ON r.customer_id = c.id' . "\n" . '                ' . $where . "\n" . '                ORDER BY r.id DESC' . "\n" . '                LIMIT ' . $perPage . ' OFFSET ' . $offset . "\n" . '                ');
 
 while ($row = $requests->fetch_assoc()) {
 	echo '                <tr class="text-gray-700 dark:text-gray-400">' . "\n" . '                    <td class="px-4 py-3">';

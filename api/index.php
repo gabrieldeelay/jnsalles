@@ -157,10 +157,25 @@ if (
 
         public function __construct($host, $user, $password, $database)
         {
-            $this->connection = @new mysqli($host, $user, $password, $database);
+            $this->connection = null;
             $this->lifetime = max(1440, (int) ini_get('session.gc_maxlifetime'));
 
-            if (!$this->connection->connect_errno) {
+            for ($attempt = 1; $attempt <= 3; $attempt++) {
+                try {
+                    $connection = @new mysqli($host, $user, $password, $database);
+                    if (!$connection->connect_errno) {
+                        $this->connection = $connection;
+                        break;
+                    }
+                } catch (Throwable $error) {
+                    error_log('[database] session connection attempt=' . $attempt . ' failed');
+                }
+                if ($attempt < 3) {
+                    usleep(250000 * $attempt);
+                }
+            }
+
+            if ($this->isReady()) {
                 $this->connection->set_charset('utf8mb4');
                 $this->connection->query(
                     'CREATE TABLE IF NOT EXISTS `vercel_php_sessions` ('
@@ -175,7 +190,7 @@ if (
 
         public function isReady()
         {
-            return !$this->connection->connect_errno;
+            return $this->connection instanceof mysqli && !$this->connection->connect_errno;
         }
 
         public function open($path, $name): bool
@@ -277,10 +292,25 @@ if (
 
         public function __construct($host, $user, $password, $database, $root)
         {
-            $this->connection = @new mysqli($host, $user, $password, $database);
+            $this->connection = null;
             $this->root = rtrim($root, DIRECTORY_SEPARATOR);
 
-            if ($this->connection->connect_errno) {
+            for ($attempt = 1; $attempt <= 3; $attempt++) {
+                try {
+                    $connection = @new mysqli($host, $user, $password, $database);
+                    if (!$connection->connect_errno) {
+                        $this->connection = $connection;
+                        break;
+                    }
+                } catch (Throwable $error) {
+                    error_log('[database] upload-store connection attempt=' . $attempt . ' failed');
+                }
+                if ($attempt < 3) {
+                    usleep(250000 * $attempt);
+                }
+            }
+
+            if (!$this->isReady()) {
                 return;
             }
 
@@ -303,7 +333,7 @@ if (
 
         public function isReady()
         {
-            return !$this->connection->connect_errno;
+            return $this->connection instanceof mysqli && !$this->connection->connect_errno;
         }
 
         private function safePath($path)
