@@ -661,8 +661,12 @@ if (isset($friendlyRoutes[$requestPath])) {
     $_GET['p'] = 'pages/orders/view_order';
     $_GET['id'] = $matches[1];
 } elseif ($requestPath === '/logout') {
-    $_GET['action'] = 'logout_customer';
-    $target = 'class/Auth.php';
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        $_SESSION = [];
+        session_destroy();
+    }
+    header('Location: ' . BASE_URL, true, 302);
+    exit;
 } elseif ($requestPath === '/admin' || $requestPath === '/admin/') {
     $target = 'admin/index.php';
 } elseif (substr($requestPath, -4) === '.php') {

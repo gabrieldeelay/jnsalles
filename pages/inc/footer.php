@@ -208,8 +208,8 @@ if (!$user_id) { ?>
 
 		<?php
 		if (isset($slug)) { ?>
-			<span id="openCadastro" data-bs-toggle="modal" data-bs-target="#cadastroModal2" style="display:none;"></span>
-			<form class="modal fade" id="cadastroModal2">
+			<span id="openCadastro" data-bs-toggle="modal" data-bs-target="#cadastroModalLegacy" style="display:none;"></span>
+			<form class="modal fade" id="cadastroModalLegacy">
 				<div class="modal-dialog modal-sm modal-fullscreen-md-down modal-dialog-centered">
 					<div class="modal-content rounded-0">
 						<div class="modal-header">
@@ -532,7 +532,7 @@ if (!$user_id) { ?>
 		}
 
 		$(document).ready(function() {
-			$('#form-cadastrar, #cadastroModal2').submit(function(e) {
+			$('#form-cadastrar, #cadastroModalLegacy').submit(function(e) {
 				e.preventDefault();
 				var phoneValue = $('.phone').val();
 				var phoneConfirmValue = $('.phone_confirm').val();
@@ -642,7 +642,7 @@ if (!$user_id) { ?>
 							} else {
 							?>
 								var phone = $('#loginModal #phone').val();
-								$('#cadastroModal2 #phone').val(phone);
+								$('#cadastroModalLegacy #phone').val(phone);
 								$('#openCadastro').click();
 							<?php
 							}
@@ -737,7 +737,7 @@ if (!$user_id) { ?>
 			function validateStep1() {
 
 				$('#overlay').fadeIn(300);
-				$('#loginModal').submit(function(e) {
+				$('#loginModal').off('submit.checkout').on('submit.checkout', function(e) {
 					e.preventDefault()
 					$.ajax({
 						url: _base_url_ + "class/Auth.php?action=login_customer",
@@ -821,7 +821,7 @@ if (!$user_id) { ?>
 
 			function validateStep2() {
 				$('#overlay').fadeIn(300);
-				$('#cadastroModal2').submit(function(e) {
+				$('#cadastroModal2').off('submit.checkout').on('submit.checkout', function(e) {
 					e.preventDefault();
 					var phoneValue = $('.phonec').val();
 					var phoneConfirmValue = $('.phone_confirmc').val();
