@@ -48,7 +48,22 @@ function payment_active_provider()
 
 function payment_requires_customer_document()
 {
-    return payment_active_provider() === 'venopag';
+    return false;
+}
+
+function payment_venopag_default_document()
+{
+    $configured = getenv('VENOPAG_DEFAULT_DOCUMENT');
+    return preg_replace('/\D+/', '', (string) ($configured !== false ? $configured : ''));
+}
+
+function payment_venopag_minimum_amount()
+{
+    $configured = getenv('VENOPAG_MIN_AMOUNT');
+    if ($configured === false || trim((string) $configured) === '') {
+        return 0.01;
+    }
+    return max(0.01, round((float) str_replace(',', '.', (string) $configured), 2));
 }
 
 function payment_customer_document_is_valid($value)
@@ -499,8 +514,14 @@ function payment_venopag_base_url()
 
 function payment_venopag_credentials()
 {
-    $clientId = trim((string) payment_setting('venopag_client_id'));
-    $clientSecret = trim((string) payment_setting('venopag_client_secret'));
+    $environmentClientId = getenv('VENOPAG_CLIENT_ID');
+    $environmentClientSecret = getenv('VENOPAG_CLIENT_SECRET');
+    $clientId = trim((string) ($environmentClientId !== false && $environmentClientId !== ''
+        ? $environmentClientId
+        : payment_setting('venopag_client_id')));
+    $clientSecret = trim((string) ($environmentClientSecret !== false && $environmentClientSecret !== ''
+        ? $environmentClientSecret
+        : payment_setting('venopag_client_secret')));
     if ($clientId === '' || $clientSecret === '') {
         return ['ok' => false, 'message' => 'Client ID e Client Secret da VenoPag não configurados.'];
     }
@@ -515,16 +536,24 @@ function payment_venopag_credentials()
     ];
 }
 
+function payment_venopag_webhook_secret()
+{
+    $environmentSecret = getenv('VENOPAG_WEBHOOK_SECRET');
+    return trim((string) ($environmentSecret !== false && $environmentSecret !== ''
+        ? $environmentSecret
+        : payment_setting('venopag_webhook_secret')));
+}
+
 function payment_venopag_webhook_url()
 {
-    $secret = trim((string) payment_setting('venopag_webhook_secret'));
+    $secret = payment_venopag_webhook_secret();
     if ($secret === '') {
         return '';
     }
     return rtrim(BASE_URL, '/') . '/webhook.php?notify=venopag&token=' . rawurlencode($secret);
 }
 
-function payment_venopag_request($method, $path, $body = null, $timeout = 25, $retryUnavailable = true)
+function payment_venopag_request($method, $path, $body = null, $timeout = 25)
 {
     $safeMethod = strtoupper((string) $method);
     $safePath = (string) (parse_url((string) $path, PHP_URL_PATH) ?: '/');
@@ -545,11 +574,6 @@ function payment_venopag_request($method, $path, $body = null, $timeout = 25, $r
     if (!$response['ok']) {
         $appCode = (int) ($response['headers']['x-app-error-code'] ?? 0);
         $response['app_error_code'] = $appCode;
-        if ($retryUnavailable && $safeMethod === 'POST' && $safePath === '/api/cashin' && in_array($appCode, [502, 503], true)) {
-            error_log('[payments] venopag cashin retry app_code=' . $appCode . ' reason=provider_unavailable');
-            usleep(300000);
-            return payment_venopag_request($method, $path, $body, $timeout, false);
-        }
         $reason = 'provider_rejected';
         if ($appCode === 401) {
             $reason = 'credentials_rejected';
@@ -577,18 +601,30 @@ function payment_venopag_consult($requestNumber, $timeout = 7)
 
 function payment_create_venopag($orderId, $amount, $name, $email, $cpf, $expiration, $phone)
 {
+    $chargeAmount = round((float) $amount, 2);
+    $minimumAmount = payment_venopag_minimum_amount();
+    if ($chargeAmount < $minimumAmount) {
+        return [
+            'ok' => false,
+            'message' => 'O valor mínimo para pagar com VenoPag é R$ ' . number_format($minimumAmount, 2, ',', '.') . '. Adicione mais títulos e tente novamente.',
+        ];
+    }
     $document = preg_replace('/\D+/', '', (string) $cpf);
     if (!payment_customer_document_is_valid($document)) {
-        error_log('[payments] venopag charge blocked order=' . (int) $orderId . ' reason=invalid_customer_document');
-        return ['ok' => false, 'message' => 'Informe um CPF ou CNPJ válido para gerar o PIX na VenoPag.'];
+        $document = payment_venopag_default_document();
+        if (!payment_customer_document_is_valid($document)) {
+            return ['ok' => false, 'message' => 'Documento padrão da VenoPag não configurado.'];
+        }
+        error_log('[payments] venopag default document used order=' . (int) $orderId . ' reason=customer_document_missing_or_invalid');
     }
     $webhookUrl = payment_venopag_webhook_url();
     if ($webhookUrl === '') {
         return ['ok' => false, 'message' => 'Proteção do webhook VenoPag não configurada. Salve novamente o gateway.'];
     }
     $payload = [
-        'amount' => round((float) $amount, 2),
+        'amount' => $chargeAmount,
         'name' => trim((string) $name),
+        'email' => payment_customer_email($email),
         'document' => $document,
         'description' => 'Pedido #' . (int) $orderId,
         'webhook_url' => $webhookUrl,
@@ -599,9 +635,15 @@ function payment_create_venopag($orderId, $amount, $name, $email, $cpf, $expirat
         $code = (int) ($response['app_error_code'] ?? 0);
         $message = $response['message'] ?? 'Não foi possível gerar o PIX na VenoPag.';
         if ($message === 'Falha ao gerar PIX') {
-            $message = $code === 502
-                ? 'A VenoPag está temporariamente indisponível. Tente novamente.'
-                : 'A VenoPag recusou os dados do pagamento. Confira o CPF/CNPJ e tente novamente.';
+            if (in_array($code, [502, 503], true)) {
+                $message = 'A VenoPag está temporariamente indisponível. Nenhuma nova tentativa foi feita para evitar cobrança duplicada.';
+            } elseif ($code === 403) {
+                $message = 'A conta VenoPag não está habilitada para cash-in. Verifique o cadastro, KYC e a permissão cashin.';
+            } elseif ($code === 401) {
+                $message = 'As credenciais da VenoPag foram recusadas.';
+            } else {
+                $message = 'A VenoPag recusou os dados do pagamento. Tente novamente.';
+            }
         }
         return ['ok' => false, 'message' => $message];
     }
@@ -753,7 +795,7 @@ function payment_verify_webhook($provider, $raw, array $headers)
     }
 
     if ($provider === 'venopag') {
-        $expectedSecret = trim((string) payment_setting('venopag_webhook_secret'));
+        $expectedSecret = payment_venopag_webhook_secret();
         $receivedSecret = trim((string) ($_GET['token'] ?? ''));
         if ($expectedSecret === '' || $receivedSecret === '' || !hash_equals($expectedSecret, $receivedSecret)) {
             return ['ok' => false, 'http' => 401, 'message' => 'Webhook não autorizado.'];
@@ -969,7 +1011,7 @@ function payment_reconcile_venopag_reversal($requestNumber, $status)
     global $conn;
     $requestNumber = trim((string) $requestNumber);
     $status = strtolower(trim((string) $status));
-    if ($requestNumber === '' || !in_array($status, ['contested', 'chargedback', 'refunded'], true)) {
+    if ($requestNumber === '' || !in_array($status, ['canceled', 'contested', 'chargedback', 'refunded'], true)) {
         return ['ok' => false, 'http' => 400, 'message' => 'Reversão VenoPag inválida.'];
     }
 
@@ -1022,7 +1064,7 @@ function payment_process_webhook($provider, $raw, array $headers)
     }
     if ($provider === 'venopag') {
         $event = json_decode($raw, true);
-        $expectedSecret = trim((string) payment_setting('venopag_webhook_secret'));
+        $expectedSecret = payment_venopag_webhook_secret();
         $receivedSecret = trim((string) ($_GET['token'] ?? ''));
         if (!is_array($event) || $expectedSecret === '' || $receivedSecret === '' || !hash_equals($expectedSecret, $receivedSecret)) {
             return ['ok' => false, 'http' => 401, 'message' => 'Webhook não autorizado.'];
@@ -1036,7 +1078,7 @@ function payment_process_webhook($provider, $raw, array $headers)
             return ['ok' => false, 'http' => 502, 'message' => 'Falha ao confirmar a transação na VenoPag.'];
         }
         $confirmedStatus = strtolower((string) ($consult['json']['status'] ?? ''));
-        if (in_array($confirmedStatus, ['contested', 'chargedback', 'refunded'], true)) {
+        if (in_array($confirmedStatus, ['canceled', 'contested', 'chargedback', 'refunded'], true)) {
             return payment_reconcile_venopag_reversal((string) ($consult['json']['request_number'] ?? $requestNumber), $confirmedStatus);
         }
     }
