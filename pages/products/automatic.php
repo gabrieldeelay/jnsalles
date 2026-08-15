@@ -1442,7 +1442,8 @@ if ($available > 0 && $status == '1') {
 
 
                                     <?php
-                                    if ($available > 0 && $status == '1') {
+                                    // Roletas e caixas premiadas foram descontinuadas.
+                                    if (false && $available > 0 && $status == '1') {
                                         if ($roleta || $box) {
                                             $roleta_qty = isset($roleta_qty) ? $roleta_qty : '';
                                             $roleta_amount = isset($roleta_amount) ? $roleta_amount : '';
@@ -2443,7 +2444,7 @@ if ($available > 0 && $status == '1') {
                                     var product_id = parseInt("<?php echo isset($id) ? $id : ''; ?>");
                                     var cotas_premiadas = "<?php echo isset($cotas_premiadas) ? $cotas_premiadas : ''; ?>";
                                     var $quantidade_auto_cota = "<?php echo isset($quantidade_auto_cota) ? $quantidade_auto_cota : ''; ?>";
-                                    $.ajax({
+                                    if ($('#cotas-container').length) $.ajax({
                                         url: _base_url_ + "class/Main.php?action=load_cotas",
 
                                         method: 'POST',
@@ -2471,7 +2472,7 @@ if ($available > 0 && $status == '1') {
                                     var product_id = parseInt("<?php echo isset($id) ? $id : ''; ?>");
                                     var cotas_premiadas = "<?php echo isset($cotas_premiadas_roleta) ? $cotas_premiadas_roleta : ''; ?>";
                                     var $quantidade_auto_cota = "<?php echo isset($quantidade_auto_cota) ? $quantidade_auto_cota : ''; ?>";
-                                    $.ajax({
+                                    if ($('#cotas-container_roleta').length) $.ajax({
                                         url: _base_url_ + "class/Main.php?action=load_cotas_roleta",
                                         method: 'POST',
                                         data: {
@@ -2517,7 +2518,7 @@ if ($available > 0 && $status == '1') {
                                     var product_id = parseInt("<?php echo isset($id) ? $id : ''; ?>");
                                     var cotas_premiadas = "<?php echo isset($cotas_premiadas_box) ? $cotas_premiadas_box : ''; ?>";
                                     var $quantidade_auto_cota = "<?php echo isset($quantidade_auto_cota) ? $quantidade_auto_cota : ''; ?>";
-                                    $.ajax({
+                                    if ($('#cotas-container_box').length) $.ajax({
                                         url: _base_url_ + "class/Main.php?action=load_cotas_box",
                                         method: 'POST',
                                         data: {

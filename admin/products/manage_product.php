@@ -411,12 +411,6 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
                         <a href="#tab7" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Premiadas</a>
                     </li>
                     <li class="mr-1">
-                        <a href="#tab9" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Roleta</a>
-                    </li>
-                    <li class="mr-1">
-                        <a href="#tab10" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Caixinha</a>
-                    </li>
-                    <li class="mr-1">
                         <a href="#tab11" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Maior/Menor</a>
                     </li>
 
