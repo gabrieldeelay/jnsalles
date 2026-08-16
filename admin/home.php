@@ -122,7 +122,7 @@ if (!empty($start_date) && !empty($end_date)) {
 
 <style>
 body main.h-full>.container{display:block!important;width:100%;max-width:1280px!important;padding:30px 24px 56px}body main.h-full>.container>p:first-of-type{margin:0 0 5px!important;color:#a78bfa!important;font-size:12px!important;font-weight:750!important;letter-spacing:.04em}body main.h-full>.container>h2{margin:0 0 22px!important;color:#f8fafc!important;font-size:30px!important;font-weight:800!important;letter-spacing:-.035em}.dashboard-section-title{color:#f8fafc}.grid.gap-6.mb-8{gap:16px!important;margin-bottom:18px!important}.grid.gap-6.mb-8>div{min-width:0!important;max-width:100%}.grid.gap-6.mb-8>.bg-white,.grid.gap-6.mb-8>.dark\:bg-gray-800,.grid.gap-6.mb-8>.items-center{min-width:0!important;padding:18px!important;overflow:hidden;border:1px solid #2d3748!important;border-radius:15px!important;background:linear-gradient(145deg,rgba(30,41,59,.76),rgba(17,24,39,.96))!important;box-shadow:0 16px 38px rgba(0,0,0,.14)!important}.grid.gap-6.mb-8 form{max-width:100%}.grid.gap-6.mb-8 form>table{table-layout:auto!important}.grid.gap-6.mb-8 table{width:100%!important;min-width:0!important}.grid.gap-6.mb-8 th,.grid.gap-6.mb-8 td{min-width:0;overflow-wrap:anywhere}.grid.gap-6.mb-8 thead{font-size:11px}.grid.gap-6.mb-8 input,.grid.gap-6.mb-8 select{width:100%!important;min-width:0;min-height:42px!important;border:1px solid #3f4d63!important;border-radius:9px!important;background:#0f172a!important;color:#f8fafc!important;box-shadow:none!important}.grid.gap-6.mb-8 button{min-width:max-content;height:42px;border-radius:9px!important;white-space:nowrap}.dashboard-ranking-form>table>tbody>tr:last-child{display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,150px) auto;gap:10px;align-items:center}.dashboard-ranking-form>table>tbody>tr:last-child>td{width:auto!important}.dashboard-ranking-form>table>tbody>tr:last-child>td:nth-child(3){display:none}.dashboard-prize-form>table>tbody>tr:last-child{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}.dashboard-prize-form>table>tbody>tr:last-child>td{width:auto!important}.dashboard-prize-form>table>tbody>tr:last-child>td:nth-child(2){display:none}.dashboard-legacy-removed{display:none!important}.w-full.overflow-hidden.rounded-lg{border:1px solid #2d3748!important;border-radius:14px!important;background:#151b27!important;box-shadow:none!important}.w-full.overflow-x-auto{max-width:100%;overflow-x:auto!important}.container>.w-full table.w-full{min-width:680px}.span-whats{gap:8px;flex-wrap:wrap}.span-whats>a,.span-whats>button{width:auto;min-width:150px;flex:1}.results-container{max-width:100%;overflow-wrap:anywhere}@media(max-width:760px){body main.h-full>.container{padding:22px 14px 44px}body main.h-full>.container>h2{font-size:24px!important}.grid.gap-6.mb-8{grid-template-columns:1fr!important}.grid.gap-6.mb-8 table:not(.w-full),.grid.gap-6.mb-8 tbody,.grid.gap-6.mb-8 tr,.grid.gap-6.mb-8 td{display:block;width:100%!important}.grid.gap-6.mb-8 td[style*="width"]{width:100%!important}.grid.gap-6.mb-8 td+td{margin-top:8px}.grid.gap-6.mb-8 button{width:100%;min-width:0}.dashboard-ranking-form>table>tbody>tr:last-child,.dashboard-prize-form>table>tbody>tr:last-child{display:grid!important;grid-template-columns:1fr}.dashboard-ranking-form>table>tbody>tr:last-child>td:nth-child(3),.dashboard-prize-form>table>tbody>tr:last-child>td:nth-child(2){display:none!important}.span-whats>a,.span-whats>button{width:100%}.flex-container{flex-direction:column}.flex-container>*{width:100%!important}}
-.dashboard-intro{max-width:760px;margin:-12px 0 22px;color:#94a3b8;font-size:13px;line-height:1.6}.dashboard-card-help{margin:-3px 0 14px;color:#94a3b8;font-size:12px;line-height:1.55}.dashboard-card-help strong{color:#cbd5e1}.grid.gap-6.mb-8{column-gap:20px!important;row-gap:20px!important;align-items:stretch}.grid.gap-6.mb-8>div:not(.dashboard-legacy-removed){position:relative;isolation:isolate;height:100%;border-color:#354258!important;background:linear-gradient(155deg,#182235 0%,#121925 100%)!important}.grid.gap-6.mb-8>div:not(.dashboard-legacy-removed):before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#8b5cf6,#3b82f6);opacity:.7}.grid.gap-6.mb-8>div>.w-full{display:flex;min-height:100%;flex-direction:column}.grid.gap-6.mb-8 form{margin-top:auto}.grid.gap-6.mb-8 thead{background:#111827!important}.grid.gap-6.mb-8 thead th{padding-block:10px!important;color:#a9b7cc!important}
+.dashboard-intro{max-width:760px;margin:-12px 0 22px;color:#94a3b8;font-size:13px;line-height:1.6}.dashboard-card-help{margin:-3px 0 14px;color:#94a3b8;font-size:12px;line-height:1.55}.dashboard-card-help strong{color:#cbd5e1}.grid.gap-6.mb-8{column-gap:20px!important;row-gap:20px!important;align-items:stretch}.grid.gap-6.mb-8>div:not(.dashboard-legacy-removed){position:relative;isolation:isolate;height:100%;border-color:#354258!important;background:linear-gradient(155deg,#182235 0%,#121925 100%)!important}.grid.gap-6.mb-8>div:not(.dashboard-legacy-removed):before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#8b5cf6,#3b82f6);opacity:.7}.grid.gap-6.mb-8>div>.w-full{display:flex;min-height:100%;flex-direction:column}.grid.gap-6.mb-8 form{margin-top:auto}.grid.gap-6.mb-8 thead{background:#111827!important}.grid.gap-6.mb-8 thead th{padding-block:10px!important;color:#a9b7cc!important}.dashboard-prize-table-shell{overflow:hidden;margin-top:16px;border:1px solid #344158;border-radius:12px;background:rgba(15,23,42,.44)}.dashboard-prize-table{border-collapse:separate!important;border-spacing:0!important}.dashboard-prize-table thead,.dashboard-prize-table thead tr{background:rgba(30,41,59,.78)!important}.dashboard-prize-table thead th{height:44px;padding:0 13px!important;border:0!important;color:#b8c4d6!important;font-size:10px!important;letter-spacing:.06em}.dashboard-prize-table tbody{background:transparent!important}.dashboard-prize-table tbody tr{background:rgba(17,24,39,.36)!important}.dashboard-prize-table tbody tr+tr td{border-top:1px solid #293448}.dashboard-prize-table td{padding:11px 13px!important;color:#cbd5e1}.dashboard-prize-empty{padding:22px 14px!important;color:#7f8da3!important;font-size:12px!important;text-align:center}.dashboard-prize-table button{width:32px!important;min-width:32px!important;height:32px!important;border:1px solid #3b475b;border-radius:8px!important;background:#182132;color:#cbd5e1}@media(max-width:560px){.dashboard-prize-table-shell{overflow-x:auto}.dashboard-prize-table{min-width:520px!important}}
 </style>
 
 <div id="overlay" style="display: none;">
@@ -504,7 +504,7 @@ if ($raffle && $top) {
                                 <tr>
                                     <td style="width: 100%">
                                         <select name="raffleb" id="raffle"
-                                            class="block w-full text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray">xxx
+                                            class="block w-full text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray">
                                             <option value="">Selecione</option>
                                             <?php
                                             $qry = $conn->query("SELECT * FROM `product_list` WHERE `cotas_premiadas` <> '' AND `cotas_premiadas` IS NOT NULL");
@@ -531,8 +531,8 @@ if ($raffle && $top) {
 
                     </form>
 
-                    <!-- Mantenha o cabeçalho da tabela -->
-                    <table class="w-full whitespace-no-wrap">
+                    <div class="dashboard-prize-table-shell">
+                    <table class="w-full whitespace-no-wrap dashboard-prize-table">
                         <thead>
                             <tr class="text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800">
                                 <th class="px-2 py-3">Cota</th>
@@ -542,6 +542,9 @@ if ($raffle && $top) {
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
+                            <?php if (!$raffleb): ?>
+                                <tr><td colspan="4" class="dashboard-prize-empty">Selecione uma campanha para consultar as cotas premiadas.</td></tr>
+                            <?php endif; ?>
                             <?php
                             if ($raffleb) {
                                 $requests = $conn->query("SELECT * FROM `product_list` WHERE `id` = {$raffleb} AND `cotas_premiadas` <> '' AND `cotas_premiadas` IS NOT NULL");
@@ -657,8 +660,7 @@ if ($raffle && $top) {
                             ?>
                         </tbody>
                     </table>
-
-                    </table>
+                    </div>
 
 
                 </div>

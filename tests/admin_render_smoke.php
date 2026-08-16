@@ -36,6 +36,16 @@ if (!isset($expectedByPage[$requestedPage])) {
     exit(2);
 }
 
+$renderConnection = null;
+$renderProductId = 0;
+if ($requestedPage === 'products') {
+    $renderConnection = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+    $renderConnection->set_charset('utf8mb4');
+    $renderSuffix = bin2hex(random_bytes(4));
+    $renderConnection->query("INSERT INTO product_list (name, description, price, status, status_display, type_of_draw, qty_numbers, min_purchase, max_purchase, slug, cotas_premiadas, cotas_premiadas_premios) VALUES ('Campanha render {$renderSuffix}', 'Teste', 0.20, 1, 1, 1, 1000, 1, 100, 'campanha-render-{$renderSuffix}', '0001', '0001:PIX:premiada')");
+    $renderProductId = (int) $renderConnection->insert_id;
+}
+
 $_SERVER['DOCUMENT_ROOT'] = dirname(__DIR__);
 $_SERVER['REQUEST_URI'] = '/admin/?page=' . rawurlencode($requestedPage);
 $_SERVER['HTTP_HOST'] = '127.0.0.1';
@@ -58,6 +68,10 @@ ob_start();
 require dirname(__DIR__) . '/admin/index.php';
 $html = (string) ob_get_clean();
 chdir($originalDirectory);
+if ($renderProductId > 0) {
+    $renderConnection->query('DELETE FROM product_list WHERE id = ' . $renderProductId);
+    $renderConnection->close();
+}
 
 if ($html === '' || !str_contains($html, $expectedByPage[$requestedPage]) || str_contains($html, 'Fatal error')) {
     fwrite(STDERR, "Falha ao renderizar {$requestedPage}.\n");
@@ -65,6 +79,14 @@ if ($html === '' || !str_contains($html, $expectedByPage[$requestedPage]) || str
 }
 if (!str_contains($html, 'admin-context-guide-template')) {
     fwrite(STDERR, "A ajuda contextual não foi carregada em {$requestedPage}.\n");
+    exit(1);
+}
+if ($requestedPage === 'products' && (!str_contains($html, 'campaign-delete-button') || !str_contains($html, 'confirmCampaignDeletion'))) {
+    fwrite(STDERR, "O botão visual de exclusão não foi renderizado.\n");
+    exit(1);
+}
+if ($requestedPage === 'home' && (!str_contains($html, 'dashboard-prize-table-shell') || !str_contains($html, 'Selecione uma campanha para consultar as cotas premiadas.'))) {
+    fwrite(STDERR, "O card de cotas premiadas não foi renderizado com o novo acabamento.\n");
     exit(1);
 }
 if ($requestedPage === 'products/manage_product') {

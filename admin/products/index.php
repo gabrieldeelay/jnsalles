@@ -183,6 +183,8 @@
 			background: #e4405f;
 			color: #fff;
 		}
+
+		.campaign-actions{display:flex;min-width:320px;align-items:center;gap:7px;flex-wrap:wrap}.campaign-actions>a{margin:0!important}.campaign-actions button{display:inline-flex!important;min-height:38px;align-items:center;justify-content:center;border:1px solid #354158!important;border-radius:9px!important;background:#151c29!important;color:#cbd5e1!important;transition:.18s}.campaign-actions button:hover{border-color:#7c3aed!important;background:#20283a!important;color:#fff!important}.campaign-actions .campaign-edit-button{border-color:rgba(139,92,246,.55)!important;background:linear-gradient(135deg,#7c3aed,#6d28d9)!important;color:#fff!important}.campaign-delete-button{gap:7px!important;padding:0 12px!important;border-color:rgba(248,113,113,.45)!important;background:rgba(127,29,29,.24)!important;color:#fecaca!important;font-size:12px!important;font-weight:750!important}.campaign-delete-button:hover{border-color:#ef4444!important;background:rgba(185,28,28,.35)!important;color:#fff!important}@media(max-width:760px){.campaign-actions{min-width:230px}.campaign-delete-button span{display:inline}}
 	</style>
 
 
@@ -321,7 +323,7 @@ while ($row = $qry->fetch_assoc()) {
 	echo date('d/m/Y', strtotime($row['date_created'])) . "<br>às " . date('H:i', strtotime($row['date_created']));
 
 
-	echo "\t\t" . '</td>' . "\r\n\t\t" . '<td class="px-4 py-3">' . "\r\n\t\t\t" . '<div class="flex items-center space-x-4 text-sm">' . "\r\n\t\t\t" . '' . "\r\n\t\t\t" . '<a href="./report.php?id=';
+	echo "\t\t" . '</td>' . "\r\n\t\t" . '<td class="px-4 py-3">' . "\r\n\t\t\t" . '<div class="campaign-actions text-sm">' . "\r\n\t\t\t" . '' . "\r\n\t\t\t" . '<a href="./report.php?id=';
 	echo $row['id'];
 
 
@@ -351,7 +353,7 @@ while ($row = $qry->fetch_assoc()) {
 
 		'<a href="./?page=products/manage_product&id=';
 	echo (int) $row['id'];
-	echo '" title="Editar campanha" ' . "\r\n\t\t\t" . 'class="inline-flex items-center px-3 py-2 text-sm font-medium leading-5 text-white transition-colors duration-150 bg-purple-600 border border-transparent rounded-lg active:bg-purple-600 hover:bg-purple-700 focus:outline-none focus:shadow-outline-purple"' . "\r\n\t\t\t" . 'aria-label="Editar campanha">' . "\r\n\t\t\t\t" . '<svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" style="width:16px;height:16px;margin-right:6px"><path d="M13.586 3.586a2 2 0 012.828 2.828l-8.5 8.5a1 1 0 01-.465.263l-3 1a1 1 0 01-1.265-1.265l1-3a1 1 0 01.263-.465l8.5-8.5zM12.172 5L5.99 11.182l-.528 1.584 1.584-.528L13.228 6.056 12.172 5z"></path></svg><span>Editar</span>' . "\r\n\t\t\t" . '</a>' . "\r\n\t\t" .
+	echo '" title="Editar campanha" ' . "\r\n\t\t\t" . 'class="campaign-edit-button inline-flex items-center px-3 py-2 text-sm font-medium leading-5 text-white transition-colors duration-150 border border-transparent rounded-lg focus:outline-none focus:shadow-outline-purple"' . "\r\n\t\t\t" . 'aria-label="Editar campanha">' . "\r\n\t\t\t\t" . '<svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" style="width:16px;height:16px;margin-right:6px"><path d="M13.586 3.586a2 2 0 012.828 2.828l-8.5 8.5a1 1 0 01-.465.263l-3 1a1 1 0 01-1.265-1.265l1-3a1 1 0 01.263-.465l8.5-8.5zM12.172 5L5.99 11.182l-.528 1.584 1.584-.528L13.228 6.056 12.172 5z"></path></svg><span>Editar</span>' . "\r\n\t\t\t" . '</a>' . "\r\n\t\t" .
 
 
 
@@ -407,11 +409,9 @@ while ($row = $qry->fetch_assoc()) {
 
 
 	if ($_settings->userdata('type') == '1') {
-		echo "\t\t" . '<a class="delete_sorteio" href="javascript:void(0)" @click="openModal" data-id="';
+		echo "\t\t" . '<button type="button" class="delete_sorteio campaign-delete-button" onclick="confirmCampaignDeletion(this)" data-name="' . htmlspecialchars((string) $row['name'], ENT_QUOTES, 'UTF-8') . '" data-id="';
 		echo $row['id'];
-		echo '">' . "\r\n\t\t\t" . '<button title="Deletar" ' . "\r\n\t\t\t" . 'class="flex items-center justify-between px-2 py-2 text-sm font-medium leading-5 text-red-600 rounded-lg dark:text-red-600 focus:outline-none focus:shadow-outline-gray" aria-label="Delete">' . "\r\n\t\t\t" . '<i class="fa-solid fa-trash-can" style="font-size:20px"></i>
-		
-' . "\r\n\t\t" . '</button>' . "\r\n\t\t" . '</a>' . "\r\n";
+		echo '" title="Excluir campanha" aria-label="Excluir campanha"><i class="fa-solid fa-trash-can" aria-hidden="true"></i><span>Excluir</span></button>' . "\r\n";
 	}
 
 	echo "\r\n" . '</div>' . "\r\n" . '</td>' . "\r\n" . '</tr>' . "\r\n";
@@ -535,6 +535,44 @@ echo "\r\n" . '</tbody>' . "\r\n" . '</table>';
 	echo '</div>' . "\r\n" . '</div>' . "\r\n" . '</div>' . "\r\n" . '</main>' . "\r\n\r\n" . '<!-- Modal Delete -->' . "\r\n" . '<div x-show="isModalOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 z-30 flex items-end bg-black bg-opacity-50 sm:items-center sm:justify-center" style="display: none;">' . "\r\n\t" . '<!-- Modal -->' . "\r\n\t" . '<div x-show="isModalOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 transform translate-y-1/2" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0  transform translate-y-1/2" @click.away="closeModal" @keydown.escape="closeModal" class="w-full px-6 py-4 overflow-hidden bg-white rounded-t-lg dark:bg-gray-800 sm:rounded-lg sm:m-4 sm:max-w-xl" role="dialog" id="modal" style="display: none;">' . "\r\n\t\t" . '<!-- Remove header if you don\'t want a close icon. Use modal body to place modal tile. -->' . "\r\n\t\t" . '<header class="flex justify-end">' . "\r\n\t\t\t" . '<button class="inline-flex items-center justify-center w-6 h-6 text-gray-400 transition-colors duration-150 rounded dark:hover:text-gray-200 hover: hover:text-gray-700" aria-label="close" @click="closeModal">' . "\r\n\t\t\t\t" . '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" role="img" aria-hidden="true">' . "\r\n\t\t\t\t\t" . '<path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" fill-rule="evenodd"></path>' . "\r\n\t\t\t\t" . '</svg>' . "\r\n\t\t\t" . '</button>' . "\r\n\t\t" . '</header>' . "\r\n\t\t" . '<div class="mt-4 mb-6">' . "\r\n\t\t\t" . '<p class="mb-2 text-lg font-semibold text-gray-700 dark:text-gray-300">' . "\r\n\t\t\t\t" . 'Deseja excluir?' . "\r\n\t\t\t" . '</p>' . "\r\n\t\t\t" . '<p class="text-sm text-gray-700 dark:text-gray-400">' . "\r\n\t\t\t\t" . 'Você realmente deseja excluir esse Sorteio?' . "\r\n\t\t\t" . '</p>' . "\r\n\t\t" . '</div>' . "\r\n\t\t" . '<footer class="flex flex-col items-center justify-end px-6 py-3 -mx-6 -mb-4 space-y-4 sm:space-y-0 sm:space-x-6 sm:flex-row bg-gray-50 dark:bg-gray-800">' . "\r\n\t\t\t" . '<button @click="closeModal" class="w-full px-5 py-3 text-sm font-medium leading-5 text-white text-gray-700 transition-colors duration-150 border border-gray-300 rounded-lg dark:text-gray-400 sm:px-4 sm:py-2 sm:w-auto active:bg-transparent hover:border-gray-500 focus:border-gray-500 active:text-gray-500 focus:outline-none focus:shadow-outline-gray">' . "\r\n\t\t\t\t" . 'Não' . "\r\n\t\t\t" . '</button>' . "\r\n\t\t\t" . '<button class="delete_data w-full px-5 py-3 text-sm font-medium leading-5 text-white transition-colors duration-150 bg-purple-600 border border-transparent rounded-lg sm:w-auto sm:px-4 sm:py-2 active:bg-purple-600 hover:bg-purple-700 focus:outline-none focus:shadow-outline-purple">' . "\r\n\t\t\t\t" . 'Sim' . "\r\n\t\t\t" . '</button>' . "\r\n\t\t" . '</footer>' . "\r\n\t" . '</div>' . "\r\n" . '</div>' . "\r\n" . '<!-- End Modal Delete -->' . "\r\n\r\n" . '<script>' . "\r\n\t" . '$(document).ready(function(){' . "\r\n\t\t" . '$(\'.delete_sorteio\').click(function(){' . "\r\n\t\t\t" . 'var id = $(this).attr(\'data-id\');' . "\r\n\t\t\t" . '$(\'.delete_data\').attr(\'data-id\', id);' . "\t\r\n\t\t" . '})' . "\r\n\t\t" . '$(\'.delete_data\').click(function(){' . "\r\n\t\t\t" . 'var id = $(this).attr(\'data-id\');' . "\r\n\t\t\t" . 'delete_product(id)' . "\t\r\n\t\t" . '})' . "\r\n\r\n\t" . '})' . "\r\n\r\n\t" . 'function delete_product($id){' . "\r\n\t\t" . '$.ajax({' . "\r\n\t\t\t" . 'url:_base_url_+"class/Main.php?action=delete_product_sys",' . "\r\n\t\t\t" . 'method:"POST",' . "\r\n\t\t\t" . 'data:{id: $id},' . "\r\n\t\t\t" . 'dataType:"json",' . "\r\n\t\t\t" . 'error:err=>{' . "\r\n\t\t\t\t" . 'console.log(err)' . "\r\n\t\t\t\t" . 'alert("[AP01] - An error occured.");' . "\r\n\t\t\t" . '},' . "\r\n\t\t\t" . 'success:function(resp){' . "\r\n\t\t\t\t" . 'if(typeof resp== \'object\' && resp.status == \'success\'){' . "\r\n\t\t\t\t\t" . 'location.reload();' . "\r\n\t\t\t\t" . '}else{' . "\r\n\t\t\t\t\t" . 'alert("[AP02] - An error occured.");' . "\r\n\t\t\t\t" . '}' . "\r\n\t\t\t" . '}' . "\r\n\t\t" . '})' . "\r\n\t" . '}' . "\r\n\r\n\t" . '$(function(){' . "\r\n\t\t" . '$(\'#filter-form\').submit(function(e){' . "\r\n\t\t\t" . 'e.preventDefault()' . "\r\n\t\t\t" . 'location.href = \'./?page=products&\'+$(this).serialize()' . "\r\n\t\t" . '})' . "\r\n\r\n\r\n\t" . '})' . "\r\n" . '</script>';
 
 	?>
+	<script>
+		function confirmCampaignDeletion(button) {
+			var productId = Number(button.getAttribute('data-id') || 0);
+			var productName = button.getAttribute('data-name') || 'esta campanha';
+			if (!productId) return;
+			Swal.fire({
+				title: 'Excluir campanha?',
+				html: 'A campanha <strong>' + $('<div>').text(productName).html() + '</strong> deixará de aparecer no site.<br><small>Os pedidos já registrados continuarão no histórico.</small>',
+				icon: 'warning',
+				showCancelButton: true,
+				confirmButtonText: 'Sim, excluir campanha',
+				cancelButtonText: 'Cancelar',
+				confirmButtonColor: '#dc2626',
+				cancelButtonColor: '#334155',
+				reverseButtons: true,
+				showLoaderOnConfirm: true,
+				preConfirm: function () {
+					return $.ajax({
+						url: _base_url_ + 'class/Main.php?action=delete_product_sys',
+						method: 'POST',
+						dataType: 'json',
+						data: { id: productId },
+						timeout: 30000
+					}).then(function (response) {
+						if (!response || response.status !== 'success') throw new Error(response && response.msg ? response.msg : 'Não foi possível excluir a campanha.');
+						return response;
+					}).catch(function (error) {
+						Swal.showValidationMessage(error.responseJSON && error.responseJSON.msg ? error.responseJSON.msg : error.message || 'Não foi possível excluir a campanha.');
+					});
+				},
+				allowOutsideClick: function () { return !Swal.isLoading(); }
+			}).then(function (result) {
+				if (!result.isConfirmed || !result.value) return;
+				Swal.fire({ icon: 'success', title: 'Campanha excluída', text: result.value.msg || 'A campanha foi excluída com sucesso.', timer: 1700, showConfirmButton: false })
+					.then(function () { location.reload(); });
+			});
+		}
+	</script>
 
 	<script>
 		$(document).ready(function () {

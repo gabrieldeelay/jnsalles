@@ -1063,25 +1063,46 @@ class Main extends DBConnection
 
     public function delete_product()
     {
-        if (!$this->settings->userdata("firstname")) {
-            $resp["status"] = "failed";
-            $resp["msg"] = "Não autorizado.";
-            return json_encode($resp);
+        if (empty($this->settings->userdata('firstname')) || (int) $this->settings->userdata('type') !== 1) {
+            http_response_code(403);
+            return json_encode(['status' => 'failed', 'msg' => 'Somente um administrador pode excluir campanhas.']);
+        }
+        $productId = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if (!$productId) {
+            return json_encode(['status' => 'failed', 'msg' => 'Campanha inválida. Atualize a página e tente novamente.']);
         }
 
-        extract($_POST);
-        $del = $this->conn->query(
-            'DELETE FROM `product_list` where id = \'' . $id . '\''
-        );
-
-        if ($del) {
-            $resp["status"] = "success";
-        } else {
-            $resp["status"] = "failed";
-            $resp["error"] = $this->conn->error;
+        $find = $this->conn->prepare('SELECT name, image_path, image_gallery FROM product_list WHERE id = ? LIMIT 1');
+        $find->bind_param('i', $productId);
+        $find->execute();
+        $product = $find->get_result()->fetch_assoc();
+        $find->close();
+        if (!$product) {
+            return json_encode(['status' => 'failed', 'msg' => 'A campanha não existe ou já foi excluída.']);
         }
 
-        return json_encode($resp);
+        $delete = $this->conn->prepare('DELETE FROM product_list WHERE id = ?');
+        $delete->bind_param('i', $productId);
+        $deleted = $delete->execute() && $delete->affected_rows === 1;
+        $delete->close();
+        if (!$deleted) {
+            error_log('[campaign] delete failed for #' . $productId . ': ' . $this->conn->error);
+            return json_encode(['status' => 'failed', 'msg' => 'Não foi possível excluir a campanha. Tente novamente.']);
+        }
+
+        $this->delete_campaign_blob((string) ($product['image_path'] ?? ''));
+        $gallery = json_decode((string) ($product['image_gallery'] ?? ''), true);
+        if (!is_array($gallery)) {
+            $gallery = array_filter(array_map('trim', explode(',', (string) ($product['image_gallery'] ?? ''))));
+        }
+        foreach ($gallery as $galleryImage) {
+            $this->delete_campaign_blob((string) $galleryImage);
+        }
+
+        return json_encode([
+            'status' => 'success',
+            'msg' => 'Campanha “' . (string) $product['name'] . '” excluída com sucesso.',
+        ], JSON_UNESCAPED_UNICODE);
     }
 
     public function add_to_card()
