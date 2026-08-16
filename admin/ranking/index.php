@@ -44,7 +44,8 @@ if ($productId > 0) {
 }
 $startDatetime = $conn->real_escape_string($startDate . ' ' . $startTime . ':00');
 $endDatetime = $conn->real_escape_string($endDate . ' ' . $endTime . ':59');
-$conditions[] = "o.date_created BETWEEN '{$startDatetime}' AND '{$endDatetime}'";
+$confirmationDatetime = "COALESCE(NULLIF(o.date_updated, '0000-00-00 00:00:00'), o.date_created)";
+$conditions[] = "{$confirmationDatetime} BETWEEN '{$startDatetime}' AND '{$endDatetime}'";
 $whereSql = ' WHERE ' . implode(' AND ', $conditions);
 
 $perPage = 20;
