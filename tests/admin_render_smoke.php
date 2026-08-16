@@ -100,6 +100,11 @@ if ($requestedPage === 'products/manage_product') {
         fwrite(STDERR, "O gerador de cotas premiadas não foi carregado.\n");
         exit(1);
     }
+    if (!str_contains($html, 'type="submit" id="save-product-button"')
+        || substr_count($html, "typeof $.fn.mask === 'function'") < 2) {
+        fwrite(STDERR, "O botão de salvar ainda depende de um recurso externo.\n");
+        exit(1);
+    }
 }
 
 echo "Página administrativa renderizada: {$requestedPage}.\n";

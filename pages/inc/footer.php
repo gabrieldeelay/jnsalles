@@ -155,13 +155,11 @@ if ($enable_footer == '1') { ?>
 					} else { ?>
 						<span style="color:var(--incrivel-bgLink);">© Copyright <?= date('Y') ?> - <?= $site_name ?> Todos os direitos reservados.</span><br>
 					<?php } ?>
-						<span style="color:var(--incrivel-bgLink);">Desenvolvido por</span> <a href="/contato.php?site=<?= BASE_URL ?>"
-                       target="_blank"
+						<span style="color:var(--incrivel-bgLink);">Desenvolvido por</span> <span
                        class="font-weight-600 font-xs badge"
-                       rel="noreferrer"
-                       style="background-color:#0d6efd;">
+                       style="background-color:#0d6efd;color:#fff;cursor:default;">
                         <?= $site_name ?>
-                    </a>
+                    </span>
 				<?php
 				}
 				?>

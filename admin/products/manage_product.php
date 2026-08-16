@@ -1441,7 +1441,7 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
                 </div>
 
                 <div class="campaign-save-row">
-                    <button id="save-product-button" form="product-form" class="px-5 py-3 font-medium leading-5 text-white transition-colors duration-150 bg-purple-600 border border-transparent rounded-lg active:bg-purple-600 hover:bg-purple-700 focus:outline-none focus:shadow-outline-purple"> Salvar
+                    <button type="submit" id="save-product-button" form="product-form" class="px-5 py-3 font-medium leading-5 text-white transition-colors duration-150 bg-purple-600 border border-transparent rounded-lg active:bg-purple-600 hover:bg-purple-700 focus:outline-none focus:shadow-outline-purple"> Salvar
                     </button>
                 </div>
             </form>
@@ -1484,9 +1484,9 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
         return false;
     });
     $(document).on('input', '.discount_price', function() {
-        $(this).mask("#.##0,00", {
-            reverse: true
-        });
+        if ($.fn && typeof $.fn.mask === 'function') {
+            $(this).mask("#.##0,00", { reverse: true });
+        }
     });
     $(document).on('input', '.discount_qty', function() {
         $('.discount_qty').keypress(function(event) {
@@ -1602,9 +1602,11 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
         }
         $('#qty_numbers').on('input change', updateCampaignQuantityNote);
         updateCampaignQuantityNote();
-         jQuery("#price, #enable_progress_bar_fake_value, .discount_price, #sale_price, #desconto_upsell").mask("#.##0,00", {
-            reverse: true
-        });
+        if ($.fn && typeof $.fn.mask === 'function') {
+            jQuery("#price, #enable_progress_bar_fake_value, .discount_price, #sale_price, #desconto_upsell").mask("#.##0,00", {
+                reverse: true
+            });
+        }
         $('.view-email').each(function() {
             var originalText = $(this).text();
             $(this).data('original-text', originalText);
@@ -1840,13 +1842,17 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
         <?php
         }
         ?>
-        customFile1.onchange = evt => {
-            const [file] = customFile1.files
-            if (file) {
-                loadlogo.src = URL.createObjectURL(file);
-                $('.show_logo').show();
-                $('.add-logo').hide();
-            }
+        var campaignMainImageInput = document.getElementById('customFile1');
+        var campaignMainImagePreview = document.getElementById('loadlogo');
+        if (campaignMainImageInput) {
+            campaignMainImageInput.addEventListener('change', function() {
+                var file = campaignMainImageInput.files && campaignMainImageInput.files[0];
+                if (file && campaignMainImagePreview) {
+                    campaignMainImagePreview.src = URL.createObjectURL(file);
+                    $('.show_logo').show();
+                    $('.add-logo').hide();
+                }
+            });
         }
         $(".remove-logo").click(function(e) {
             e.preventDefault();

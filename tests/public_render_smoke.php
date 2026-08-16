@@ -53,7 +53,9 @@ if ($target === 'home') {
     $valid = $valid
         && str_contains($html, 'home-campaign-card')
         && str_contains($html, $campaignName)
-        && str_contains($html, 'margin-top:auto');
+        && str_contains($html, 'margin-top:auto')
+        && str_contains($html, 'Desenvolvido por')
+        && !str_contains($html, '/contato.php?site=');
 } elseif ($target === 'product') {
     $valid = $valid
         && str_contains($html, 'ranking-buyer-total')
