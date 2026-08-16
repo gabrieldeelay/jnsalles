@@ -105,6 +105,14 @@ if ($requestedPage === 'products/manage_product') {
         fwrite(STDERR, "O botão de salvar ainda depende de um recurso externo.\n");
         exit(1);
     }
+    if (!str_contains($html, 'data-native-campaign-save')
+        || !str_contains($html, "button.addEventListener('click'")
+        || !str_contains($html, "form.addEventListener('submit'")
+        || !str_contains($html, "localStorage.removeItem('selectedTab_manage_product')")
+        || !str_contains($html, 'Validando os dados da campanha...')) {
+        fwrite(STDERR, "O salvamento nativo ou a aba Dados padrão não foram carregados.\n");
+        exit(1);
+    }
 }
 
 echo "Página administrativa renderizada: {$requestedPage}.\n";

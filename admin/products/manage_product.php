@@ -472,7 +472,7 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
                     </li>
                 </ul>
             </div>
-            <form action="" id="product-form">
+            <form action="" id="product-form" novalidate>
                 <input type="hidden" name="id" value="<?= isset($id) ? $id : '' ?>">
                 <div class="mt-4">
                     <div id="tab1" class="tabcontent text-gray-700 dark:text-gray-400">
@@ -1445,6 +1445,219 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
                     </button>
                 </div>
             </form>
+            <script data-native-campaign-save>
+            (function nativeCampaignSave() {
+                'use strict';
+
+                var form = document.getElementById('product-form');
+                var button = document.getElementById('save-product-button');
+                var feedback = document.getElementById('campaign-save-feedback');
+                var isNewCampaign = <?= $isNewCampaign ? 'true' : 'false' ?>;
+                var endpoint = <?= json_encode(BASE_URL . 'class/Main.php?action=save_product_sys', JSON_UNESCAPED_SLASHES) ?>;
+                var saving = false;
+
+                if (!form || !button || !feedback) {
+                    console.error('[campaign-save] O formulário de campanha não foi encontrado.');
+                    return;
+                }
+
+                function activateTab(tabId) {
+                    var tabs = document.querySelectorAll('#tabs a');
+                    var panels = document.querySelectorAll('.tabcontent');
+                    tabs.forEach(function(tab) { tab.classList.remove('active-tab'); });
+                    panels.forEach(function(panel) { panel.style.display = 'none'; });
+                    var link = document.querySelector('#tabs a[href="#' + tabId + '"]');
+                    var panel = document.getElementById(tabId);
+                    if (link) link.classList.add('active-tab');
+                    if (panel) {
+                        panel.classList.remove('hidden');
+                        panel.style.display = 'block';
+                    }
+                }
+
+                if (isNewCampaign) {
+                    try { localStorage.removeItem('selectedTab_manage_product'); } catch (ignored) {}
+                    activateTab('tab1');
+                }
+
+                function showFeedback(type, message) {
+                    feedback.className = type;
+                    feedback.textContent = message;
+                    feedback.style.display = 'block';
+                    feedback.style.opacity = '1';
+                    feedback.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                }
+
+                function restoreButton() {
+                    saving = false;
+                    button.disabled = false;
+                    button.textContent = 'Salvar';
+                }
+
+                function fail(message, element, tabId) {
+                    if (tabId) activateTab(tabId);
+                    showFeedback('error', message);
+                    if (element) {
+                        element.setAttribute('aria-invalid', 'true');
+                        element.addEventListener('input', function clearInvalid() {
+                            element.removeAttribute('aria-invalid');
+                            element.removeEventListener('input', clearInvalid);
+                        });
+                        try { element.focus({ preventScroll: false }); } catch (ignored) { element.focus(); }
+                    }
+                    restoreButton();
+                    return false;
+                }
+
+                function parseMoney(value) {
+                    var normalized = String(value || '').replace(/R\$/gi, '').replace(/\s+/g, '');
+                    if (normalized.indexOf(',') >= 0) normalized = normalized.replace(/\./g, '').replace(',', '.');
+                    return Number(normalized);
+                }
+
+                function syncAndValidateWinningTickets(totalNumbers) {
+                    var rows = Array.prototype.slice.call(document.querySelectorAll('#winning-ticket-rows .winning-ticket-row'));
+                    var numbers = [];
+                    var prizes = [];
+                    var used = Object.create(null);
+
+                    if (!rows.length) return fail('Adicione pelo menos uma cota premiada.', document.getElementById('add-winning-ticket'), 'tab7');
+
+                    for (var index = 0; index < rows.length; index++) {
+                        var numberInput = rows[index].querySelector('.winning-number-input');
+                        var prizeInput = rows[index].querySelector('.winning-prize-input');
+                        var rawNumber = numberInput ? numberInput.value.trim() : '';
+                        var prize = prizeInput ? prizeInput.value.trim() : '';
+                        rows[index].classList.remove('has-error');
+
+                        if (!/^\d+$/.test(rawNumber)) {
+                            rows[index].classList.add('has-error');
+                            return fail('Informe somente números na cota premiada ' + (index + 1) + '.', numberInput, 'tab7');
+                        }
+                        var numericNumber = Number(rawNumber);
+                        if (numericNumber < 0 || numericNumber >= totalNumbers) {
+                            rows[index].classList.add('has-error');
+                            return fail('A cota premiada ' + rawNumber + ' deve estar entre 0 e ' + (totalNumbers - 1) + '.', numberInput, 'tab7');
+                        }
+                        if (used[numericNumber]) {
+                            rows[index].classList.add('has-error');
+                            return fail('A cota premiada ' + rawNumber + ' está repetida.', numberInput, 'tab7');
+                        }
+                        if (!prize) {
+                            rows[index].classList.add('has-error');
+                            return fail('Informe o prêmio da cota ' + rawNumber + '.', prizeInput, 'tab7');
+                        }
+
+                        used[numericNumber] = true;
+                        var safePrize = prize.replace(/[,:]+/g, ' - ');
+                        numbers.push(rawNumber);
+                        prizes.push(rawNumber + ':' + safePrize + ':premiada');
+                    }
+
+                    document.getElementById('cotas_premiadas').value = numbers.join(',');
+                    document.getElementById('cotas_premiadas_premios').value = prizes.join(',');
+                    var autoField = document.getElementById('tipo_auto_cota');
+                    if (autoField) autoField.value = numbers.join(',');
+                    return true;
+                }
+
+                function validateFiles() {
+                    var inputs = [document.getElementById('customFile1'), document.getElementById('image_gallery')];
+                    for (var inputIndex = 0; inputIndex < inputs.length; inputIndex++) {
+                        var input = inputs[inputIndex];
+                        if (!input || !input.files) continue;
+                        for (var fileIndex = 0; fileIndex < input.files.length; fileIndex++) {
+                            if (input.files[fileIndex].size > 4 * 1024 * 1024) {
+                                return fail('A imagem "' + input.files[fileIndex].name + '" ultrapassa 4 MB. Reduza a imagem e tente novamente.', input, 'tab2');
+                            }
+                        }
+                    }
+                    return true;
+                }
+
+                function parseResponse(text) {
+                    try { return JSON.parse(text); } catch (firstError) {
+                        var start = text.lastIndexOf('{');
+                        if (start >= 0) {
+                            try { return JSON.parse(text.slice(start)); } catch (ignored) {}
+                        }
+                    }
+                    throw new Error('O servidor respondeu em formato inválido. Atualize a página e tente novamente.');
+                }
+
+                async function runSave() {
+                    if (saving) return;
+                    saving = true;
+                    button.disabled = true;
+                    button.textContent = 'Validando...';
+                    showFeedback('info', 'Validando os dados da campanha...');
+
+                    var title = document.getElementById('name');
+                    var quantity = document.getElementById('qty_numbers');
+                    var price = document.getElementById('price');
+                    var totalNumbers = Number(quantity ? quantity.value : 0);
+
+                    if (!title || !title.value.trim()) return fail('Informe o título da campanha.', title, 'tab1');
+                    if (!Number.isInteger(totalNumbers) || totalNumbers < 10 || totalNumbers > 10000000) {
+                        return fail('Informe uma quantidade total entre 10 e 10.000.000 de cotas.', quantity, 'tab1');
+                    }
+                    if (!price || !(parseMoney(price.value) > 0)) return fail('Informe um valor por cota maior que zero.', price, 'tab1');
+                    if (!syncAndValidateWinningTickets(totalNumbers) || !validateFiles()) return;
+
+                    button.textContent = 'Salvando...';
+                    showFeedback('info', 'Salvando a campanha no servidor...');
+                    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+                    var timeout = controller ? setTimeout(function() { controller.abort(); }, 60000) : null;
+                    var succeeded = false;
+
+                    try {
+                        var response = await fetch(endpoint, {
+                            method: 'POST',
+                            body: new FormData(form),
+                            credentials: 'same-origin',
+                            signal: controller ? controller.signal : undefined
+                        });
+                        var responseText = await response.text();
+                        var payload = parseResponse(responseText);
+                        if (!response.ok || !payload || payload.status !== 'success') {
+                            var message = payload && payload.msg ? payload.msg : 'O servidor não confirmou o salvamento da campanha.';
+                            var field = payload && payload.field ? document.getElementById(payload.field) : null;
+                            return fail(message, field, payload && payload.tab ? payload.tab : null);
+                        }
+
+                        succeeded = true;
+                        var idField = form.querySelector('input[name="id"]');
+                        var successMessage = idField && idField.value ? 'Campanha atualizada com sucesso!' : 'Campanha criada com sucesso!';
+                        try { sessionStorage.setItem('campaignSaveFeedback', successMessage); } catch (ignored) {}
+                        showFeedback('success', successMessage);
+                        button.textContent = 'Salvo!';
+                        setTimeout(function() {
+                            window.location.replace('./?page=products/manage_product&id=' + encodeURIComponent(payload.pid));
+                        }, 800);
+                    } catch (error) {
+                        var message = error && error.name === 'AbortError'
+                            ? 'O servidor demorou mais de 60 segundos para responder. Tente novamente.'
+                            : (error && error.message ? error.message : 'Não foi possível conectar ao servidor para salvar a campanha.');
+                        console.error('[campaign-save]', error);
+                        return fail(message, null, null);
+                    } finally {
+                        if (timeout) clearTimeout(timeout);
+                        if (!succeeded && saving) restoreButton();
+                    }
+                }
+
+                button.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    runSave();
+                }, true);
+                form.addEventListener('submit', function(event) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    runSave();
+                }, true);
+            })();
+            </script>
         </div>
     </div>
 </main>
