@@ -707,6 +707,7 @@ if (empty($minor['cota'])) {
     .ranking-spotlight.is-warning{background:linear-gradient(135deg,#d97706,#b45309);box-shadow:0 7px 18px rgba(180,83,9,.28)}
     .ranking-spotlight.is-urgent{background:linear-gradient(135deg,#dc2626,#991b1b);box-shadow:0 7px 20px rgba(185,28,28,.34);animation:rankingUrgency 1.35s ease-in-out infinite}
     .ranking-spotlight.is-ended{background:linear-gradient(135deg,#64748b,#475569);box-shadow:none}
+    .ranking-buyer-row{display:flex;align-items:center;gap:10px;padding:8px 9px;border-bottom:1px solid #eef0f3}.ranking-buyer-row:last-child{border-bottom:0}.ranking-buyer-medal{width:50px;flex:0 0 50px;color:#5b6470;text-align:center}.ranking-buyer-info{display:flex;min-width:0;flex:1;align-items:center;justify-content:space-between;gap:12px}.ranking-buyer-name{overflow:hidden;color:#24272c;font-size:1rem;font-weight:700;text-overflow:ellipsis;white-space:nowrap}.ranking-buyer-total{flex:0 0 auto;padding:5px 9px;border-radius:999px;background:#e9f7ef;color:#117343;font-size:.72rem;font-weight:800;white-space:nowrap}@media(max-width:420px){.ranking-buyer-row{gap:6px;padding-inline:3px}.ranking-buyer-medal{width:42px;flex-basis:42px}.ranking-buyer-name{font-size:.9rem}.ranking-buyer-total{padding:4px 7px;font-size:.65rem}}
     @keyframes rankingUrgency{50%{filter:brightness(1.13);transform:translateY(-1px)}}
     @media (prefers-reduced-motion:reduce){.ranking-spotlight.is-urgent{animation:none}}
 
@@ -1981,18 +1982,11 @@ if ($available > 0 && $status == '1') {
                                                         }
 
                                                     ?>
-                                                        <div>
-                                                            <div class="row align-items-center">
-                                                                <div class="col-auto">
-                                                                    <div class="d-inline-block position-relative text-center py-1" style="width:50px"><span style="top:8px;right:-3px;font-size:12px;color:rgba(0,0,0,.6)" class="d-block position-absolute"></span><?= $medal ?></div>
-                                                                </div>
-                                                                <div class="col font-weight-600"><span style="font-size:20px"><?= htmlspecialchars(trim($row['firstname'] . ' ' . $row['lastname']), ENT_QUOTES, 'UTF-8') ?>
-                                                                        <?php if ($enable_ranking_show) { ?>
-                                                                            -
-                                                                            <?= $row['total_quantity'] ?>
-                                                                            Títulos
-                                                                        <?php } ?>
-                                                                    </span></div>
+                                                        <div class="ranking-buyer-row">
+                                                            <div class="ranking-buyer-medal"><?= $medal ?></div>
+                                                            <div class="ranking-buyer-info">
+                                                                <span class="ranking-buyer-name"><?= htmlspecialchars(trim($row['firstname'] . ' ' . $row['lastname']), ENT_QUOTES, 'UTF-8') ?></span>
+                                                                <span class="ranking-buyer-total"><?= number_format((int) $row['total_quantity'], 0, ',', '.') ?> cotas</span>
                                                             </div>
                                                         </div>
                                                     <?php

@@ -18,6 +18,7 @@ $site_name = $site_name !== '' ? htmlspecialchars($site_name, ENT_QUOTES, 'UTF-8
 
 if ($enable_footer == '1') { ?>
 	<style>
+		html,body{min-height:100%}body{display:flex;min-height:100vh;flex-direction:column}.container-fluid.rodape{margin-top:auto!important;flex-shrink:0}
 		.container-fluid.rodape {
 			background: var(--incrivel-primaria);
 			text-align: center;

@@ -15,6 +15,9 @@ while ($customerResult && ($customer = $customerResult->fetch_assoc())) {
 <style>
     .manual-order-shell{max-width:1040px;padding-bottom:48px}.manual-order-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:28px 0 20px}.manual-order-eyebrow{margin:0 0 4px;color:#a78bfa;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.manual-order-heading h2{margin:0;color:#f8fafc;font-size:28px;font-weight:780;letter-spacing:-.03em}.manual-order-heading p{margin:6px 0 0;color:#94a3b8;font-size:13px}.manual-order-back{display:inline-flex;min-height:40px;align-items:center;gap:8px;padding:0 14px;border:1px solid #3c4658;border-radius:10px;background:#171c26;color:#e2e8f0;font-size:13px;font-weight:700;transition:.18s}.manual-order-back:hover{border-color:#8b5cf6;color:#fff}.manual-order-card{overflow:hidden;border:1px solid #2d3748;border-radius:17px;background:linear-gradient(145deg,rgba(30,41,59,.72),rgba(17,24,39,.96));box-shadow:0 20px 55px rgba(0,0,0,.2)}.manual-order-section{padding:22px}.manual-order-section+.manual-order-section{border-top:1px solid #2d3748}.manual-order-section-title{display:flex;align-items:center;gap:11px;margin-bottom:17px}.manual-order-step{display:grid;width:34px;height:34px;place-items:center;border:1px solid rgba(139,92,246,.45);border-radius:10px;background:rgba(109,40,217,.22);color:#ddd6fe;font-size:12px;font-weight:800}.manual-order-section-title strong{display:block;color:#f8fafc;font-size:15px}.manual-order-section-title span{display:block;margin-top:2px;color:#94a3b8;font-size:11px}.manual-order-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.manual-order-field.full{grid-column:1/-1}.manual-order-field label{display:block;margin-bottom:7px;color:#cbd5e1;font-size:12px;font-weight:700}.manual-order-field select,.manual-order-field input{width:100%;min-height:46px;padding:0 13px;border:1px solid #3f4d63!important;border-radius:10px!important;background:#111827!important;color:#f8fafc!important;font-size:13px!important;box-shadow:none!important}.manual-order-field select:focus,.manual-order-field input:focus{border-color:#8b5cf6!important;box-shadow:0 0 0 3px rgba(139,92,246,.15)!important}.manual-order-hint{display:block;margin-top:6px;color:#7f8da3;font-size:11px}.manual-order-summary{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:18px;padding:16px 18px;border:1px solid rgba(16,185,129,.34);border-radius:12px;background:linear-gradient(110deg,rgba(6,78,59,.38),rgba(17,24,39,.8))}.manual-order-summary span{color:#a7f3d0;font-size:12px}.manual-order-summary strong{display:block;margin-top:2px;color:#ecfdf5;font-size:24px;letter-spacing:-.03em}.manual-order-available{padding:7px 10px;border-radius:999px;background:rgba(16,185,129,.13);color:#6ee7b7;font-size:11px;font-weight:750}.manual-random-box{padding:17px;border:1px dashed #465269;border-radius:13px;background:rgba(15,23,42,.52)}.manual-random-top{display:flex;align-items:center;justify-content:space-between;gap:15px}.manual-random-top strong{color:#f1f5f9;font-size:14px}.manual-random-top p{margin:4px 0 0;color:#94a3b8;font-size:11px}.manual-random-button{min-height:39px;padding:0 13px;border:1px solid #6d5ca5;border-radius:9px;background:rgba(109,40,217,.2);color:#ede9fe;font-size:12px;font-weight:750}.manual-random-button:disabled{cursor:wait;opacity:.6}.manual-number-preview{display:none;gap:7px;flex-wrap:wrap;margin-top:15px}.manual-number-preview.visible{display:flex}.manual-number-chip{padding:5px 8px;border:1px solid #374151;border-radius:7px;background:#0b1220;color:#c4b5fd;font-family:monospace;font-size:11px}.manual-number-more{padding:5px 8px;color:#94a3b8;font-size:11px}.manual-order-message{display:none;margin-top:14px;padding:11px 13px;border-radius:9px;font-size:12px}.manual-order-message.error{display:block;border:1px solid rgba(248,113,113,.38);background:rgba(127,29,29,.42);color:#fee2e2}.manual-order-message.success{display:block;border:1px solid rgba(16,185,129,.38);background:rgba(6,78,59,.46);color:#d1fae5}.manual-order-footer{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 22px;border-top:1px solid #2d3748;background:rgba(15,23,42,.38)}.manual-order-footer p{margin:0;color:#94a3b8;font-size:11px}.manual-order-submit{min-width:190px;min-height:44px;border:0;border-radius:10px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;font-size:13px;font-weight:800;box-shadow:0 9px 22px rgba(124,58,237,.22)}.manual-order-submit:disabled{cursor:wait;opacity:.6}@media(max-width:700px){.manual-order-heading{align-items:flex-start;flex-direction:column}.manual-order-grid{grid-template-columns:1fr}.manual-order-field.full{grid-column:auto}.manual-order-summary,.manual-random-top,.manual-order-footer{align-items:flex-start;flex-direction:column}.manual-random-button,.manual-order-submit{width:100%}}
 </style>
+<style>
+    .manual-random-box{border-style:solid}.manual-random-button{display:none!important}.manual-preview-state{flex:0 0 auto;padding:7px 10px;border-radius:999px;background:#273244;color:#cbd5e1;font-size:11px;font-weight:750}.manual-preview-state.ready{background:rgba(6,78,59,.65);color:#a7f3d0}.manual-preview-state.loading{background:rgba(109,40,217,.28);color:#ddd6fe}.manual-number-preview{max-height:230px;overflow:auto;padding:12px;border-radius:10px;background:#0b1220}.manual-number-list{width:100%;margin:0;color:#c4b5fd;font-family:monospace;font-size:11px;line-height:1.7;overflow-wrap:anywhere}
+</style>
 
 <main class="h-full overflow-y-auto">
     <div class="container px-6 mx-auto manual-order-shell">
@@ -22,7 +25,7 @@ while ($customerResult && ($customer = $customerResult->fetch_assoc())) {
             <div>
                 <p class="manual-order-eyebrow">Pedidos</p>
                 <h2>Novo pedido manual</h2>
-                <p>Selecione o cliente e deixe o sistema separar cotas livres automaticamente.</p>
+                <p>Escolha a quantidade, confira as cotas exibidas e confirme exatamente essa seleção.</p>
             </div>
             <a class="manual-order-back" href="./?page=orders">&#8592; Voltar aos pedidos</a>
         </header>
@@ -80,14 +83,15 @@ while ($customerResult && ($customer = $customerResult->fetch_assoc())) {
                 </section>
 
                 <section class="manual-order-section">
-                    <div class="manual-order-section-title"><div class="manual-order-step">03</div><div><strong>Cotas aleatórias</strong><span>Somente números livres entram no sorteio.</span></div></div>
+                    <div class="manual-order-section-title"><div class="manual-order-step">03</div><div><strong>Prévia das cotas do pedido</strong><span>A lista é atualizada automaticamente quando a campanha ou a quantidade muda.</span></div></div>
                     <div class="manual-random-box">
                         <div class="manual-random-top">
-                            <div><strong>Prévia das cotas</strong><p>A prévia não reserva números. A confirmação segura acontece ao cadastrar.</p></div>
-                            <button class="manual-random-button" id="randomize-numbers" type="button">Aleatorizar cotas livres</button>
+                            <div><strong>Estas são as cotas que serão confirmadas</strong><p>Se alguma ficar indisponível antes da confirmação, a lista será atualizada para você conferir novamente.</p></div>
+                            <span class="manual-preview-state" id="preview-state">Selecione uma campanha</span>
                         </div>
                         <div class="manual-number-preview" id="number-preview"></div>
                     </div>
+                    <input type="hidden" name="preview_token" id="preview_token" value="">
                     <div class="manual-order-message" id="manual-order-message" role="status" aria-live="polite"></div>
                 </section>
 
@@ -107,6 +111,10 @@ while ($customerResult && ($customer = $customerResult->fetch_assoc())) {
     var quantity = $('#quantidade');
     var preview = $('#number-preview');
     var message = $('#manual-order-message');
+    var previewState = $('#preview-state');
+    var previewToken = $('#preview_token');
+    var previewTimer = null;
+    var previewRequest = null;
 
     function selectedCampaign(){ return raffle.find('option:selected'); }
     function updateSummary(){
@@ -117,38 +125,57 @@ while ($customerResult && ($customer = $customerResult->fetch_assoc())) {
         $('#calculated-total').text(money.format(unitPrice * amount));
         $('#available-label').text(available === undefined ? 'Selecione uma campanha' : Number(available).toLocaleString('pt-BR') + ' cotas disponíveis');
         preview.removeClass('visible').empty();
+        previewToken.val('');
         message.removeClass('error success').hide().text('');
     }
-    raffle.on('change', updateSummary);
-    quantity.on('input', updateSummary);
-    updateSummary();
 
-    $('#randomize-numbers').on('click', function(){
-        var button = $(this);
+    function loadPreview(){
         if (!raffle.val() || (parseInt(quantity.val(), 10) || 0) < 1) {
-            message.attr('class','manual-order-message error').text('Selecione a campanha e informe a quantidade de cotas.');
+            previewState.attr('class','manual-preview-state').text('Selecione uma campanha');
             return;
         }
-        button.prop('disabled', true).text('Aleatorizando...');
-        message.removeClass('error success').hide();
-        $.ajax({
+        if (previewRequest) previewRequest.abort();
+        previewState.attr('class','manual-preview-state loading').text('Atualizando prévia...');
+        previewRequest = $.ajax({
             url: _base_url_ + 'class/Main.php?action=preview_manual_order_numbers',
             method: 'POST', dataType: 'json',
-            data: {raffle: raffle.val(), quantidade: quantity.val()}
+            data: {raffle: raffle.val(), quantidade: quantity.val()}, timeout: 20000
         }).done(function(response){
             if (response.status !== 'success') {
-                message.attr('class','manual-order-message error').text(response.msg || 'Não foi possível aleatorizar as cotas.');
+                previewState.attr('class','manual-preview-state').text('Prévia indisponível');
+                message.attr('class','manual-order-message error').text(response.msg || 'Não foi possível preparar as cotas.');
                 return;
             }
             preview.empty();
-            response.numbers.slice(0, 30).forEach(function(number){ preview.append($('<span class="manual-number-chip">').text(number)); });
-            if (response.numbers.length > 30) preview.append($('<span class="manual-number-more">').text('+' + (response.numbers.length - 30) + ' cotas'));
+            if (response.numbers.length <= 200) {
+                response.numbers.forEach(function(number){ preview.append($('<span class="manual-number-chip">').text(number)); });
+            } else {
+                preview.append($('<p class="manual-number-list">').text(response.numbers.join(', ')));
+            }
+            previewToken.val(response.preview_token || '');
             preview.addClass('visible');
-            message.attr('class','manual-order-message success').text(response.numbers.length + ' cotas livres aleatorizadas. Total: R$ ' + response.total + '.');
-        }).fail(function(){
+            previewState.attr('class','manual-preview-state ready').text(response.numbers.length + ' cotas prontas');
+            message.removeClass('error success').hide().text('');
+        }).fail(function(xhr, status){
+            if (status === 'abort') return;
+            previewState.attr('class','manual-preview-state').text('Prévia indisponível');
             message.attr('class','manual-order-message error').text('Não foi possível consultar as cotas livres. Tente novamente.');
-        }).always(function(){ button.prop('disabled', false).text('Aleatorizar novamente'); });
-    });
+        }).always(function(){ previewRequest = null; });
+    }
+
+    function schedulePreview(){
+        clearTimeout(previewTimer);
+        updateSummary();
+        if (!raffle.val()) {
+            previewState.attr('class','manual-preview-state').text('Selecione uma campanha');
+            return;
+        }
+        previewState.attr('class','manual-preview-state loading').text('Aguardando atualização...');
+        previewTimer = setTimeout(loadPreview, 350);
+    }
+    raffle.on('change', schedulePreview);
+    quantity.on('input', schedulePreview);
+    updateSummary();
 
     $('#manage-order').on('submit', function(event){
         event.preventDefault();
@@ -162,6 +189,11 @@ while ($customerResult && ($customer = $customerResult->fetch_assoc())) {
                 (!customerValue ? 'Informe o nome completo do cliente.' : 'Informe uma quantidade de cotas maior que zero.')
             ).get(0).scrollIntoView({behavior:'smooth', block:'center'});
             (!campaignValue ? raffle : (!customerValue ? $('#customer_name') : quantity)).focus();
+            return;
+        }
+        if (!previewToken.val()) {
+            message.attr('class','manual-order-message error').text('Aguarde a prévia das cotas ficar pronta antes de cadastrar o pedido.');
+            loadPreview();
             return;
         }
         button.prop('disabled', true).text('Cadastrando...');
@@ -181,6 +213,7 @@ while ($customerResult && ($customer = $customerResult->fetch_assoc())) {
                 message.attr('class','manual-order-message error').text(response.msg || 'Não foi possível criar o pedido.');
                 button.prop('disabled', false).text('Cadastrar pedido');
                 button.removeAttr('aria-busy');
+                schedulePreview();
             }
         }).fail(function(xhr){
             var serverMessage = xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : '';

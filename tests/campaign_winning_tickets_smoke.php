@@ -40,11 +40,23 @@ $_POST = [
     'qty_numbers' => '1000',
     'price' => '0,20',
 ];
-$invalid = json_decode($Main->save_product(), true);
-if (($invalid['status'] ?? '') !== 'failed' || ($invalid['field'] ?? '') !== 'cotas_premiadas' || ($invalid['tab'] ?? '') !== 'tab7') {
-    fwrite(STDERR, "A campanha sem cota premiada não foi bloqueada corretamente.\n");
+$defaultResponse = json_decode($Main->save_product(), true);
+$defaultProductId = (int) ($defaultResponse['pid'] ?? 0);
+$defaultCampaign = null;
+$defaultConnection = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+if ($defaultProductId > 0) {
+    $defaultCampaign = $defaultConnection->query("SELECT cotas_premiadas, cotas_premiadas_premios FROM product_list WHERE id = {$defaultProductId}")->fetch_assoc();
+}
+if (($defaultResponse['status'] ?? '') !== 'success' || !$defaultCampaign
+    || count(explode(',', (string) $defaultCampaign['cotas_premiadas'])) !== 10
+    || count(explode(',', (string) $defaultCampaign['cotas_premiadas_premios'])) !== 10) {
+    fwrite(STDERR, "A campanha nova não recebeu as 10 cotas premiadas padrão.\n");
     exit(1);
 }
+if ($defaultProductId > 0) {
+    $defaultConnection->query('DELETE FROM product_list WHERE id = ' . $defaultProductId);
+}
+$defaultConnection->close();
 
 $_POST = [
     'name' => 'Campanha premiada ' . $suffix,

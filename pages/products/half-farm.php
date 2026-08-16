@@ -910,9 +910,7 @@ if ($enable_cpf == 1) {
                     </div>
                     <div class="customer-details">
                         <?= $row['firstname'] ?><br>
-                        <?php if ($enable_ranking_show == 1) { ?>
-                            <?= $row['total_quantity'] ?> COTAS
-                        <?php } ?>
+                        <?= $row['total_quantity'] ?> COTAS
                     </div>
                 </div>
             <?php } ?>

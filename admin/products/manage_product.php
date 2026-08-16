@@ -26,6 +26,35 @@ foreach ($campaignFormDefaults as $field => $defaultValue) {
     }
 }
 $winner = ['name' => '', 'number' => ''];
+$isNewCampaign = !isset($_GET['id']) || (int) $_GET['id'] <= 0;
+if ($isNewCampaign && (!isset($cotas_premiadas) || trim((string) $cotas_premiadas) === '')) {
+    $defaultWinningNumbers = range(0, 9);
+    $cotas_premiadas = implode(',', $defaultWinningNumbers);
+    $cotas_premiadas_premios = implode(',', array_map(static function ($number) {
+        return $number . ':Prêmio surpresa ' . ($number + 1) . ':premiada';
+    }, $defaultWinningNumbers));
+    $tipo_auto_cota = $cotas_premiadas;
+    $cotas_premiadas_descricao = 'Além do prêmio principal, esta campanha possui 10 cotas premiadas. Consulte abaixo os números e os prêmios disponíveis.';
+}
+
+$winningPrizeMap = [];
+foreach (explode(',', (string) ($cotas_premiadas_premios ?? '')) as $winningPrizeEntry) {
+    $winningPrizeParts = array_map('trim', explode(':', $winningPrizeEntry));
+    $winningPrizeNumber = array_shift($winningPrizeParts);
+    if (end($winningPrizeParts) === 'premiada') {
+        array_pop($winningPrizeParts);
+    }
+    if ($winningPrizeNumber !== '') {
+        $winningPrizeMap[$winningPrizeNumber] = implode(': ', $winningPrizeParts);
+    }
+}
+$winningTicketRows = [];
+foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber) {
+    $winningTicketNumber = trim($winningTicketNumber);
+    if ($winningTicketNumber !== '') {
+        $winningTicketRows[] = ['number' => $winningTicketNumber, 'prize' => $winningPrizeMap[$winningTicketNumber] ?? ''];
+    }
+}
 ?>
 
 <style>
@@ -95,6 +124,8 @@ $winner = ['name' => '', 'number' => ''];
         margin-left: 0.5rem;
         cursor: pointer;
     }
+
+    .campaign-tab-guide{margin:0 0 18px;padding:14px 16px;border:1px solid rgba(96,165,250,.24);border-radius:12px;background:rgba(30,58,138,.14);color:#bfdbfe;font-size:12px;line-height:1.55}.campaign-tab-guide strong{display:block;margin-bottom:3px;color:#eff6ff;font-size:13px}.campaign-field-help{display:block;margin-top:6px;color:#8fa2bc;font-size:11px;font-weight:400;line-height:1.45}.winning-editor{margin-top:16px}.winning-editor-header{display:grid;grid-template-columns:minmax(150px,.8fr) minmax(260px,2fr) 42px;gap:10px;padding:0 10px 7px;color:#94a3b8;font-size:11px;font-weight:750;text-transform:uppercase}.winning-ticket-row{display:grid;grid-template-columns:minmax(150px,.8fr) minmax(260px,2fr) 42px;gap:10px;align-items:center;margin-bottom:9px;padding:10px;border:1px solid #344158;border-radius:11px;background:rgba(15,23,42,.62)}.winning-ticket-row input{margin:0!important}.winning-ticket-remove{display:grid;width:38px;height:38px;place-items:center;border:1px solid rgba(248,113,113,.35);border-radius:9px;background:rgba(127,29,29,.25);color:#fecaca;font-size:20px}.winning-ticket-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}.winning-ticket-add{min-height:40px;padding:0 14px;border:1px solid #6d5ca5;border-radius:9px;background:rgba(109,40,217,.2);color:#ede9fe;font-size:12px;font-weight:750}.winning-ticket-count{color:#a7f3d0;font-size:12px;font-weight:700}@media(max-width:650px){.winning-editor-header{display:none}.winning-ticket-row{grid-template-columns:1fr 42px}.winning-ticket-row .winning-prize-input{grid-column:1/-1;grid-row:2}.winning-ticket-remove{grid-column:2;grid-row:1}.winning-ticket-actions{align-items:stretch;flex-direction:column}.winning-ticket-add{width:100%}}
 </style>
 <style>
     .add_field,
@@ -719,12 +750,10 @@ $winner = ['name' => '', 'number' => ''];
                                 <div class="can-toggle__switch" data-checked="Sim" data-unchecked="Não"></div>
                             </label>
                         </div>
-                        <div class="ranking_qty"><label class="block mt-4 text-sm"><span class="text-gray-700 dark:text-gray-400">Mostrar a quantidade de bilhetes comprados?</span></label>
-                            <div class="can-toggle"><input type="checkbox" name="enable_ranking_show" id="enable_ranking_show" <?= isset($enable_ranking_show) && $enable_ranking_show == 1 ? 'checked' : '' ?>>
-                                <label for="enable_ranking_show">
-                                    <div class="can-toggle__switch" data-checked="Sim" data-unchecked="Não"></div>
-                                </label>
-                            </div><label class="block mt-4 text-sm"><span class="text-gray-700 dark:text-gray-400">Escolha Tipo Top Compradores Diario ou Total</span>
+                        <div class="ranking_qty">
+                            <input type="hidden" name="enable_ranking_show" id="enable_ranking_show" value="1">
+                            <div class="campaign-tab-guide" style="margin-top:16px"><strong>Quantidade sempre visível</strong>O ranking mostra o nome e a quantidade de cotas confirmadas de cada comprador.</div>
+                            <label class="block mt-4 text-sm"><span class="text-gray-700 dark:text-gray-400">Escolha Tipo Top Compradores Diario ou Total</span>
                                 <select name="ranking_type" id="ranking_type" class="block w-full mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray">
                                     <option value="1" <?= isset($ranking_type) && $ranking_type == '1' ? 'selected' : '' ?>>Top Compradores Total</option>
                                     <option value="2" <?= isset($ranking_type) && $ranking_type == '2' ? 'selected' : '' ?>>Top Compradores Diário</option>
@@ -839,65 +868,29 @@ $winner = ['name' => '', 'number' => ''];
                     </div>
                 </div>
                 <div id="tab7" class="tabcontent text-gray-700 dark:text-gray-400 hidden">
-                    <label class="block mt-4 text-sm">
-                        <span class="text-gray-700 dark:text-gray-400">
-                            Titulos Premiados
-                            <p style="font-size: 13px; color: orange;">
-                                Digite o número do titulo e pressione enter para adicionar
-                            </p>
-                        </span>
-                        <input type="text" id="tags-input" class="block w-full mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-input focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray" placeholder="Pressione Enter para adicionar um titulo">
-                        <div id="tags-container" class="mt-2">
-                            <?php
-                            if (isset($cotas_premiadas)) {
-                                $cotas_premiadas_array = explode(',', $cotas_premiadas);
-                                $premios = explode(',', $cotas_premiadas_premios);
-
-                                foreach ($cotas_premiadas_array as $cota) {
-                                    $premio = array_shift($premios);
-                                    $premio = explode(':', $premio);
-                                    $tipo = trim($premio[2]);
-
-                                    $premio = trim($premio[1]);
-
-                                    if ($cota != '') {
-                                        echo "<div id='$cota' data-premio='$premio' data-tipo='$tipo'  class='tag $tipo'>" . trim($cota) . " <span class='remove-tag'>x</span></div>";
-                                    }
-                                }
-                            }
-                            ?>
+                    <div class="campaign-tab-guide"><strong>Cotas premiadas</strong>Cada linha liga uma cota específica a um prêmio. Novas campanhas já começam com 10 linhas; revise os números e troque “Prêmio surpresa” pelo prêmio real antes de publicar.</div>
+                    <div class="winning-editor" id="winning-ticket-editor">
+                        <div class="winning-editor-header"><span>Número da cota</span><span>Prêmio entregue</span><span></span></div>
+                        <div id="winning-ticket-rows">
+                            <?php foreach ($winningTicketRows as $winningTicket): ?>
+                                <div class="winning-ticket-row">
+                                    <input type="number" min="0" step="1" class="winning-number-input block w-full text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-input" aria-label="Número da cota premiada" value="<?= htmlspecialchars($winningTicket['number'], ENT_QUOTES, 'UTF-8') ?>">
+                                    <input type="text" class="winning-prize-input block w-full text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-input" aria-label="Prêmio desta cota" placeholder="Ex.: PIX de R$ 100" value="<?= htmlspecialchars($winningTicket['prize'], ENT_QUOTES, 'UTF-8') ?>">
+                                    <button type="button" class="winning-ticket-remove" title="Remover esta cota" aria-label="Remover esta cota">&times;</button>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
-                        <input type="hidden" name="cotas_premiadas" id="cotas_premiadas" value="<?= isset($cotas_premiadas) ? $cotas_premiadas : '' ?>">
-                    </label>
-
-                    <label class="block mt-4 text-sm">
-                        <span class="text-gray-700 dark:text-gray-400">
-                            Premiações
-
-                        </span>
-
-                        <input type="hidden" name="cotas_premiadas_premios" id="cotas_premiadas_premios" class="block w-full mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-input focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray" value="<?= isset($cotas_premiadas_premios) ? $cotas_premiadas_premios : '' ?>" placeholder="012345:Pix no valor R$1000" />
-                        <div id="premios-container" class="mt-2">
-                            <?php
-                            if (isset($cotas_premiadas_premios)) {
-                                $cotas_premiadas_premios_array = explode(',', $cotas_premiadas_premios);
-                                foreach ($cotas_premiadas_premios_array as $cota) {
-                                    $id = explode(':', $cota);
-                                    $tipo = trim($id[2]);
-
-                                    $cota = trim($id[0]) . ':' . trim($id[1]);
-                                    $id = trim($id[0]);
-                                    if ($cota != '' && $cota != ':') {
-                                        echo "<div id='p$id' data-tipo='$tipo' data-premio='$cota'  class='tag  $tipo'>$cota <span class='remove-premio'>x</span></div>";
-                                    }
-                                }
-                            }
-                            ?>
+                        <div class="winning-ticket-actions">
+                            <button type="button" class="winning-ticket-add" id="add-winning-ticket">+ Adicionar outra cota premiada</button>
+                            <span class="winning-ticket-count" id="winning-ticket-count"></span>
                         </div>
-                    </label>
+                    </div>
+                    <input type="hidden" name="cotas_premiadas" id="cotas_premiadas" value="<?= htmlspecialchars((string) ($cotas_premiadas ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="cotas_premiadas_premios" id="cotas_premiadas_premios" value="<?= htmlspecialchars((string) ($cotas_premiadas_premios ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                     <label class="block mt-4 text-sm qtd-minima">
                         <span class="text-gray-700 dark:text-gray-400">Descrição</span>
                         <input name="cotas_premiadas_descricao" id="cotas_premiadas__descricao" class="block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input" value="<?php echo isset($cotas_premiadas_descricao) ? $cotas_premiadas_descricao : ''; ?>" placeholder="Além do prêmio principal, temos titulos premiadas esperando por você. " />
+                        <small class="campaign-field-help">Este texto aparece na página pública, acima da lista de cotas premiadas.</small>
                     </label>
 
                     <label class="block mt-4 text-sm">
@@ -1496,6 +1489,75 @@ $winner = ['name' => '', 'number' => ''];
         });
     });
     $(document).ready(function() {
+        var campaignTabGuides = {
+            tab1: ['Dados principais', 'Defina o nome, o preço, o total de cotas, os limites de compra e como a campanha será exibida.'],
+            tab2: ['Imagens', 'Envie a imagem principal, que aparece na vitrine, e imagens extras para a galeria da campanha.'],
+            tab3: ['Descontos', 'Crie ofertas por quantidade. Exemplo: ao comprar 100 cotas, o comprador paga o valor promocional configurado.'],
+            tab4: ['Ranking', 'Escolha se o Top Compradores aparece na campanha, quantas pessoas serão mostradas e qual período será contabilizado.'],
+            tab5: ['Barra de progresso', 'Mostre o avanço real das vendas ou, se desejar, uma porcentagem visual configurada manualmente.'],
+            tab6: ['Ganhador', 'Depois do sorteio, informe o telefone e o número sorteado para publicar o resultado na campanha.'],
+            tab7: ['Cotas premiadas', 'Cadastre cada número premiado e descreva exatamente o prêmio correspondente.'],
+            tab11: ['Maior e menor cota', 'Configure premiações extras ligadas à menor ou à maior cota comprada no período.'],
+            tab8: ['Oferta adicional', 'Ofereça cotas extras com desconto depois que o comprador já escolheu a quantidade inicial.']
+        };
+        Object.keys(campaignTabGuides).forEach(function(tabId) {
+            var tab = document.getElementById(tabId);
+            if (!tab || tab.querySelector('.campaign-tab-guide')) return;
+            var guide = document.createElement('div');
+            guide.className = 'campaign-tab-guide';
+            var title = document.createElement('strong');
+            title.textContent = campaignTabGuides[tabId][0];
+            guide.appendChild(title);
+            guide.appendChild(document.createTextNode(campaignTabGuides[tabId][1]));
+            tab.insertBefore(guide, tab.firstChild);
+        });
+
+        var campaignFieldHelp = {
+            name: 'Nome que o comprador verá na vitrine e na página da campanha.',
+            subtitle: 'Frase curta de apoio exibida junto ao título.',
+            description: 'Explique o prêmio, a data do sorteio e as regras específicas desta campanha.',
+            type_of_draw: 'Em “Aleatórios”, o sistema escolhe cotas livres. Em “Números”, a campanha trabalha com a numeração definida.',
+            date_of_draw: 'Data prevista para o sorteio; ela serve como informação pública.',
+            private_draw: 'Se ativado, a campanha deixa de aparecer na vitrine pública e só abre pelo link direto.',
+            featured_draw: 'A campanha ganha um cartão maior e mais chamativo na página inicial.',
+            qty_numbers: 'Quantidade total de cotas existentes, numeradas de zero até o total menos um.',
+            price: 'Preço unitário de uma cota, antes de descontos por quantidade.',
+            limit_order_remove: 'Tempo em que uma reserva PIX pendente mantém as cotas separadas.',
+            limit_orders: 'Use zero para não limitar a quantidade de pedidos por comprador.',
+            min_purchase: 'Menor quantidade permitida em uma única compra.',
+            max_purchase: 'Maior quantidade permitida em uma única compra.',
+            status_display: 'Texto de situação que aparece no cartão da campanha.',
+            status: 'Controla se a campanha aceita novas compras, fica pausada ou é concluída.',
+            img: 'Imagem principal da campanha. Prefira uma imagem horizontal e nítida.',
+            'image_gallery[]': 'Imagens complementares exibidas ao comprador dentro da campanha.',
+            enable_discount: 'Ative para aplicar descontos automáticos conforme a quantidade comprada.',
+            enable_ranking: 'Exibe o acesso ao Top Compradores na página pública.',
+            ranking_qty: 'Quantidade máxima de compradores mostrados no ranking.',
+            ranking_type: '“Diário” considera o período diário; “Total” considera todas as compras confirmadas.',
+            enable_ranking_definido: 'Permite restringir o ranking a um início e encerramento específicos.',
+            enable_progress_bar: 'Mostra ao comprador o percentual de cotas já vendidas.',
+            enable_progress_bar_fake: 'Usa um percentual apenas visual, sem alterar pedidos nem cotas.',
+            draw_name: 'Telefone ou identificação do ganhador que será divulgado.',
+            draw_number: 'Número ou resultado oficial usado para localizar o ganhador.',
+            status_auto_cota: 'Bloqueia as cotas premiadas para impedir a venda enquanto estiver ativado.',
+            habilitar_cota_sorte: 'Programa uma cota específica para um intervalo e quantidade de compras.',
+            enable_upsell: 'Mostra uma oferta de cotas extras antes da finalização do pedido.',
+            qtd_upsell: 'Quantidade de cotas adicionais oferecidas.',
+            desconto_upsell: 'Percentual de desconto aplicado somente à oferta adicional.'
+        };
+        Object.keys(campaignFieldHelp).forEach(function(fieldName) {
+            var fields = document.getElementsByName(fieldName);
+            Array.prototype.forEach.call(fields, function(field) {
+                if (!field) return;
+                var reference = field.type === 'checkbox' && field.closest('.can-toggle') ? field.closest('.can-toggle') : field;
+                if (reference.nextElementSibling && reference.nextElementSibling.classList.contains('campaign-field-help')) return;
+                var help = document.createElement('small');
+                help.className = 'campaign-field-help';
+                help.textContent = campaignFieldHelp[fieldName];
+                reference.insertAdjacentElement('afterend', help);
+            });
+        });
+
         if ($('#type_of_draw').val() > 1) {
             if ($('#type_of_draw').val() == 2) {
                 $('.qtd-numeros').show();
@@ -1975,6 +2037,7 @@ $winner = ['name' => '', 'number' => ''];
         }
 
         function validateCampaignForm() {
+            syncWinningEditor();
             var title = $.trim($('#name').val());
             if (!title) {
                 showCampaignFieldError('name', 'Informe o título da campanha.', 'tab1');
@@ -2236,6 +2299,46 @@ $winner = ['name' => '', 'number' => ''];
             console.log($('#cotas_premiadas').val());
             console.log($('#cotas_premiadas_premios').val());
         }
+
+        function syncWinningEditor() {
+            var numbers = [];
+            var prizes = [];
+            var seen = {};
+            $('#winning-ticket-rows .winning-ticket-row').each(function() {
+                var number = $.trim($(this).find('.winning-number-input').val());
+                var prize = $.trim($(this).find('.winning-prize-input').val()).replace(/[,:]+/g, ' - ');
+                if (number === '' || seen[number]) return;
+                seen[number] = true;
+                numbers.push(number);
+                prizes.push(number + ':' + prize + ':premiada');
+            });
+            $('#cotas_premiadas').val(numbers.join(',')).trigger('change');
+            $('#cotas_premiadas_premios').val(prizes.join(','));
+            $('#tipo_auto_cota').val(numbers.join(','));
+            $('#winning-ticket-count').text(numbers.length + (numbers.length === 1 ? ' cota configurada' : ' cotas configuradas'));
+        }
+
+        function addWinningTicketRow(number, prize) {
+            if ($('#winning-ticket-rows .winning-ticket-row').length >= 30) {
+                showCampaignFeedback('error', 'O limite é de 30 cotas premiadas por campanha.');
+                return;
+            }
+            var row = $('<div class="winning-ticket-row">');
+            row.append($('<input type="number" min="0" step="1" class="winning-number-input block w-full text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-input" aria-label="Número da cota premiada">').val(number || ''));
+            row.append($('<input type="text" class="winning-prize-input block w-full text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-input" aria-label="Prêmio desta cota" placeholder="Ex.: PIX de R$ 100">').val(prize || ''));
+            row.append('<button type="button" class="winning-ticket-remove" title="Remover esta cota" aria-label="Remover esta cota">&times;</button>');
+            $('#winning-ticket-rows').append(row);
+            row.find('.winning-number-input').focus();
+            syncWinningEditor();
+        }
+
+        $('#add-winning-ticket').on('click', function() { addWinningTicketRow('', ''); });
+        $('#winning-ticket-rows').on('input change', 'input', syncWinningEditor);
+        $('#winning-ticket-rows').on('click', '.winning-ticket-remove', function() {
+            $(this).closest('.winning-ticket-row').remove();
+            syncWinningEditor();
+        });
+        syncWinningEditor();
 
         function updateHiddenInput_roleta() {
             var tags = [];

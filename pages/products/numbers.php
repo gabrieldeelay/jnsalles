@@ -315,11 +315,9 @@ if (0 < $enable_ranking) {
         echo $row['firstname'];
         echo '</span>' . "\r\n" . '            ';
 
-        if ($enable_ranking_show == 1) {
-            echo '               <p class="font-xss mb-0">';
-            echo $row['total_quantity'];
-            echo ' COTAS</p>' . "\r\n" . '            ';
-        }
+        echo '               <p class="font-xss mb-0">';
+        echo $row['total_quantity'];
+        echo ' COTAS</p>' . "\r\n" . '            ';
 
         echo '         </div>' . "\r\n" . '      </div>' . "\r\n" . '   ';
     }

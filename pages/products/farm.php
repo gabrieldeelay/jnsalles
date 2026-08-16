@@ -878,11 +878,9 @@ if ($enable_cpf == 1) {
                         <div class="item-content flex-column" style="max-width:32.7%;min-width:32.7%;">
                             <div class="text-center customer-details" style="border:1px solid;padding:10px;border-radius:5px;margin:5px;"> <span style="font-size:20px;"><?= $medal ?></span><br> <span class="ganhador-name"><?= $row['firstname'] ?></span>
                                 <?php
-                                if ($enable_ranking_show == 1) {
-                                    echo ' <p class="font-xss mb-0">';
-                                    echo $row['total_quantity'];
-                                    echo ' COTAS</p> ';
-                                }
+                                echo ' <p class="font-xss mb-0">';
+                                echo $row['total_quantity'];
+                                echo ' COTAS</p> ';
                                 ?>
                             </div>
                         </div>

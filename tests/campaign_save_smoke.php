@@ -67,14 +67,16 @@ if (!is_array($response) || ($response['status'] ?? '') !== 'success') {
 }
 
 $connection = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
-$statement = $connection->prepare('SELECT id, name, qty_numbers, price FROM product_list WHERE id = ?');
+$statement = $connection->prepare('SELECT id, name, qty_numbers, price, cotas_premiadas, cotas_premiadas_premios FROM product_list WHERE id = ?');
 $productId = (int) $response['pid'];
 $statement->bind_param('i', $productId);
 $statement->execute();
 $campaign = $statement->get_result()->fetch_assoc();
 $statement->close();
 
-if (!$campaign || $campaign['name'] !== $campaignName || (int) $campaign['qty_numbers'] !== 1000 || (float) $campaign['price'] !== 0.20) {
+if (!$campaign || $campaign['name'] !== $campaignName || (int) $campaign['qty_numbers'] !== 1000 || (float) $campaign['price'] !== 0.20
+    || count(explode(',', (string) $campaign['cotas_premiadas'])) !== 10
+    || count(explode(',', (string) $campaign['cotas_premiadas_premios'])) !== 10) {
     fwrite(STDERR, "A campanha foi gravada com dados divergentes.\n");
     exit(1);
 }

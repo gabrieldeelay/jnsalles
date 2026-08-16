@@ -25,7 +25,7 @@ define('DB_USER', (string) getenv('TEST_DB_USER'));
 define('DB_PASSWORD', (string) getenv('TEST_DB_PASSWORD'));
 
 $_SERVER['DOCUMENT_ROOT'] = sys_get_temp_dir();
-$_SERVER['REQUEST_URI'] = '/class/Main.php?action=create_order';
+$_SERVER['REQUEST_URI'] = '/class/Main.php';
 $_SERVER['HTTP_HOST'] = '127.0.0.1';
 
 $connection = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
@@ -42,20 +42,38 @@ $product->close();
 session_id('manual-order-ranking-' . $suffix);
 session_start();
 $_SESSION['userdata'] = ['id' => 1, 'firstname' => 'Administrador', 'lastname' => 'Teste', 'type' => 1];
-$_GET['action'] = 'create_order';
+$originalDirectory = getcwd();
+chdir(dirname(__DIR__) . '/class');
+ob_start();
+$_GET['action'] = '';
+require dirname(__DIR__) . '/class/Main.php';
+ob_end_clean();
+chdir($originalDirectory);
+$previewPost = ['raffle' => $productId, 'quantidade' => 5];
+$_POST = $previewPost;
+$previewResponse = json_decode($Main->preview_manual_order_numbers(), true);
+$previewNumbers = $previewResponse['numbers'] ?? [];
+$invalidPreviewPost = [
+    'raffle' => $productId,
+    'customer_name' => 'Cliente Token Inválido ' . $suffix,
+    'quantidade' => 5,
+    'status' => 2,
+    'preview_token' => ($previewResponse['preview_token'] ?? '') . 'alterado',
+];
+$_POST = $invalidPreviewPost;
+$invalidPreviewResponse = json_decode($Main->create_order(), true);
+if (($invalidPreviewResponse['status'] ?? '') !== 'failed') {
+    fwrite(STDERR, "Um pedido com prévia adulterada foi aceito.\n");
+    exit(1);
+}
 $_POST = [
     'raffle' => $productId,
     'customer_name' => 'Cliente Manual ' . $suffix,
     'quantidade' => 5,
     'status' => 2,
+    'preview_token' => $previewResponse['preview_token'] ?? '',
 ];
-
-$originalDirectory = getcwd();
-chdir(dirname(__DIR__) . '/class');
-ob_start();
-require dirname(__DIR__) . '/class/Main.php';
-$rawResponse = trim((string) ob_get_clean());
-chdir($originalDirectory);
+$rawResponse = $Main->create_order();
 $response = json_decode($rawResponse, true);
 
 $order = $connection->query(
@@ -82,6 +100,7 @@ $valid = is_array($response)
     && $order['payment_method'] === 'Manual'
     && abs((float) $order['total_amount'] - 1.00) < 0.001
     && count($numbers) === 5
+    && $numbers === $previewNumbers
     && (int) $campaign['paid_numbers'] === 5
     && (int) $campaign['pending_numbers'] === 0
     && (int) $generalRanking['total'] === 5

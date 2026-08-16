@@ -327,6 +327,14 @@ class Main extends DBConnection
                 'msg' => 'Informe uma quantidade total entre 10 e 10.000.000 de números.',
             ]);
         }
+        if ((int) $id <= 0 && trim((string) $_POST['cotas_premiadas']) === '') {
+            $defaultWinningNumbers = range(0, 9);
+            $_POST['cotas_premiadas'] = implode(',', $defaultWinningNumbers);
+            $_POST['cotas_premiadas_premios'] = implode(',', array_map(static function ($number) {
+                return $number . ':Prêmio surpresa ' . ($number + 1) . ':premiada';
+            }, $defaultWinningNumbers));
+            $_POST['tipo_auto_cota'] = $_POST['cotas_premiadas'];
+        }
         $winningNumbers = array_values(array_unique(array_filter(array_map('trim', explode(',', (string) $_POST['cotas_premiadas'])), static function ($value) {
             return $value !== '';
         })));
@@ -434,7 +442,7 @@ class Main extends DBConnection
         $ranking_message = $this->conn->real_escape_string(
             $_POST["ranking_message"]
         );
-        $enable_ranking_show = isset($_POST["enable_ranking_show"]) ? 1 : 0;
+        $enable_ranking_show = 1;
         $enable_ranking_show = $this->conn->real_escape_string(
             $enable_ranking_show
         );
@@ -1197,6 +1205,65 @@ class Main extends DBConnection
         return $numbers;
     }
 
+    private function manual_preview_key()
+    {
+        return hash('sha256', (string) DB_PASSWORD . '|manual-order-preview|' . (defined('BASE_URL') ? BASE_URL : 'jnsalles'));
+    }
+
+    private function encode_manual_preview($productId, $quantity, array $numbers)
+    {
+        $payload = json_encode([
+            'product_id' => (int) $productId,
+            'quantity' => (int) $quantity,
+            'numbers' => array_values($numbers),
+            'admin_id' => (int) $this->settings->userdata('id'),
+            'expires_at' => time() + 900,
+        ], JSON_UNESCAPED_SLASHES);
+        $encoded = rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
+        $signature = hash_hmac('sha256', $encoded, $this->manual_preview_key());
+        return $encoded . '.' . $signature;
+    }
+
+    private function decode_manual_preview($token, $productId, $quantity)
+    {
+        $parts = explode('.', (string) $token, 2);
+        if (count($parts) !== 2 || !hash_equals(hash_hmac('sha256', $parts[0], $this->manual_preview_key()), $parts[1])) {
+            return false;
+        }
+        $padding = strlen($parts[0]) % 4;
+        $payload = json_decode(base64_decode(strtr($parts[0] . ($padding ? str_repeat('=', 4 - $padding) : ''), '-_', '+/'), true), true);
+        if (!is_array($payload)
+            || (int) ($payload['product_id'] ?? 0) !== (int) $productId
+            || (int) ($payload['quantity'] ?? 0) !== (int) $quantity
+            || (int) ($payload['admin_id'] ?? 0) !== (int) $this->settings->userdata('id')
+            || (int) ($payload['expires_at'] ?? 0) < time()
+            || !is_array($payload['numbers'] ?? null)
+            || count($payload['numbers']) !== (int) $quantity) {
+            return false;
+        }
+        $numbers = array_values(array_unique(array_map('strval', $payload['numbers'])));
+        return count($numbers) === (int) $quantity ? $numbers : false;
+    }
+
+    private function manual_numbers_are_free($productId, array $numbers)
+    {
+        $requested = array_fill_keys($numbers, true);
+        $statement = $this->conn->prepare('SELECT order_numbers FROM order_list WHERE product_id = ? AND status <> 3 AND order_numbers IS NOT NULL');
+        $statement->bind_param('i', $productId);
+        $statement->execute();
+        $result = $statement->get_result();
+        while ($row = $result->fetch_assoc()) {
+            foreach (explode(',', (string) $row['order_numbers']) as $number) {
+                if (isset($requested[trim($number)])) {
+                    $statement->close();
+                    return false;
+                }
+            }
+        }
+        $statement->close();
+        return true;
+    }
+
     public function preview_manual_order_numbers()
     {
         if (empty($this->settings->userdata('firstname')) || (int) $this->settings->userdata('type') !== 1) {
@@ -1222,6 +1289,7 @@ class Main extends DBConnection
         return json_encode([
             'status' => 'success',
             'numbers' => $numbers,
+            'preview_token' => $this->encode_manual_preview($productId, $quantity, $numbers),
             'total' => number_format((float) $productInfo['price'] * $quantity, 2, ',', '.'),
         ]);
     }
@@ -1237,8 +1305,12 @@ class Main extends DBConnection
         $customerName = trim((string) ($_POST['customer_name'] ?? ''));
         $quantity = (int) ($_POST['quantidade'] ?? 0);
         $status = (int) ($_POST['status'] ?? 0);
+        $previewNumbers = $this->decode_manual_preview((string) ($_POST['preview_token'] ?? ''), $productId, $quantity);
         if ($productId <= 0 || ($customerId <= 0 && $customerName === '') || $quantity <= 0 || $quantity > 50000 || !in_array($status, [1, 2], true)) {
             return json_encode(['status' => 'failed', 'msg' => 'Preencha corretamente a campanha, o cliente, a quantidade e o status.']);
+        }
+        if ($previewNumbers === false) {
+            return json_encode(['status' => 'failed', 'msg' => 'A prévia das cotas expirou ou não corresponde à quantidade escolhida. Aguarde a atualização automática e tente novamente.']);
         }
 
         $this->conn->begin_transaction();
@@ -1289,9 +1361,9 @@ class Main extends DBConnection
                 throw new RuntimeException('Campanha não encontrada.');
             }
 
-            $numbers = $this->generate_manual_free_numbers($productId, (int) $productInfo['qty_numbers'], $quantity);
-            if (count($numbers) !== $quantity) {
-                throw new RuntimeException('Não existem cotas livres suficientes nesta campanha.');
+            $numbers = $previewNumbers;
+            if (!$this->manual_numbers_are_free($productId, $numbers)) {
+                throw new RuntimeException('Uma das cotas exibidas na prévia acabou de ser utilizada. Aguarde a nova prévia e confirme novamente.');
             }
 
             $code = 'M-' . uniqidReal();
