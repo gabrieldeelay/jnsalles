@@ -45,14 +45,14 @@ while ($customerResult && ($customer = $customerResult->fetch_assoc())) {
                             </select>
                         </div>
                         <div class="manual-order-field full">
-                            <label for="customer_id">Cliente</label>
-                            <select name="customer_id" id="customer_id" required>
-                                <option value="">Selecione pelo nome</option>
+                            <label for="customer_name">Cliente</label>
+                            <input name="customer_name" id="customer_name" type="text" list="customer-suggestions" placeholder="Digite o nome completo do cliente" autocomplete="off" required>
+                            <datalist id="customer-suggestions">
                                 <?php foreach ($customers as $customer): ?>
-                                    <option value="<?php echo (int) $customer['id']; ?>"><?php echo htmlspecialchars(trim($customer['firstname'] . ' ' . $customer['lastname']) . ' — ' . $customer['phone'], ENT_QUOTES, 'UTF-8'); ?></option>
+                                    <option value="<?php echo htmlspecialchars(trim($customer['firstname'] . ' ' . $customer['lastname']), ENT_QUOTES, 'UTF-8'); ?>" label="<?php echo htmlspecialchars($customer['phone'], ENT_QUOTES, 'UTF-8'); ?>"></option>
                                 <?php endforeach; ?>
-                            </select>
-                            <span class="manual-order-hint">O telefone aparece apenas para diferenciar clientes com nomes iguais.</span>
+                            </datalist>
+                            <span class="manual-order-hint">Digite o nome completo. As sugestões servem apenas para ajudar e o campo continua livre.</span>
                         </div>
                     </div>
                 </section>

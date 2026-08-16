@@ -576,6 +576,156 @@ class Customer extends DBConnection
 
         return json_encode($resp);
     }
+
+    public function import_customers()
+    {
+        if (empty($this->settings->userdata('firstname')) || (int) $this->settings->userdata('type') !== 1) {
+            http_response_code(403);
+            return json_encode(['status' => 'failed', 'msg' => 'Não autorizado.']);
+        }
+        $file = $_FILES['customer_file'] ?? null;
+        if (!$file || (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            return json_encode(['status' => 'failed', 'msg' => 'Selecione um arquivo CSV válido.']);
+        }
+        if ((int) ($file['size'] ?? 0) <= 0 || (int) $file['size'] > 3 * 1024 * 1024) {
+            return json_encode(['status' => 'failed', 'msg' => 'O CSV deve ter no máximo 3 MB.']);
+        }
+
+        $contents = file_get_contents($file['tmp_name']);
+        if ($contents === false || trim($contents) === '') {
+            return json_encode(['status' => 'failed', 'msg' => 'O arquivo está vazio ou não pôde ser lido.']);
+        }
+        $contents = preg_replace('/^\xEF\xBB\xBF/', '', $contents);
+        if (function_exists('mb_check_encoding') && !mb_check_encoding($contents, 'UTF-8')) {
+            $contents = mb_convert_encoding($contents, 'UTF-8', 'Windows-1252,ISO-8859-1');
+        }
+        $lines = preg_split('/\r\n|\n|\r/', $contents);
+        $lines = array_values(array_filter($lines, static function ($line) {
+            return trim((string) $line) !== '';
+        }));
+        if (!$lines) {
+            return json_encode(['status' => 'failed', 'msg' => 'O CSV não possui linhas para importar.']);
+        }
+        if (count($lines) > 5001) {
+            return json_encode(['status' => 'failed', 'msg' => 'Importe no máximo 5.000 clientes por arquivo.']);
+        }
+
+        $firstLine = (string) $lines[0];
+        $delimiterCounts = [';' => substr_count($firstLine, ';'), ',' => substr_count($firstLine, ','), "\t" => substr_count($firstLine, "\t")];
+        arsort($delimiterCounts);
+        $delimiter = (string) array_key_first($delimiterCounts);
+        if (($delimiterCounts[$delimiter] ?? 0) === 0) {
+            return json_encode(['status' => 'failed', 'msg' => 'Não foi possível identificar as colunas. Use CSV separado por vírgula ou ponto e vírgula.']);
+        }
+
+        $normalizeHeader = static function ($value) {
+            $value = trim(mb_strtolower((string) $value, 'UTF-8'));
+            $converted = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+            $value = $converted !== false ? $converted : $value;
+            return preg_replace('/[^a-z0-9]+/', '', $value);
+        };
+        $headerAliases = [
+            'name' => ['nome', 'name', 'cliente', 'customer'],
+            'firstname' => ['firstname', 'primeironome'],
+            'lastname' => ['lastname', 'sobrenome'],
+            'phone' => ['telefone', 'phone', 'celular', 'whatsapp'],
+            'email' => ['email', 'emailaddress'],
+            'cpf' => ['cpf', 'documento', 'document'],
+        ];
+        $firstRow = str_getcsv($firstLine, $delimiter);
+        $columnMap = [];
+        foreach ($firstRow as $index => $heading) {
+            $normalized = $normalizeHeader($heading);
+            foreach ($headerAliases as $field => $aliases) {
+                if (in_array($normalized, $aliases, true)) {
+                    $columnMap[$field] = $index;
+                    break;
+                }
+            }
+        }
+        $hasHeader = isset($columnMap['phone']) && (isset($columnMap['name']) || isset($columnMap['firstname']));
+        if (!$hasHeader) {
+            $columnMap = count($firstRow) >= 5 && ctype_digit(trim((string) ($firstRow[0] ?? '')))
+                ? ['name' => 1, 'phone' => 2, 'email' => 3, 'cpf' => 4]
+                : ['name' => 0, 'phone' => 1, 'email' => 2, 'cpf' => 3];
+        }
+
+        $duplicatePhone = $this->conn->prepare('SELECT id FROM customer_list WHERE phone = ? LIMIT 1');
+        $duplicateEmail = $this->conn->prepare("SELECT id FROM customer_list WHERE email = ? AND email <> '' LIMIT 1");
+        $insert = $this->conn->prepare('INSERT INTO customer_list (firstname, lastname, phone, email, cpf, date_created, date_updated) VALUES (?, ?, ?, ?, ?, NOW(), NOW())');
+        if (!$duplicatePhone || !$duplicateEmail || !$insert) {
+            return json_encode(['status' => 'failed', 'msg' => 'Não foi possível preparar a importação no banco de dados.']);
+        }
+
+        $created = 0;
+        $skipped = 0;
+        $errors = [];
+        $startAt = $hasHeader ? 1 : 0;
+        for ($lineIndex = $startAt; $lineIndex < count($lines); $lineIndex++) {
+            $row = str_getcsv((string) $lines[$lineIndex], $delimiter);
+            $get = static function ($field) use ($row, $columnMap) {
+                return isset($columnMap[$field]) ? trim((string) ($row[$columnMap[$field]] ?? '')) : '';
+            };
+            $fullName = $get('name');
+            $firstname = $get('firstname');
+            $lastname = $get('lastname');
+            if ($firstname === '' && $fullName !== '') {
+                $parts = preg_split('/\s+/', $fullName, 2);
+                $firstname = trim((string) ($parts[0] ?? ''));
+                $lastname = trim((string) ($parts[1] ?? ''));
+            }
+            if ($lastname === '') {
+                $lastname = 'Cliente';
+            }
+            $phone = preg_replace('/\D+/', '', $get('phone'));
+            $email = mb_strtolower($get('email'), 'UTF-8');
+            $cpf = preg_replace('/\D+/', '', $get('cpf'));
+            $lineNumber = $lineIndex + 1;
+
+            if ($firstname === '' || strlen($phone) < 8) {
+                $skipped++;
+                if (count($errors) < 5) $errors[] = "Linha {$lineNumber}: nome ou telefone inválido.";
+                continue;
+            }
+            if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $skipped++;
+                if (count($errors) < 5) $errors[] = "Linha {$lineNumber}: e-mail inválido.";
+                continue;
+            }
+            $duplicatePhone->bind_param('s', $phone);
+            $duplicatePhone->execute();
+            if ($duplicatePhone->get_result()->num_rows) {
+                $skipped++;
+                continue;
+            }
+            if ($email !== '') {
+                $duplicateEmail->bind_param('s', $email);
+                $duplicateEmail->execute();
+                if ($duplicateEmail->get_result()->num_rows) {
+                    $skipped++;
+                    continue;
+                }
+            }
+            $insert->bind_param('sssss', $firstname, $lastname, $phone, $email, $cpf);
+            if ($insert->execute()) {
+                $created++;
+            } else {
+                $skipped++;
+                if (count($errors) < 5) $errors[] = "Linha {$lineNumber}: " . $insert->error;
+            }
+        }
+        $duplicatePhone->close();
+        $duplicateEmail->close();
+        $insert->close();
+
+        return json_encode([
+            'status' => 'success',
+            'msg' => $created . ' cliente(s) importado(s) e ' . $skipped . ' linha(s) ignorada(s).',
+            'created' => $created,
+            'skipped' => $skipped,
+            'errors' => $errors,
+        ], JSON_UNESCAPED_UNICODE);
+    }
 }
 
 $users = new Customer();
@@ -599,6 +749,9 @@ switch ($action) {
         break;
     case 'registration':
         echo $users->registration();
+        break;
+    case 'import_customers':
+        echo $users->import_customers();
         break;
     default:
         break;

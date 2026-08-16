@@ -380,6 +380,9 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
     #campaign-save-feedback.info { background: #6d28d9; }
     .campaign-editor-shell{max-width:1180px;padding-bottom:52px}.campaign-editor-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:28px 0 20px}.campaign-editor-heading h2{margin:0;color:#f8fafc;font-size:28px;font-weight:780;letter-spacing:-.03em}.campaign-editor-eyebrow{margin:0 0 4px;color:#a78bfa;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.campaign-editor-subtitle{margin:6px 0 0;color:#94a3b8;font-size:13px}.campaign-editor-new{display:inline-flex;min-height:40px;align-items:center;padding:0 14px;border:1px solid #6d5ca5;border-radius:10px;background:rgba(109,40,217,.2);color:#ede9fe;font-size:13px;font-weight:750}.campaign-editor-card{overflow:hidden;padding:0!important;border:1px solid #2d3748;border-radius:17px!important;background:linear-gradient(145deg,rgba(30,41,59,.72),rgba(17,24,39,.96))!important;box-shadow:0 20px 55px rgba(0,0,0,.2)!important}.campaign-tabs-wrap{overflow-x:auto;padding:14px 16px 0;border-bottom:1px solid #2d3748;background:rgba(15,23,42,.42)}#tabs{gap:7px;min-width:max-content}#tabs li{margin:0!important}#tabs a{border:1px solid transparent!important;border-radius:9px 9px 0 0!important;background:transparent!important;color:#94a3b8!important;font-size:12px!important;transition:.18s}#tabs a:hover{background:#202838!important;color:#e2e8f0!important}#tabs a.active-tab{border-color:#3f4d63!important;border-bottom-color:#171d28!important;background:#171d28!important;color:#fff!important}.campaign-editor-card form{padding:20px 22px 22px}.campaign-editor-card .tabcontent{padding:3px 2px 8px}.campaign-editor-card input.form-input,.campaign-editor-card select.form-select,.campaign-editor-card textarea.form-textarea{min-height:44px!important;border:1px solid #3f4d63!important;border-radius:9px!important;background:#111827!important;color:#f8fafc!important;box-shadow:none!important}.campaign-editor-card input.form-input:focus,.campaign-editor-card select.form-select:focus,.campaign-editor-card textarea.form-textarea:focus{border-color:#8b5cf6!important;box-shadow:0 0 0 3px rgba(139,92,246,.15)!important}.campaign-editor-card label>span{font-size:12px!important;font-weight:650}.campaign-editor-card .shadow-xs{border:1px solid #303a4b!important;border-radius:11px!important;background:rgba(17,24,39,.7)!important;box-shadow:none!important}.campaign-quantity-note{display:block;margin-top:6px;color:#6ee7b7;font-size:11px}.campaign-save-row{display:flex;align-items:center;justify-content:flex-end;margin-top:22px;padding-top:18px;border-top:1px solid #2d3748}.campaign-save-row #save-product-button{min-width:170px;border-radius:10px!important;background:linear-gradient(135deg,#8b5cf6,#7c3aed)!important;box-shadow:0 9px 22px rgba(124,58,237,.22)}@media(max-width:700px){.campaign-editor-heading{align-items:flex-start;flex-direction:column}.campaign-editor-new{width:100%;justify-content:center}.campaign-editor-card form{padding:16px}.campaign-save-row #save-product-button{width:100%}}
 </style>
+<style>
+.campaign-editor-card [aria-invalid="true"]{border-color:#ef4444!important;box-shadow:0 0 0 3px rgba(239,68,68,.16)!important}#campaign-save-feedback{max-width:100%;overflow-wrap:anywhere}@media(max-width:760px){.campaign-tabs-wrap{-webkit-overflow-scrolling:touch}.campaign-editor-card .grid{grid-template-columns:1fr!important}.campaign-editor-card .col-span-2{grid-column:auto!important}.campaign-editor-card input,.campaign-editor-card select,.campaign-editor-card textarea{max-width:100%}.imagens-campanha{display:grid!important;grid-template-columns:1fr!important}.image-container__box{max-width:100%}}
+</style>
 
 <main class="h-full pb-16 overflow-y-auto">
     <div class="container px-6 mx-auto campaign-editor-shell">
@@ -1940,13 +1943,43 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
             return data;
         }
 
+        function showCampaignFieldError(fieldId, message, tabId) {
+            var target = $('#' + fieldId);
+            var tab = tabId || (target.closest('.tabcontent').attr('id')) || 'tab1';
+            $('#tabs a').removeClass('active-tab');
+            $('#tabs a[href="#' + tab + '"]').addClass('active-tab');
+            $('.tabcontent').hide();
+            $('#' + tab).show();
+            showCampaignFeedback('error', message);
+            if (target.length) {
+                target.attr('aria-invalid', 'true').focus();
+                target.one('input change', function () { $(this).removeAttr('aria-invalid'); });
+            }
+        }
+
+        function validateCampaignForm() {
+            var title = $.trim($('#name').val());
+            if (!title) {
+                showCampaignFieldError('name', 'Informe o título da campanha.', 'tab1');
+                return false;
+            }
+            var totalNumbers = parseInt($('#qty_numbers').val(), 10);
+            if (!Number.isInteger(totalNumbers) || totalNumbers < 10 || totalNumbers > 10000000) {
+                showCampaignFieldError('qty_numbers', 'Informe uma quantidade total entre 10 e 10.000.000 de cotas.', 'tab1');
+                return false;
+            }
+            var priceValue = String($('#price').val() || '').replace(/\./g, '').replace(',', '.');
+            if (!(parseFloat(priceValue) > 0)) {
+                showCampaignFieldError('price', 'Informe um valor por cota maior que zero.', 'tab1');
+                return false;
+            }
+            return true;
+        }
+
         $('#product-form').submit(async function(e) {
             e.preventDefault();
             $('.err-msg').remove();
-            var totalNumbers = parseInt($('#qty_numbers').val(), 10);
-            if (!Number.isInteger(totalNumbers) || totalNumbers < 10 || totalNumbers > 10000000) {
-                showCampaignFeedback('error', 'Informe uma quantidade total entre 10 e 10.000.000 de cotas.');
-                $('#qty_numbers').focus();
+            if (!validateCampaignForm()) {
                 return;
             }
             var form = this;
@@ -1976,6 +2009,8 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
                             message = err.responseJSON.msg;
                         } else if (err.status === 0) {
                             message = 'A conexão foi interrompida durante o salvamento. Verifique a internet e tente novamente.';
+                        } else if (err.status === 500) {
+                            message = 'O servidor encontrou um erro ao salvar. Revise os campos destacados e tente novamente.';
                         }
                         console.error('[campaign-save]', { status: err.status, response: err.responseText });
                         showCampaignFeedback('error', message);
@@ -1991,7 +2026,12 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
                                 location.replace('./?page=products/manage_product&id=' + resp.pid);
                             }, 900);
                         } else {
-                            showCampaignFeedback('error', (resp && resp.msg) ? resp.msg : 'O servidor não confirmou o salvamento da campanha.');
+                            var responseMessage = (resp && resp.msg) ? resp.msg : 'O servidor não confirmou o salvamento da campanha.';
+                            if (resp && resp.field) {
+                                showCampaignFieldError(resp.field, responseMessage, resp.tab);
+                            } else {
+                                showCampaignFeedback('error', responseMessage);
+                            }
                         }
                     },
                     complete: function() {

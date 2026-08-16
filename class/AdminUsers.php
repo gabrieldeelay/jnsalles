@@ -24,8 +24,8 @@ if ($action === 'password') {
     $newPassword = (string) ($_POST['new_password'] ?? '');
     $confirmation = (string) ($_POST['password_confirmation'] ?? '');
 
-    if ($currentPassword === '' || strlen($newPassword) < 8) {
-        admin_users_reply('failed', 'Informe a senha atual e uma nova senha com pelo menos 8 caracteres.');
+    if ($currentPassword === '' || $newPassword === '') {
+        admin_users_reply('failed', 'Informe a senha atual e a nova senha.');
     }
     if (!hash_equals($newPassword, $confirmation)) {
         admin_users_reply('failed', 'A confirmação da nova senha não confere.');
@@ -39,10 +39,6 @@ if ($action === 'password') {
     if (!$account || !jnsalles_admin_password_verify($currentPassword, $account['password'])) {
         admin_users_reply('failed', 'A senha atual está incorreta.');
     }
-    if (jnsalles_admin_password_verify($newPassword, $account['password'])) {
-        admin_users_reply('failed', 'A nova senha deve ser diferente da senha atual.');
-    }
-
     $hash = jnsalles_admin_password_hash($newPassword);
     $statement = $conn->prepare('UPDATE users SET password = ? WHERE id = ? AND type = 1');
     $statement->bind_param('si', $hash, $currentId);
@@ -61,8 +57,8 @@ if ($action === 'save') {
     if (mb_strlen($name) < 2 || !preg_match('/^[A-Za-z0-9._-]{3,40}$/', $username)) {
         admin_users_reply('failed', 'Informe um nome e um usuário com pelo menos 3 caracteres.');
     }
-    if (($id === 0 || $password !== '') && strlen($password) < 8) {
-        admin_users_reply('failed', 'A senha deve ter pelo menos 8 caracteres.');
+    if ($id === 0 && $password === '') {
+        admin_users_reply('failed', 'Informe uma senha para o novo administrador.');
     }
 
     $duplicate = $conn->prepare('SELECT id FROM users WHERE username = ? AND id <> ? LIMIT 1');

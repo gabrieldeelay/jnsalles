@@ -77,20 +77,20 @@ function admin_icon($name)
         <div class="admins-card__body">
           <form id="current-password-form" class="admins-form-grid" autocomplete="off">
             <div class="admins-field full"><label>Senha atual</label><div class="admins-input-wrap"><input class="admins-input" name="current_password" type="password" required autocomplete="current-password"><button class="admins-show-password" type="button" aria-label="Mostrar senha"><?= admin_icon('eye') ?></button></div></div>
-            <div class="admins-field"><label>Nova senha</label><div class="admins-input-wrap"><input class="admins-input" name="new_password" type="password" minlength="8" required autocomplete="new-password"><button class="admins-show-password" type="button" aria-label="Mostrar senha"><?= admin_icon('eye') ?></button></div></div>
-            <div class="admins-field"><label>Confirmar nova senha</label><div class="admins-input-wrap"><input class="admins-input" name="password_confirmation" type="password" minlength="8" required autocomplete="new-password"><button class="admins-show-password" type="button" aria-label="Mostrar senha"><?= admin_icon('eye') ?></button></div></div>
+            <div class="admins-field"><label>Nova senha</label><div class="admins-input-wrap"><input class="admins-input" name="new_password" type="password" required autocomplete="new-password"><button class="admins-show-password" type="button" aria-label="Mostrar senha"><?= admin_icon('eye') ?></button></div></div>
+            <div class="admins-field"><label>Confirmar nova senha</label><div class="admins-input-wrap"><input class="admins-input" name="password_confirmation" type="password" required autocomplete="new-password"><button class="admins-show-password" type="button" aria-label="Mostrar senha"><?= admin_icon('eye') ?></button></div></div>
             <button class="admins-submit full" type="submit"><?= admin_icon('lock') ?> Atualizar minha senha</button>
           </form>
         </div>
       </section>
 
       <section class="admins-card">
-        <header class="admins-card__head"><span class="admins-card__icon"><?= admin_icon('user-plus') ?></span><div><h3>Novo administrador</h3><p>Crie um acesso individual. Use pelo menos 8 caracteres na senha.</p></div></header>
+        <header class="admins-card__head"><span class="admins-card__icon"><?= admin_icon('user-plus') ?></span><div><h3>Novo administrador</h3><p>Crie um acesso individual com o usuário e a senha desejados.</p></div></header>
         <div class="admins-card__body">
           <form class="admin-account-form admins-form-grid" data-id="0" autocomplete="off">
             <div class="admins-field full"><label>Nome completo</label><input class="admins-input" name="name" required minlength="2" placeholder="Nome do administrador"></div>
             <div class="admins-field"><label>Usuário</label><input class="admins-input" name="username" required minlength="3" maxlength="40" placeholder="usuario.admin"></div>
-            <div class="admins-field"><label>Senha</label><div class="admins-input-wrap"><input class="admins-input" name="password" required minlength="8" type="password" autocomplete="new-password"><button class="admins-show-password" type="button" aria-label="Mostrar senha"><?= admin_icon('eye') ?></button></div></div>
+            <div class="admins-field"><label>Senha</label><div class="admins-input-wrap"><input class="admins-input" name="password" required type="password" autocomplete="new-password"><button class="admins-show-password" type="button" aria-label="Mostrar senha"><?= admin_icon('eye') ?></button></div></div>
             <button class="admins-submit full" type="submit"><?= admin_icon('plus') ?> Criar administrador</button>
           </form>
         </div>
@@ -117,7 +117,7 @@ function admin_icon($name)
             <form class="admin-account-form admin-edit-form admins-form-grid" data-id="<?= $adminId ?>" autocomplete="off">
               <div class="admins-field"><label>Nome completo</label><input class="admins-input" name="name" required minlength="2" value="<?= htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8') ?>"></div>
               <div class="admins-field"><label>Usuário</label><input class="admins-input" name="username" required minlength="3" maxlength="40" value="<?= htmlspecialchars($admin['username'], ENT_QUOTES, 'UTF-8') ?>"></div>
-              <div class="admins-field full"><label>Nova senha <small>(deixe vazio para manter)</small></label><div class="admins-input-wrap"><input class="admins-input" name="password" minlength="8" type="password" autocomplete="new-password"><button class="admins-show-password" type="button" aria-label="Mostrar senha"><?= admin_icon('eye') ?></button></div></div>
+              <div class="admins-field full"><label>Nova senha <small>(deixe vazio para manter)</small></label><div class="admins-input-wrap"><input class="admins-input" name="password" type="password" autocomplete="new-password"><button class="admins-show-password" type="button" aria-label="Mostrar senha"><?= admin_icon('eye') ?></button></div></div>
               <div class="admin-edit-actions"><button class="admins-submit" type="submit"><?= admin_icon('check') ?> Salvar alterações</button><button class="admin-cancel" type="button">Cancelar</button></div>
             </form>
           </article>

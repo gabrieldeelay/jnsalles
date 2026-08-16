@@ -233,6 +233,36 @@ class Main extends DBConnection
             return json_encode(['status' => 'failed', 'msg' => 'Não autorizado.']);
         }
 
+        $postDefaults = [
+            'id' => '', 'name' => '', 'description' => '', 'type_of_draw' => '1',
+            'qty_numbers' => '', 'price' => '', 'limit_orders' => '0', 'min_purchase' => '1',
+            'max_purchase' => '0', 'status' => '1', 'discount_qty' => [], 'discount_amount' => [],
+            'roleta_qty' => [], 'roleta_amount' => [], 'box_qty' => [], 'box_amount' => [],
+            'draw_name' => [], 'draw_number' => [], 'double_ini' => '', 'double_fim' => '',
+            'qtd_upsell' => '', 'desconto_upsell' => '', 'ranking_qty' => '0',
+            'ranking_message' => '', 'ranking_ini' => '', 'ranking_fim' => '', 'ranking_type' => '1',
+            'enable_progress_bar_fake_value' => '0', 'status_display' => '1', 'subtitle' => '',
+            'cotas_premiadas' => '', 'cotas_premiadas_descricao' => '',
+            'cotas_premiadas_roleta' => '', 'cotas_premiadas_descricao_roleta' => '',
+            'cotas_premiadas_box' => '', 'cotas_premiadas_descricao_box' => '',
+            'date_of_draw' => '', 'limit_order_remove' => '0', 'qty_select_1' => '10',
+            'qty_select_2' => '20', 'qty_select_3' => '50', 'qty_select_4' => '100',
+            'qty_select_5' => '200', 'qty_select_6' => '300', 'cota_diaria_ini' => '',
+            'cota_diaria_fim' => '', 'probabilidade' => '0', 'tipo_auto_cota' => '',
+            'tipo_auto_cota_roleta' => '', 'tipo_auto_cota_box' => '',
+            'cotas_premiadas_premios' => '', 'cotas_premiadas_premios_roleta' => '',
+            'cotas_premiadas_premios_box' => '', 'cota_sorte_ini' => '', 'cota_sorte_fim' => '',
+            'cota_sorte' => '', 'quantidade_compra_sorte' => '', 'valor_base_auto' => '0',
+        ];
+        $_POST = array_replace($postDefaults, $_POST);
+
+        if (trim((string) $_POST['name']) === '') {
+            return json_encode(['status' => 'failed', 'field' => 'name', 'tab' => 'tab1', 'msg' => 'Informe o título da campanha.']);
+        }
+        if (!in_array((string) $_POST['type_of_draw'], ['1', '2', '3', '4'], true)) {
+            return json_encode(['status' => 'failed', 'field' => 'type_of_draw', 'tab' => 'tab1', 'msg' => 'Selecione um tipo de campanha válido.']);
+        }
+
         $id = $_POST["id"];
         $name = $this->conn->real_escape_string(
             filter_var($_POST["name"], FILTER_SANITIZE_SPECIAL_CHARS)
@@ -261,6 +291,9 @@ class Main extends DBConnection
         $price = str_replace(".", "", $price);
         $price = str_replace(",", ".", $price);
         $price = (float) $price;
+        if ($price <= 0) {
+            return json_encode(['status' => 'failed', 'field' => 'price', 'tab' => 'tab1', 'msg' => 'Informe um valor por cota maior que zero.']);
+        }
         $limit_orders = $this->conn->real_escape_string($_POST["limit_orders"]);
         $min_purchase = $this->conn->real_escape_string($_POST["min_purchase"]);
         $max_purchase = $this->conn->real_escape_string($_POST["max_purchase"]);
@@ -938,11 +971,10 @@ class Main extends DBConnection
             }
         } else {
             $resp["status"] = "failed";
-            $resp["err"] = $this->conn->error . ("[" . $sql . "]");
+            $resp["msg"] = 'Não foi possível salvar a campanha: ' . $this->conn->error;
+            error_log('[campaign] database save failed: ' . $this->conn->error);
         }
-        if ($resp["status"] == "success" && isset($resp["msg"])) {
-            return json_encode($resp);
-        }
+        return json_encode($resp);
     }
 
     public function delete_product()
@@ -1126,10 +1158,28 @@ class Main extends DBConnection
 
         $productId = (int) ($_POST['raffle'] ?? 0);
         $customerId = (int) ($_POST['customer_id'] ?? 0);
+        $customerName = trim((string) ($_POST['customer_name'] ?? ''));
         $quantity = (int) ($_POST['quantidade'] ?? 0);
         $status = (int) ($_POST['status'] ?? 0);
-        if ($productId <= 0 || $customerId <= 0 || $quantity <= 0 || $quantity > 50000 || !in_array($status, [1, 2], true)) {
+        if ($productId <= 0 || ($customerId <= 0 && $customerName === '') || $quantity <= 0 || $quantity > 50000 || !in_array($status, [1, 2], true)) {
             return json_encode(['status' => 'failed', 'msg' => 'Preencha corretamente a campanha, o cliente, a quantidade e o status.']);
+        }
+
+        if ($customerId <= 0) {
+            $customerLookup = $this->conn->prepare("SELECT id FROM customer_list WHERE TRIM(CONCAT(firstname, ' ', lastname)) = ? ORDER BY id ASC LIMIT 2");
+            $customerLookup->bind_param('s', $customerName);
+            $customerLookup->execute();
+            $matches = $customerLookup->get_result();
+            if ($matches->num_rows === 0) {
+                $customerLookup->close();
+                return json_encode(['status' => 'failed', 'msg' => 'Nenhum cliente foi encontrado com esse nome completo.']);
+            }
+            if ($matches->num_rows > 1) {
+                $customerLookup->close();
+                return json_encode(['status' => 'failed', 'msg' => 'Existem clientes com o mesmo nome. Edite um dos cadastros para diferenciá-los antes de criar o pedido.']);
+            }
+            $customerId = (int) $matches->fetch_assoc()['id'];
+            $customerLookup->close();
         }
 
         $customer = $this->conn->prepare('SELECT id FROM customer_list WHERE id = ? LIMIT 1');
