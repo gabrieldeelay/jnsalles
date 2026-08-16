@@ -1,6 +1,9 @@
 <?php
 require_once "../settings.php";
-require_once "../vendor/autoload.php";
+$composerAutoload = dirname(__DIR__) . '/vendor/autoload.php';
+if (is_file($composerAutoload)) {
+    require_once $composerAutoload;
+}
 
 use Dompdf\Dompdf;
 
@@ -195,9 +198,6 @@ class Main extends DBConnection
                 'width' => $targetSize,
                 'height' => $targetSize,
             ]);
-            imagedestroy($source);
-            imagedestroy($resized);
-
             if (!$cropped) {
                 return ['ok' => false, 'message' => 'Não foi possível ajustar a imagem para o formato da campanha.'];
             }
@@ -205,7 +205,6 @@ class Main extends DBConnection
             ob_start();
             $saved = imagejpeg($cropped, null, 88);
             $imageBytes = ob_get_clean();
-            imagedestroy($cropped);
 
             if (!$saved || !is_string($imageBytes) || $imageBytes === '') {
                 return ['ok' => false, 'message' => 'Não foi possível salvar a nova imagem da campanha.'];
@@ -5837,6 +5836,12 @@ if ($min_cotas_purchased > 0) {
 
     public function generate_pdf()
     {
+        if (!class_exists(Dompdf::class)) {
+            http_response_code(503);
+            echo 'A geração de PDF não está disponível neste servidor.';
+            return;
+        }
+
         $id = $_GET['id'];
 
 

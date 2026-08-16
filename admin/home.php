@@ -7,6 +7,7 @@ $rafflec = isset($_GET['rafflec']) ? $_GET['rafflec'] : '';
 $raffled = isset($_GET['raffled']) ? $_GET['raffled'] : '';
 $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : '';
 $end_date = isset($_GET['end_date']) ? $_GET['end_date'] : '';
+$valor_minimo = isset($_GET['valor_minimo']) ? $_GET['valor_minimo'] : '';
 $where = '';
 $search_type = isset($_GET['search_type']) ? $_GET['search_type'] : '';
 
@@ -120,7 +121,7 @@ if (!empty($start_date) && !empty($end_date)) {
 </style>
 
 <style>
-body main.h-full>.container{display:block!important;max-width:1280px;padding:30px 24px 56px}body main.h-full>.container>p:first-of-type{margin:0 0 5px!important;color:#a78bfa!important;font-size:12px!important;font-weight:750!important;letter-spacing:.04em}body main.h-full>.container>h2{margin:0 0 22px!important;color:#f8fafc!important;font-size:30px!important;font-weight:800!important;letter-spacing:-.035em}.dashboard-section-title{color:#f8fafc}.grid.gap-6.mb-8{gap:14px!important;margin-bottom:18px!important}.grid.gap-6.mb-8>div{min-width:0!important;max-width:100%;overflow:hidden}.grid.gap-6.mb-8>.bg-white,.grid.gap-6.mb-8>.dark\:bg-gray-800,.grid.gap-6.mb-8>.items-center{min-width:0!important;padding:18px!important;border:1px solid #2d3748!important;border-radius:15px!important;background:linear-gradient(145deg,rgba(30,41,59,.76),rgba(17,24,39,.96))!important;box-shadow:0 16px 38px rgba(0,0,0,.14)!important}.grid.gap-6.mb-8 table{width:100%!important;min-width:0!important;table-layout:auto}.grid.gap-6.mb-8 th,.grid.gap-6.mb-8 td{min-width:0;overflow-wrap:anywhere}.grid.gap-6.mb-8 thead{font-size:11px}.grid.gap-6.mb-8 input,.grid.gap-6.mb-8 select{min-width:0;min-height:42px!important;border:1px solid #3f4d63!important;border-radius:9px!important;background:#0f172a!important;color:#f8fafc!important;box-shadow:none!important}.grid.gap-6.mb-8 button{border-radius:9px!important}.w-full.overflow-hidden.rounded-lg{border:1px solid #2d3748!important;border-radius:14px!important;background:#151b27!important;box-shadow:none!important}.w-full.overflow-x-auto{max-width:100%;overflow-x:auto!important}.container>.w-full table.w-full{min-width:680px}.span-whats{gap:8px;flex-wrap:wrap}.span-whats>a,.span-whats>button{width:auto;min-width:150px;flex:1}.results-container{max-width:100%;overflow-wrap:anywhere}@media(max-width:760px){body main.h-full>.container{padding:22px 14px 44px}body main.h-full>.container>h2{font-size:24px!important}.grid.gap-6.mb-8{grid-template-columns:1fr!important}.grid.gap-6.mb-8 table:not(.w-full),.grid.gap-6.mb-8 tbody,.grid.gap-6.mb-8 tr,.grid.gap-6.mb-8 td{display:block;width:100%!important}.grid.gap-6.mb-8 td[style*="width"]{width:100%!important}.grid.gap-6.mb-8 td+td{margin-top:8px}.span-whats>a,.span-whats>button{width:100%}.flex-container{flex-direction:column}.flex-container>*{width:100%!important}}
+body main.h-full>.container{display:block!important;width:100%;max-width:1280px!important;padding:30px 24px 56px}body main.h-full>.container>p:first-of-type{margin:0 0 5px!important;color:#a78bfa!important;font-size:12px!important;font-weight:750!important;letter-spacing:.04em}body main.h-full>.container>h2{margin:0 0 22px!important;color:#f8fafc!important;font-size:30px!important;font-weight:800!important;letter-spacing:-.035em}.dashboard-section-title{color:#f8fafc}.grid.gap-6.mb-8{gap:16px!important;margin-bottom:18px!important}.grid.gap-6.mb-8>div{min-width:0!important;max-width:100%}.grid.gap-6.mb-8>.bg-white,.grid.gap-6.mb-8>.dark\:bg-gray-800,.grid.gap-6.mb-8>.items-center{min-width:0!important;padding:18px!important;overflow:hidden;border:1px solid #2d3748!important;border-radius:15px!important;background:linear-gradient(145deg,rgba(30,41,59,.76),rgba(17,24,39,.96))!important;box-shadow:0 16px 38px rgba(0,0,0,.14)!important}.grid.gap-6.mb-8 form{max-width:100%}.grid.gap-6.mb-8 form>table{table-layout:auto!important}.grid.gap-6.mb-8 table{width:100%!important;min-width:0!important}.grid.gap-6.mb-8 th,.grid.gap-6.mb-8 td{min-width:0;overflow-wrap:anywhere}.grid.gap-6.mb-8 thead{font-size:11px}.grid.gap-6.mb-8 input,.grid.gap-6.mb-8 select{width:100%!important;min-width:0;min-height:42px!important;border:1px solid #3f4d63!important;border-radius:9px!important;background:#0f172a!important;color:#f8fafc!important;box-shadow:none!important}.grid.gap-6.mb-8 button{min-width:max-content;height:42px;border-radius:9px!important;white-space:nowrap}.dashboard-ranking-form>table>tbody>tr:last-child{display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,150px) auto;gap:10px;align-items:center}.dashboard-ranking-form>table>tbody>tr:last-child>td{width:auto!important}.dashboard-ranking-form>table>tbody>tr:last-child>td:nth-child(3){display:none}.dashboard-prize-form>table>tbody>tr:last-child{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}.dashboard-prize-form>table>tbody>tr:last-child>td{width:auto!important}.dashboard-prize-form>table>tbody>tr:last-child>td:nth-child(2){display:none}.dashboard-legacy-removed{display:none!important}.w-full.overflow-hidden.rounded-lg{border:1px solid #2d3748!important;border-radius:14px!important;background:#151b27!important;box-shadow:none!important}.w-full.overflow-x-auto{max-width:100%;overflow-x:auto!important}.container>.w-full table.w-full{min-width:680px}.span-whats{gap:8px;flex-wrap:wrap}.span-whats>a,.span-whats>button{width:auto;min-width:150px;flex:1}.results-container{max-width:100%;overflow-wrap:anywhere}@media(max-width:760px){body main.h-full>.container{padding:22px 14px 44px}body main.h-full>.container>h2{font-size:24px!important}.grid.gap-6.mb-8{grid-template-columns:1fr!important}.grid.gap-6.mb-8 table:not(.w-full),.grid.gap-6.mb-8 tbody,.grid.gap-6.mb-8 tr,.grid.gap-6.mb-8 td{display:block;width:100%!important}.grid.gap-6.mb-8 td[style*="width"]{width:100%!important}.grid.gap-6.mb-8 td+td{margin-top:8px}.grid.gap-6.mb-8 button{width:100%;min-width:0}.dashboard-ranking-form>table>tbody>tr:last-child,.dashboard-prize-form>table>tbody>tr:last-child{display:grid!important;grid-template-columns:1fr}.dashboard-ranking-form>table>tbody>tr:last-child>td:nth-child(3),.dashboard-prize-form>table>tbody>tr:last-child>td:nth-child(2){display:none!important}.span-whats>a,.span-whats>button{width:100%}.flex-container{flex-direction:column}.flex-container>*{width:100%!important}}
 </style>
 
 <div id="overlay" style="display: none;">
@@ -264,7 +265,7 @@ body main.h-full>.container{display:block!important;max-width:1280px;padding:30p
                     </div>
                 </div>
             </div>
-            <div class="items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800"
+            <div class="items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800 dashboard-card"
                 style="display: flex; align-items: flex-start;">
 
                 <div class="w-full">
@@ -280,7 +281,7 @@ body main.h-full>.container{display:block!important;max-width:1280px;padding:30p
                         </i>
                         RANKING DE COMPRADORES
                     </p>
-                    <form action="" id="filter-form">
+                    <form action="" id="filter-form" class="dashboard-ranking-form">
 
                         <table style="width: 100%">
                             <tbody>
@@ -473,7 +474,7 @@ if ($raffle && $top) {
                     </div>
                 </div>
             </div>
-            <div class="items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800"
+            <div class="items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800 dashboard-card"
                 style="display: flex; align-items: flex-start;">
 
                 <div class="w-full">
@@ -485,7 +486,7 @@ if ($raffle && $top) {
 </svg>
                         </i>COTAS PREMIADAS
                     </p>
-                    <form action="" id="filter-form">
+                    <form action="" id="filter-form" class="dashboard-prize-form">
 
                         <table>
                             <tbody>
@@ -658,7 +659,7 @@ if ($raffle && $top) {
 
                 </div>
             </div>
- <div class="flex items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800" style="display: flex; align-items: flex-start;">
+ <div class="flex items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800 dashboard-card" style="display: flex; align-items: flex-start;">
                 <div>
                     <p class="mb-2 text-sm font-semibold text-gray-600 dark:text-gray-400">
                         <i style="display: inline-flex" class="far fa-clock  p-3 mr-3 text-green-700 bg-green-100 rounded-full text-lg"></i>
@@ -780,7 +781,7 @@ if ($raffle && $top) {
                 </div>
 
             </div>
-            <div class="flex items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800"
+            <div class="flex items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800 dashboard-card"
                 style="display: flex; align-items: flex-start;">
 
                 <div>
@@ -903,7 +904,7 @@ if ($raffle && $top) {
             </div>
 
 
-            <div class="items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800"
+            <div class="items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800 dashboard-legacy-removed"
                 style="display: flex; align-items: flex-start;">
 
                 <div class="w-full">
@@ -1091,7 +1092,7 @@ if ($raffle && $top) {
                 <!-- Busca Ganhador x Ranking -->
 
             </div>
-            <div class="items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800"
+            <div class="items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800 dashboard-legacy-removed"
                 style="display: flex; align-items: flex-start;">
 
                 <div class="w-full">

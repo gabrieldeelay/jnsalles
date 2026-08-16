@@ -9,6 +9,23 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
         }
     }
 }
+
+// A tela de nova campanha usa os mesmos campos da edição. Inicializar os
+// valores opcionais evita avisos e mantém o formulário previsível no PHP 8+.
+$campaignFormDefaults = [
+    'double_ini' => '',
+    'double_fim' => '',
+    'qtd_upsell' => '',
+    'desconto_upsell' => '',
+    'probabilidade' => 0,
+    'quantidade_compra_sorte' => 0,
+];
+foreach ($campaignFormDefaults as $field => $defaultValue) {
+    if (!isset($$field)) {
+        $$field = $defaultValue;
+    }
+}
+$winner = ['name' => '', 'number' => ''];
 ?>
 
 <style>

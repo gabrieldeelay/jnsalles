@@ -444,10 +444,12 @@ if ($product_id) {
     .aprovar {
         margin-top: 4px
     }
+
+    .orders-shell{display:block!important;width:100%;max-width:1280px;padding:30px 24px 56px}.orders-heading{display:flex;align-items:center;gap:12px;margin:0 0 22px!important;color:#f8fafc!important;font-size:28px!important;font-weight:800!important;letter-spacing:-.03em}.orders-heading #create_new button{min-height:40px;border-radius:10px!important}.orders-filter{margin-bottom:14px!important;padding:16px;border:1px solid #2d3748;border-radius:14px;background:linear-gradient(145deg,rgba(30,41,59,.72),rgba(17,24,39,.96))}.orders-filter input,.orders-filter select{min-height:42px!important;margin-top:0!important;border:1px solid #3f4d63!important;border-radius:9px!important;background:#111827!important;color:#f8fafc!important;box-shadow:none!important}.orders-filter input:focus,.orders-filter select:focus{border-color:#8b5cf6!important;box-shadow:0 0 0 3px rgba(139,92,246,.14)!important}.orders-table-card{overflow:hidden;border:1px solid #2d3748!important;border-radius:14px!important;background:#151b27!important;box-shadow:0 16px 38px rgba(0,0,0,.14)!important}.orders-empty{height:150px;padding:28px!important;color:#94a3b8!important;font-size:14px;font-weight:600;vertical-align:middle!important}.orders-empty:before{display:block;margin:0 auto 9px;content:'⌕';color:#8b5cf6;font-size:32px;line-height:1}.orders-pagination{min-height:50px}@media(max-width:700px){.orders-shell{padding:22px 14px 44px}.orders-heading{align-items:flex-start;flex-direction:column;font-size:24px!important}.orders-heading #create_new,.orders-heading #create_new button{width:100%}.orders-filter{padding:13px}}
 </style>
 <main class="h-full pb-16 overflow-y-auto">
-    <div class="container grid px-6 mx-auto">
-        <h2 class="my-6 text-2xl font-semibold text-gray-700 dark:text-gray-200">
+    <div class="container grid px-6 mx-auto orders-shell">
+        <h2 class="my-6 text-2xl font-semibold text-gray-700 dark:text-gray-200 orders-heading">
             Pedidos
             <a href="./?page=orders/create_order" id="create_new">
                 <button
@@ -456,7 +458,7 @@ if ($product_id) {
                 </button>
             </a>
         </h2>
-        <form action="?page=orders&" id="filter-form" style="margin-bottom:10px" method="GET">
+        <form action="?page=orders&" id="filter-form" class="orders-filter" method="GET">
             <div class="flex filtro-busca">
                 <input type="hidden" name="page" value="orders">
                 <select name="product_id" id="product_id"
@@ -519,7 +521,7 @@ if ($product_id) {
         
         ?>
 
-        <div class="w-full overflow-hidden rounded-lg shadow-xs">
+        <div class="w-full overflow-hidden rounded-lg shadow-xs orders-table-card">
             <div class="w-full overflow-x-auto">
 
                 <table class="w-full whitespace-no-wrap">
@@ -783,7 +785,7 @@ if ($product_id) {
 
                         <?php if ($records == 0) : ?>
                         <tr>
-                            <td class="text-center" colspan="12">Nenhum pedido encontrado</td>
+                            <td class="text-center orders-empty" colspan="12">Nenhum pedido encontrado para os filtros selecionados.</td>
                         </tr>
                         <?php endif; ?>
                     </tbody>
@@ -791,7 +793,7 @@ if ($product_id) {
             </div>
 
             <div
-                class="grid px-4 py-3 text-xs font-semibold tracking-wide text-gray-500 uppercase border-t dark:border-gray-700 bg-gray-50 sm:grid-cols-9 dark:text-gray-400 dark:bg-gray-800">
+                class="orders-pagination grid px-4 py-3 text-xs font-semibold tracking-wide text-gray-500 uppercase border-t dark:border-gray-700 bg-gray-50 sm:grid-cols-9 dark:text-gray-400 dark:bg-gray-800">
                 <span class="flex items-center col-span-3"></span>
                 <span class="col-span-2"></span>
 

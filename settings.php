@@ -1612,7 +1612,9 @@ function correct_stock($id)
 ob_start();
 ini_set('date.timezone', 'America/Sao_Paulo');
 date_default_timezone_set('America/Sao_Paulo');
-session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
 require_once 'initialize.php';
 require_once 'class/Connection.php';
 require_once 'class/System.php';

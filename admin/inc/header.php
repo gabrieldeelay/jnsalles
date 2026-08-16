@@ -7,6 +7,10 @@ echo '<!DOCTYPE html>' . "\r\n" . '<html :class="{ \'theme-dark\': dark }" x-dat
 $pageTitle = isset($_GET['page']) ? $_GET['page'] : '';
 $siteName = $_settings->info('name');
 $adminLogo = validate_image($_settings->info('logo'));
+$user_name = trim((string) $_settings->userdata('firstname') . ' ' . (string) $_settings->userdata('lastname'));
+if ($user_name === '') {
+    $user_name = (string) $_settings->userdata('username');
+}
 
 switch ($pageTitle) {
     case 'products':
