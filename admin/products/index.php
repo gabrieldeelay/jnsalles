@@ -184,7 +184,7 @@
 			color: #fff;
 		}
 
-		.campaign-actions{display:flex;min-width:320px;align-items:center;gap:7px;flex-wrap:wrap}.campaign-actions>a{margin:0!important}.campaign-actions button{display:inline-flex!important;min-height:38px;align-items:center;justify-content:center;border:1px solid #354158!important;border-radius:9px!important;background:#151c29!important;color:#cbd5e1!important;transition:.18s}.campaign-actions button:hover{border-color:#7c3aed!important;background:#20283a!important;color:#fff!important}.campaign-actions .campaign-edit-button{border-color:rgba(139,92,246,.55)!important;background:linear-gradient(135deg,#7c3aed,#6d28d9)!important;color:#fff!important}.campaign-delete-button{gap:7px!important;padding:0 12px!important;border-color:rgba(248,113,113,.45)!important;background:rgba(127,29,29,.24)!important;color:#fecaca!important;font-size:12px!important;font-weight:750!important}.campaign-delete-button:hover{border-color:#ef4444!important;background:rgba(185,28,28,.35)!important;color:#fff!important}@media(max-width:760px){.campaign-actions{min-width:230px}.campaign-delete-button span{display:inline}}
+		.campaign-actions{display:flex;min-width:305px;align-items:center;gap:7px;flex-wrap:nowrap}.campaign-actions>a{display:inline-flex!important;margin:0!important;text-decoration:none!important}.campaign-actions button{display:inline-flex!important;min-width:38px;min-height:38px;align-items:center;justify-content:center;border:1px solid #354158!important;border-radius:9px!important;background:#151c29!important;color:#cbd5e1!important;transition:.18s}.campaign-actions button:hover{border-color:#7c3aed!important;background:#20283a!important;color:#fff!important}.campaign-actions button>svg{width:17px;height:17px}.campaign-actions .campaign-edit-button{gap:6px;padding:0 12px!important;border-color:rgba(139,92,246,.55)!important;background:linear-gradient(135deg,#7c3aed,#6d28d9)!important;color:#fff!important}.campaign-delete-button{gap:7px!important;padding:0 12px!important;border-color:rgba(248,113,113,.45)!important;background:rgba(127,29,29,.24)!important;color:#fecaca!important;font-size:12px!important;font-weight:750!important}.campaign-delete-button:hover{border-color:#ef4444!important;background:rgba(185,28,28,.35)!important;color:#fff!important}@media(max-width:760px){.campaign-actions{min-width:292px}.campaign-delete-button span{display:inline}}
 	</style>
 
 
@@ -328,7 +328,7 @@ while ($row = $qry->fetch_assoc()) {
 
 
 
-	echo '" target="_blank">' . "\r\n\t\t\t\t\t" . '<button title="Relatório de vendas" ' . "\r\n\t\t\t\t\t" . 'class="flex items-center justify-between px-2 py-2 text-sm font-medium leading-5 text-purple-600 rounded-lg dark:text-gray-400 focus:outline-none focus:shadow-outline-gray"' . "\r\n\t\t\t\t\t" . 'aria-label="Relatório de vendas"' . "\r\n\t\t\t\t\t" . '>' . "\r\n\t\t\t\t\t" . '<i class="fa-duotone  fa-chart-simple" style="color: #5827AC;font-size:22px"></i>' . "\r\n\t\t\t\t" . '</button>' . "\r\n\t\t\t" . '</a>' . "\r\n\t\t\t" . '' . "\r\n\t\t\t" .
+	echo '" target="_blank">' . "\r\n\t\t\t\t\t" . '<button type="button" title="Relatório de vendas" ' . "\r\n\t\t\t\t\t" . 'class="flex items-center justify-between px-2 py-2 text-sm font-medium leading-5 text-purple-600 rounded-lg dark:text-gray-400 focus:outline-none focus:shadow-outline-gray"' . "\r\n\t\t\t\t\t" . 'aria-label="Relatório de vendas"' . "\r\n\t\t\t\t\t" . '>' . "\r\n\t\t\t\t\t" . '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg>' . "\r\n\t\t\t\t" . '</button>' . "\r\n\t\t\t" . '</a>' . "\r\n\t\t\t" . '' . "\r\n\t\t\t" .
 
 
 		'<a id="view-draw" ';
@@ -337,7 +337,7 @@ while ($row = $qry->fetch_assoc()) {
 	echo '" target="_blank">' . "\r\n\t\t\t\t" .
 
 
-		'<button onclick="showProductLinkPopup(\'' . $row['slug'] . '\')" title="Compartilhar" ' . "\r\n\t\t\t\t" . 'class="flex items-center justify-between px-2 py-2 text-sm font-medium leading-5 text-purple-600 rounded-lg dark:text-gray-400 focus:outline-none focus:shadow-outline-gray"' . "\r\n\t\t\t\t" . 'aria-label="View">' . "\r\n\t\t\t\t" . '<i class="fa-duotone  fa-share-nodes" style="color: #5827AC;font-size:22px"></i>' . "\r\n\t\t\t" . '</button>'
+		'<button type="button" onclick="showProductLinkPopup(\'' . $row['slug'] . '\')" title="Compartilhar campanha" ' . "\r\n\t\t\t\t" . 'class="flex items-center justify-between px-2 py-2 text-sm font-medium leading-5 text-purple-600 rounded-lg dark:text-gray-400 focus:outline-none focus:shadow-outline-gray"' . "\r\n\t\t\t\t" . 'aria-label="Compartilhar campanha">' . "\r\n\t\t\t\t" . '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4m-6.8 7 6.8 4"/></svg>' . "\r\n\t\t\t" . '</button>'
 
 
 
@@ -388,14 +388,11 @@ while ($row = $qry->fetch_assoc()) {
 	echo '>' . "\r\n\t\t\t" .
 
 
-		'<button title="Duplicar" ' . "\r\n\t\t\t" . 'class="flex items-center justify-between px-2 py-2 text-sm font-medium leading-5 text-purple-600 rounded-lg  focus:outline-none focus:shadow-outline-gray"' . "\r\n\t\t\t" . 'aria-label="Corrigir duplicidades">' . "\r\n\t\t\t\t" . '<i class="fa-duotone fa-circle-plus" style="font-size:22px"></i>' . "\r\n\t\t\t" . '</button>'
+		'<button type="button" title="Duplicar campanha" ' . "\r\n\t\t\t" . 'class="flex items-center justify-between px-2 py-2 text-sm font-medium leading-5 text-purple-600 rounded-lg focus:outline-none focus:shadow-outline-gray"' . "\r\n\t\t\t" . 'aria-label="Duplicar campanha">' . "\r\n\t\t\t\t" . '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2m6-5v6m-3-3h6"/></svg>' . "\r\n\t\t\t" . '</button>'
 
 
 
-		. "\r\n\t\t" . '</a>' . "\r\n\t\t" .
-		'<a class="stock" data-id="';
-	echo $row['id'];
-
+		. "\r\n\t\t" . '</a>' . "\r\n\t\t";
 
 
 
@@ -404,14 +401,14 @@ while ($row = $qry->fetch_assoc()) {
 
 
 
-	echo '">' . "\r\n\t\t\t	" . "\r\n\t\t\t\t" . '' . "\r\n\t\t\t\t\t" . '' . "\r\n\t\t\t\t\t" . '' . "\r\n\t\t\t\t" . '</svg>' . "\r\n\t\t\t" . '</button>' . "\r\n\t\t" . '</a>' . "\r\n\t\t" . '' . "\r\n\t\t";
+
 
 
 
 	if ($_settings->userdata('type') == '1') {
 		echo "\t\t" . '<button type="button" class="delete_sorteio campaign-delete-button" onclick="confirmCampaignDeletion(this)" data-name="' . htmlspecialchars((string) $row['name'], ENT_QUOTES, 'UTF-8') . '" data-id="';
 		echo $row['id'];
-		echo '" title="Excluir campanha" aria-label="Excluir campanha"><i class="fa-solid fa-trash-can" aria-hidden="true"></i><span>Excluir</span></button>' . "\r\n";
+		echo '" title="Excluir campanha" aria-label="Excluir campanha"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18m-2 0-1 14H6L5 6m3 0V4h8v2m-6 4v6m4-6v6"/></svg><span>Excluir</span></button>' . "\r\n";
 	}
 
 	echo "\r\n" . '</div>' . "\r\n" . '</td>' . "\r\n" . '</tr>' . "\r\n";

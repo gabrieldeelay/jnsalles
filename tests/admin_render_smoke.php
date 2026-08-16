@@ -85,6 +85,18 @@ if ($requestedPage === 'products' && (!str_contains($html, 'campaign-delete-butt
     fwrite(STDERR, "O botão visual de exclusão não foi renderizado.\n");
     exit(1);
 }
+if ($requestedPage === 'products') {
+    preg_match('/<div class="campaign-actions text-sm">(.*?)<\/div>/s', $html, $campaignActionsMatch);
+    $campaignActions = $campaignActionsMatch[1] ?? '';
+    if ($campaignActions === ''
+        || str_contains($campaignActions, 'class="stock"')
+        || str_contains($campaignActions, 'fa-duotone')
+        || !str_contains($campaignActions, 'aria-label="Compartilhar campanha"')
+        || !str_contains($campaignActions, 'aria-label="Duplicar campanha"')) {
+        fwrite(STDERR, "As ações de campanha ainda contêm botões vazios ou ícones externos.\n");
+        exit(1);
+    }
+}
 if ($requestedPage === 'home' && (!str_contains($html, 'dashboard-prize-table-shell') || !str_contains($html, 'Selecione uma campanha para consultar as cotas premiadas.'))) {
     fwrite(STDERR, "O card de cotas premiadas não foi renderizado com o novo acabamento.\n");
     exit(1);

@@ -57,10 +57,16 @@ if ($target === 'home') {
         && str_contains($html, 'Desenvolvido por')
         && !str_contains($html, '/contato.php?site=');
 } elseif ($target === 'product') {
+    $purchasePosition = strpos($html, 'Quero participar');
+    $winningTicketsPosition = strpos($html, 'id="cotas-container"');
     $valid = $valid
         && str_contains($html, 'ranking-buyer-total')
         && str_contains($html, '7 cotas')
-        && str_contains($html, 'Cotas premiadas');
+        && str_contains($html, 'Cotas premiadas')
+        && substr_count($html, 'id="cotas-container"') === 1
+        && $purchasePosition !== false
+        && $winningTicketsPosition !== false
+        && $winningTicketsPosition > $purchasePosition;
 } else {
     $valid = false;
 }

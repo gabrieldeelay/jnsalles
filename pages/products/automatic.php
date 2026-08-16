@@ -1040,17 +1040,6 @@ if ($available > 0 && $enable_sale == 1 && $enable_discount == 0 && $status == '
 
 echo "\r\n";
 if ($status == '1') { ?>
-<?php if (trim((string) $cotas_premiadas) !== ''): ?>
-<section class="winning-tickets-spotlight app-card card mb-2">
-    <div class="card-body p-2">
-        <button type="button" class="btn btn-light w-100 d-flex align-items-center justify-content-between text-start" data-bs-toggle="modal" data-bs-target="#modal-cotas">
-            <span><strong>🎟️ Cotas premiadas</strong><small class="d-block text-muted">Veja os números, prêmios e disponibilidade.</small></span>
-            <i class="bi bi-chevron-right" aria-hidden="true"></i>
-        </button>
-        <div id="cotas-container" class="mt-2"><small class="text-muted">Carregando cotas premiadas...</small></div>
-    </div>
-</section>
-<?php endif; ?>
 <button type="button" class="ranking-spotlight" data-bs-toggle="modal" data-bs-target="#modal-premios" aria-label="Abrir Top Compradores Diário">
     <span class="ranking-spotlight__title">
         <span class="ranking-spotlight__icon" aria-hidden="true">
@@ -1717,7 +1706,7 @@ if ($available > 0 && $status == '1') {
                                                     <div style="display:flex; align-items:baseline;gap:4;">
                                                         <h5 style="font-size: 1.3em !important;color: rgba(var(--incrivel-rgbaInvert), 0.9);padding-right: 5px;font-weight: 600;margin: 0;"
                                                             class="sc-3f9a15f1-14 jQlWTy"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="MuiBox-root css-1wit1pw iconify iconify--mdi" sx="[object Object]" width="25px" height="25px" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
-                                                      <path fill="currentColor" d="m15.2 10.7l1.4 5.3l-4.6-3.8L7.4 16l1.4-5.2l-4.2-3.5L10 7l2-5l2 5l5.4.3zM14 19h-1v-3l-1-1l-1 1v3h-1c-1.1 0-2 .9-2 2v1h8v-1a2 2 0 0 0-2-2"></path></svg> Títulos Premiados</h5>
+                                                       <path fill="currentColor" d="m15.2 10.7l1.4 5.3l-4.6-3.8L7.4 16l1.4-5.2l-4.2-3.5L10 7l2-5l2 5l5.4.3zM14 19h-1v-3l-1-1l-1 1v3h-1c-1.1 0-2 .9-2 2v1h8v-1a2 2 0 0 0-2-2"></path></svg> Cotas Premiadas</h5>
                                                         <span
                                                             style="font-size: 12px;opacity:0.8">
                                                             Encontre e ganhe
