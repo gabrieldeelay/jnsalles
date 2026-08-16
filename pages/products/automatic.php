@@ -31,10 +31,20 @@ $rankingTimerPrefix = 'ranking_timer_' . (int) $id . '_';
 $rankingTimerEnabled = (string) $_settings->info($rankingTimerPrefix . 'enabled') === '1';
 $rankingTimerStart = trim((string) $_settings->info($rankingTimerPrefix . 'start'));
 $rankingTimerEnd = trim((string) $_settings->info($rankingTimerPrefix . 'end'));
+$rankingTimerReset = trim((string) $_settings->info($rankingTimerPrefix . 'reset'));
 $rankingTimerVisible = $rankingTimerEnabled
     && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $rankingTimerStart)
     && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $rankingTimerEnd)
     && strtotime($rankingTimerEnd) > strtotime($rankingTimerStart);
+$rankingWindowStart = $rankingTimerVisible ? $rankingTimerStart : date('Y-m-d 00:00:00');
+$rankingWindowUsesReset = false;
+if ($rankingTimerVisible
+    && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $rankingTimerReset)
+    && strtotime($rankingTimerReset) >= strtotime($rankingWindowStart)) {
+    $rankingWindowStart = $rankingTimerReset;
+    $rankingWindowUsesReset = true;
+}
+$rankingWindowEnd = $rankingTimerVisible ? $rankingTimerEnd : date('Y-m-d 23:59:59');
 
 $max_discount = 0;
 if ($available < $min_purchase) {
@@ -694,6 +704,12 @@ if (empty($minor['cota'])) {
         opacity: .8;
     }
 
+    .ranking-spotlight.is-warning{background:linear-gradient(135deg,#d97706,#b45309);box-shadow:0 7px 18px rgba(180,83,9,.28)}
+    .ranking-spotlight.is-urgent{background:linear-gradient(135deg,#dc2626,#991b1b);box-shadow:0 7px 20px rgba(185,28,28,.34);animation:rankingUrgency 1.35s ease-in-out infinite}
+    .ranking-spotlight.is-ended{background:linear-gradient(135deg,#64748b,#475569);box-shadow:none}
+    @keyframes rankingUrgency{50%{filter:brightness(1.13);transform:translateY(-1px)}}
+    @media (prefers-reduced-motion:reduce){.ranking-spotlight.is-urgent{animation:none}}
+
     @media (max-width: 420px) {
         .ranking-spotlight {
             gap: 5px;
@@ -1023,6 +1039,17 @@ if ($available > 0 && $enable_sale == 1 && $enable_discount == 0 && $status == '
 
 echo "\r\n";
 if ($status == '1') { ?>
+<?php if (trim((string) $cotas_premiadas) !== ''): ?>
+<section class="winning-tickets-spotlight app-card card mb-2">
+    <div class="card-body p-2">
+        <button type="button" class="btn btn-light w-100 d-flex align-items-center justify-content-between text-start" data-bs-toggle="modal" data-bs-target="#modal-cotas">
+            <span><strong>🎟️ Cotas premiadas</strong><small class="d-block text-muted">Veja os números, prêmios e disponibilidade.</small></span>
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        </button>
+        <div id="cotas-container" class="mt-2"><small class="text-muted">Carregando cotas premiadas...</small></div>
+    </div>
+</section>
+<?php endif; ?>
 <button type="button" class="ranking-spotlight" data-bs-toggle="modal" data-bs-target="#modal-premios" aria-label="Abrir Top Compradores Diário">
     <span class="ranking-spotlight__title">
         <span class="ranking-spotlight__icon" aria-hidden="true">
@@ -1922,16 +1949,19 @@ if ($available > 0 && $status == '1') {
                                                     endif;
                                                     ?>
                                                     <?php
-                                                    $today = date('Y-m-d');
                                                     $ranking_limit = max(3, min(20, (int) $ranking_qty ?: 5));
+                                                    $ranking_window_start = $conn->real_escape_string($rankingWindowStart);
+                                                    $ranking_window_end = $conn->real_escape_string($rankingWindowEnd);
+                                                    $ranking_window_start_operator = $rankingWindowUsesReset ? '>' : '>=';
                                                     $requests = $conn->query(
-                                                        'SELECT c.id, c.firstname, SUM(o.quantity) AS total_quantity ' .
+                                                        'SELECT c.id, c.firstname, c.lastname, SUM(o.quantity) AS total_quantity ' .
                                                         'FROM order_list o ' .
                                                         'INNER JOIN customer_list c ON c.id = o.customer_id ' .
                                                         'WHERE o.product_id = ' . (int) $id . ' AND o.status = 2 ' .
-                                                        "AND o.date_created BETWEEN '{$today} 00:00:00' AND '{$today} 23:59:59' " .
-                                                        'GROUP BY c.id, c.firstname ' .
-                                                        'ORDER BY total_quantity DESC, c.firstname ASC ' .
+                                                        "AND COALESCE(o.date_updated, o.date_created) {$ranking_window_start_operator} '{$ranking_window_start}' " .
+                                                        "AND COALESCE(o.date_updated, o.date_created) <= '{$ranking_window_end}' " .
+                                                        'GROUP BY c.id, c.firstname, c.lastname ' .
+                                                        'ORDER BY total_quantity DESC, c.firstname ASC, c.lastname ASC ' .
                                                         'LIMIT ' . $ranking_limit
                                                     );
 
@@ -1956,7 +1986,7 @@ if ($available > 0 && $status == '1') {
                                                                 <div class="col-auto">
                                                                     <div class="d-inline-block position-relative text-center py-1" style="width:50px"><span style="top:8px;right:-3px;font-size:12px;color:rgba(0,0,0,.6)" class="d-block position-absolute"></span><?= $medal ?></div>
                                                                 </div>
-                                                                <div class="col font-weight-600"><span style="font-size:20px"><?= $row['firstname'] ?>
+                                                                <div class="col font-weight-600"><span style="font-size:20px"><?= htmlspecialchars(trim($row['firstname'] . ' ' . $row['lastname']), ENT_QUOTES, 'UTF-8') ?>
                                                                         <?php if ($enable_ranking_show) { ?>
                                                                             -
                                                                             <?= $row['total_quantity'] ?>
@@ -1988,6 +2018,8 @@ if ($available > 0 && $status == '1') {
                                                 var value = document.getElementById('ranking-timer-value');
                                                 var summaryLabel = document.getElementById('ranking-timer-summary-label');
                                                 var summary = document.getElementById('ranking-timer-summary');
+                                                var spotlight = document.querySelector('.ranking-spotlight');
+                                                var timerBox = document.getElementById('ranking-timer-box');
 
                                                 function twoDigits(number) {
                                                     return String(number).padStart(2, '0');
@@ -2006,16 +2038,31 @@ if ($available > 0 && $status == '1') {
                                                     var now = Date.now();
                                                     var phaseLabel;
                                                     var timerText;
+                                                    var remaining = 0;
+
+                                                    if (spotlight) spotlight.classList.remove('is-warning', 'is-urgent', 'is-ended');
 
                                                     if (now < startAt) {
                                                         phaseLabel = 'ComeÃ§a em';
                                                         timerText = formatRemaining(startAt - now);
                                                     } else if (now < endAt) {
                                                         phaseLabel = 'Termina em';
-                                                        timerText = formatRemaining(endAt - now);
+                                                        remaining = endAt - now;
+                                                        timerText = formatRemaining(remaining);
+                                                        if (remaining <= 10 * 60 * 1000) {
+                                                            if (spotlight) spotlight.classList.add('is-urgent');
+                                                            if (timerBox) timerBox.style.background = '#b91c1c';
+                                                        } else if (remaining <= 30 * 60 * 1000) {
+                                                            if (spotlight) spotlight.classList.add('is-warning');
+                                                            if (timerBox) timerBox.style.background = '#b45309';
+                                                        } else if (timerBox) {
+                                                            timerBox.style.background = '#198754';
+                                                        }
                                                     } else {
                                                         phaseLabel = 'Encerrado';
                                                         timerText = '00:00:00';
+                                                        if (spotlight) spotlight.classList.add('is-ended');
+                                                        if (timerBox) timerBox.style.background = '#6c757d';
                                                     }
 
                                                     if (label) label.textContent = phaseLabel;

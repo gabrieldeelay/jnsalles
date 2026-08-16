@@ -268,7 +268,7 @@ if (!$user_id) { ?>
 							<?php
 							}
 
-							if (!!$_settings->info('terms')) { ?>
+							if (trim((string) $_settings->info('terms')) !== '' || function_exists('jnsalles_default_terms')) { ?>
 								<div class="alert alert-primary mt-3 font-xss">Ao se cadastrar você concorda com nossos <a style="color:var(--incrivel-primaria);" href="<?= BASE_URL ?>termos-de-uso" target="_blank">termos</a>
 								</div>
 							<?php
@@ -421,7 +421,7 @@ if (!$user_id) { ?>
 								<?php
 								}
 
-								if (!!$_settings->info('terms')) { ?>
+								if (trim((string) $_settings->info('terms')) !== '' || function_exists('jnsalles_default_terms')) { ?>
 									<div class="alert alert-primary mt-3 font-xss">Ao se cadastrar você concorda com nossos <a style="color:var(--incrivel-primaria);" href="<?= BASE_URL ?>termos-de-uso" target="_blank">termos</a>
 									</div>
 								<?php

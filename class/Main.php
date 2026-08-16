@@ -327,6 +327,42 @@ class Main extends DBConnection
                 'msg' => 'Informe uma quantidade total entre 10 e 10.000.000 de números.',
             ]);
         }
+        $winningNumbers = array_values(array_unique(array_filter(array_map('trim', explode(',', (string) $_POST['cotas_premiadas'])), static function ($value) {
+            return $value !== '';
+        })));
+        if ($winningNumbers === []) {
+            return json_encode([
+                'status' => 'failed', 'field' => 'cotas_premiadas', 'tab' => 'tab7',
+                'msg' => 'Adicione pelo menos uma cota premiada antes de salvar a campanha.',
+            ]);
+        }
+        foreach ($winningNumbers as $winningNumber) {
+            if (!ctype_digit($winningNumber) || (int) $winningNumber >= $qty_numbers) {
+                return json_encode([
+                    'status' => 'failed', 'field' => 'cotas_premiadas', 'tab' => 'tab7',
+                    'msg' => 'Revise as cotas premiadas: cada número precisa existir dentro da quantidade total da campanha.',
+                ]);
+            }
+        }
+        $prizesByNumber = [];
+        foreach (explode(',', (string) $_POST['cotas_premiadas_premios']) as $prizeEntry) {
+            $parts = explode(':', trim($prizeEntry), 2);
+            if (count($parts) === 2 && trim($parts[0]) !== '' && trim($parts[1]) !== '') {
+                $prizesByNumber[trim($parts[0])] = trim($parts[1]);
+            }
+        }
+        foreach ($winningNumbers as $winningNumber) {
+            if (!isset($prizesByNumber[$winningNumber])) {
+                return json_encode([
+                    'status' => 'failed', 'field' => 'cotas_premiadas_premios', 'tab' => 'tab7',
+                    'msg' => 'Informe o prêmio de cada cota premiada antes de salvar.',
+                ]);
+            }
+        }
+        $_POST['cotas_premiadas'] = implode(',', $winningNumbers);
+        if (trim((string) $_POST['cotas_premiadas_descricao']) === '') {
+            $_POST['cotas_premiadas_descricao'] = 'Além do prêmio principal, esta campanha possui cotas premiadas. Consulte os números e os prêmios disponíveis abaixo.';
+        }
         $price = $this->conn->real_escape_string($_POST["price"]);
         $price = str_replace(".", "", $price);
         $price = str_replace(",", ".", $price);
@@ -1205,34 +1241,45 @@ class Main extends DBConnection
             return json_encode(['status' => 'failed', 'msg' => 'Preencha corretamente a campanha, o cliente, a quantidade e o status.']);
         }
 
-        if ($customerId <= 0) {
-            $customerLookup = $this->conn->prepare("SELECT id FROM customer_list WHERE TRIM(CONCAT(firstname, ' ', lastname)) = ? ORDER BY id ASC LIMIT 2");
-            $customerLookup->bind_param('s', $customerName);
-            $customerLookup->execute();
-            $matches = $customerLookup->get_result();
-            if ($matches->num_rows === 0) {
-                $customerLookup->close();
-                return json_encode(['status' => 'failed', 'msg' => 'Nenhum cliente foi encontrado com esse nome completo.']);
-            }
-            if ($matches->num_rows > 1) {
-                $customerLookup->close();
-                return json_encode(['status' => 'failed', 'msg' => 'Existem clientes com o mesmo nome. Edite um dos cadastros para diferenciá-los antes de criar o pedido.']);
-            }
-            $customerId = (int) $matches->fetch_assoc()['id'];
-            $customerLookup->close();
-        }
-
-        $customer = $this->conn->prepare('SELECT id FROM customer_list WHERE id = ? LIMIT 1');
-        $customer->bind_param('i', $customerId);
-        $customer->execute();
-        $customerExists = $customer->get_result()->num_rows === 1;
-        $customer->close();
-        if (!$customerExists) {
-            return json_encode(['status' => 'failed', 'msg' => 'Cliente não localizado.']);
-        }
-
         $this->conn->begin_transaction();
         try {
+            if ($customerId <= 0) {
+                $customerLookup = $this->conn->prepare("SELECT id FROM customer_list WHERE TRIM(CONCAT(firstname, ' ', lastname)) = ? ORDER BY id ASC LIMIT 2");
+                $customerLookup->bind_param('s', $customerName);
+                $customerLookup->execute();
+                $matches = $customerLookup->get_result();
+                if ($matches->num_rows > 1) {
+                    $customerLookup->close();
+                    throw new RuntimeException('Existem clientes com o mesmo nome. Informe um nome diferente ou edite um dos cadastros.');
+                }
+                if ($matches->num_rows === 1) {
+                    $customerId = (int) $matches->fetch_assoc()['id'];
+                    $customerLookup->close();
+                } else {
+                    $customerLookup->close();
+                    $nameParts = preg_split('/\s+/u', $customerName, -1, PREG_SPLIT_NO_EMPTY);
+                    $firstName = array_shift($nameParts) ?: $customerName;
+                    $lastName = trim(implode(' ', $nameParts));
+                    $emptyPhone = '';
+                    $newCustomer = $this->conn->prepare('INSERT INTO customer_list (firstname, lastname, phone) VALUES (?, ?, ?)');
+                    $newCustomer->bind_param('sss', $firstName, $lastName, $emptyPhone);
+                    if (!$newCustomer->execute()) {
+                        throw new RuntimeException('Não foi possível cadastrar o novo cliente.');
+                    }
+                    $customerId = (int) $this->conn->insert_id;
+                    $newCustomer->close();
+                }
+            }
+
+            $customer = $this->conn->prepare('SELECT id FROM customer_list WHERE id = ? LIMIT 1');
+            $customer->bind_param('i', $customerId);
+            $customer->execute();
+            $customerExists = $customer->get_result()->num_rows === 1;
+            $customer->close();
+            if (!$customerExists) {
+                throw new RuntimeException('Cliente não localizado.');
+            }
+
             $product = $this->conn->prepare('SELECT name, price, limit_order_remove, qty_numbers FROM product_list WHERE id = ? LIMIT 1 FOR UPDATE');
             $product->bind_param('i', $productId);
             $product->execute();
@@ -1285,13 +1332,27 @@ class Main extends DBConnection
             return json_encode(['status' => 'failed', 'msg' => $error->getMessage()]);
         }
 
-        $this->correct_stock($productId);
-        order_email($this->settings->info('email_order'), '[' . $this->settings->info('name') . '] - Confirmação de pedido', $orderId);
-        if ($status === 2) {
-            order_email($this->settings->info('email_purchase'), '[' . $this->settings->info('name') . '] - Pagamento aprovado', $orderId);
+        $postProcessBufferLevel = ob_get_level();
+        ob_start();
+        try {
+            $this->correct_stock($productId);
+            $orderEmail = trim((string) $this->settings->info('email_order'));
+            $purchaseEmail = trim((string) $this->settings->info('email_purchase'));
+            if ($orderEmail !== '') {
+                order_email($orderEmail, '[' . $this->settings->info('name') . '] - Confirmação de pedido', $orderId);
+            }
+            if ($status === 2 && $purchaseEmail !== '') {
+                order_email($purchaseEmail, '[' . $this->settings->info('name') . '] - Pagamento aprovado', $orderId);
+            }
+            $userName = $this->conn->real_escape_string((string) $this->settings->userdata('firstname'));
+            $this->conn->query("INSERT INTO logs (origin, description) VALUES ('ORDER', 'Pedido manual {$orderId} criado pelo usuário {$userName}')");
+        } catch (Throwable $notificationError) {
+            error_log('[manual-order] order=' . $orderId . ' saved but post-processing failed: ' . $notificationError->getMessage());
+        } finally {
+            while (ob_get_level() > $postProcessBufferLevel) {
+                ob_end_clean();
+            }
         }
-        $userName = $this->conn->real_escape_string((string) $this->settings->userdata('firstname'));
-        $this->conn->query("INSERT INTO logs (origin, description) VALUES ('ORDER', 'Pedido manual {$orderId} criado pelo usuário {$userName}')");
         return json_encode([
             'status' => 'success',
             'msg' => 'Pedido criado com sucesso!',
@@ -5267,25 +5328,35 @@ class Main extends DBConnection
       
         $conn = $_settings->conn;
 
-        $id = $_POST['product_id']; // Assumindo que o ID do produto é passado via GET
+        $id = (int) ($_POST['product_id'] ?? 0);
+        if ($id <= 0) {
+            return '<p class="text-center text-muted my-3">Campanha inválida.</p>';
+        }
         $prod = $conn->query("SELECT roleta, box FROM product_list WHERE id = $id ");
         $produto = $prod->fetch_assoc();
 
-        $cotas_premiadas = $_POST['cotas_premiadas']; // Exemplo de cotas premiadas
+        $cotas_premiadas = (string) ($_POST['cotas_premiadas'] ?? '');
         $cotas_vendidas = [];
-        $cotas_array = $_POST['cotas_array'];
-        $quantidade_auto_cota = $_POST['quantidade_auto_cota'];
+        $cotas_array = (string) ($_POST['cotas_array'] ?? '');
+        $quantidade_auto_cota = (int) ($_POST['quantidade_auto_cota'] ?? 0);
+        $min_cotas_purchased = 0;
         $deserialized = [];
         $pairs = explode(',', $cotas_array);
 
         foreach ($pairs as $pair) {
             // Split the pair by the first colon to get the key
             $first_split = explode(':', $pair, 2);
+            if (count($first_split) !== 2 || trim($first_split[0]) === '') {
+                continue;
+            }
             $key = $first_split[0];
             $rest = $first_split[1];
 
             // Split the rest by the last colon to separate value and status
             $last_colon_pos = strrpos($rest, ':');
+            if ($last_colon_pos === false) {
+                continue;
+            }
             $value = substr($rest, 0, $last_colon_pos);
             $tipo = substr($rest, $last_colon_pos + 1);
 

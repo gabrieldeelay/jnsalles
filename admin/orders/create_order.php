@@ -27,7 +27,7 @@ while ($customerResult && ($customer = $customerResult->fetch_assoc())) {
             <a class="manual-order-back" href="./?page=orders">&#8592; Voltar aos pedidos</a>
         </header>
 
-        <form id="manage-order" autocomplete="off">
+        <form id="manage-order" autocomplete="off" novalidate>
             <div class="manual-order-card">
                 <section class="manual-order-section">
                     <div class="manual-order-section-title"><div class="manual-order-step">01</div><div><strong>Campanha e cliente</strong><span>Escolha para quem o pedido será criado.</span></div></div>
@@ -67,9 +67,10 @@ while ($customerResult && ($customer = $customerResult->fetch_assoc())) {
                         <div class="manual-order-field">
                             <label for="status">Status do pedido</label>
                             <select name="status" id="status" required>
+                                <option value="2" selected>Aprovado / pago</option>
                                 <option value="1">Pendente</option>
-                                <option value="2">Aprovado / pago</option>
                             </select>
+                            <small>Pedidos aprovados entram imediatamente nos rankings geral e diário.</small>
                         </div>
                     </div>
                     <div class="manual-order-summary">
@@ -152,23 +153,43 @@ while ($customerResult && ($customer = $customerResult->fetch_assoc())) {
     $('#manage-order').on('submit', function(event){
         event.preventDefault();
         var button = $('#manual-order-submit');
+        var campaignValue = raffle.val();
+        var customerValue = $.trim($('#customer_name').val());
+        var quantityValue = parseInt(quantity.val(), 10) || 0;
+        if (!campaignValue || !customerValue || quantityValue < 1) {
+            message.attr('class','manual-order-message error').text(
+                !campaignValue ? 'Selecione uma campanha para continuar.' :
+                (!customerValue ? 'Informe o nome completo do cliente.' : 'Informe uma quantidade de cotas maior que zero.')
+            ).get(0).scrollIntoView({behavior:'smooth', block:'center'});
+            (!campaignValue ? raffle : (!customerValue ? $('#customer_name') : quantity)).focus();
+            return;
+        }
         button.prop('disabled', true).text('Cadastrando...');
+        button.attr('aria-busy', 'true');
         message.removeClass('error success').hide();
         $.ajax({
             url: _base_url_ + 'class/Main.php?action=create_order',
             method: 'POST', dataType: 'json',
-            data: $(this).serialize()
+            data: $(this).serialize(), timeout: 30000
         }).done(function(response){
             if (response.status === 'success') {
                 message.attr('class','manual-order-message success').text('Pedido criado com sucesso. ' + response.numbers.length + ' cotas separadas, total de R$ ' + response.total + '.');
-                window.setTimeout(function(){ window.location.href = './?page=orders'; }, 900);
+                message.get(0).scrollIntoView({behavior:'smooth', block:'center'});
+                button.text('Pedido cadastrado');
+                window.setTimeout(function(){ window.location.href = './?page=orders'; }, 1600);
             } else {
                 message.attr('class','manual-order-message error').text(response.msg || 'Não foi possível criar o pedido.');
                 button.prop('disabled', false).text('Cadastrar pedido');
+                button.removeAttr('aria-busy');
             }
-        }).fail(function(){
-            message.attr('class','manual-order-message error').text('O servidor não concluiu o pedido. Nenhuma confirmação foi recebida.');
+        }).fail(function(xhr){
+            var serverMessage = xhr.responseJSON && xhr.responseJSON.msg ? xhr.responseJSON.msg : '';
+            if (!serverMessage && xhr.responseText) {
+                try { serverMessage = JSON.parse(xhr.responseText).msg || ''; } catch (ignored) {}
+            }
+            message.attr('class','manual-order-message error').text(serverMessage || 'O servidor não concluiu o pedido. Nenhuma confirmação foi recebida.');
             button.prop('disabled', false).text('Cadastrar pedido');
+            button.removeAttr('aria-busy');
         });
     });
 })(jQuery);

@@ -688,6 +688,7 @@ class System extends DBConnection
             $prefix . 'enabled' => $enabled ? '1' : '0',
             $prefix . 'start' => $start ? $start->format('Y-m-d H:i:s') : '',
             $prefix . 'end' => $end ? $end->format('Y-m-d H:i:s') : '',
+            $prefix . 'reset' => $enabled ? (new DateTime('now', $timezone))->format('Y-m-d H:i:s') : '',
         ];
 
         $this->conn->begin_transaction();
@@ -707,7 +708,9 @@ class System extends DBConnection
 
         return json_encode([
             'status' => 'success',
-            'msg' => $enabled ? 'Contador visual ativado com sucesso.' : 'Contador visual desativado.',
+            'msg' => $enabled
+                ? 'Contador reiniciado. O Top Compradores começa vazio e considera somente pagamentos confirmados neste novo período.'
+                : 'Contador visual desativado.',
         ]);
     }
 

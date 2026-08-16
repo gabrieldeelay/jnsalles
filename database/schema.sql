@@ -337,6 +337,8 @@ CREATE TABLE IF NOT EXISTS `videos` (
 -- Somente configuracoes indispensaveis. Gateways iniciam desativados e sem credenciais.
 INSERT INTO `system_info` (`meta_field`, `meta_value`) VALUES
   ('name', 'JNSalles'),
+  ('site_description', 'Participe de campanhas com cotas numeradas, acompanhe seus pedidos e confira todas as informações da premiação com clareza e segurança.'),
+  ('terms', ''),
   ('theme', '1'),
   ('gateway_provider', 'none'),
   ('gateway', '1'),

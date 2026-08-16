@@ -82,7 +82,7 @@ $paginationUrl = static function ($targetPage) use ($productId, $startDate, $sta
     </header>
 
     <section class="ranking-card ranking-timer-card">
-      <header class="ranking-card-head"><span class="ranking-card-icon">⏱</span><div><h3>Contador visual do ranking</h3><p>O contador é apenas visual e não altera pedidos, pagamentos ou posições.</p></div></header>
+      <header class="ranking-card-head"><span class="ranking-card-icon">⏱</span><div><h3>Período do Top Compradores Diário</h3><p>Ao salvar um novo período, a lista diária recomeça vazia e passa a contar somente pagamentos confirmados dentro dele.</p></div></header>
       <form id="ranking-timer-form">
         <div class="ranking-timer-grid">
           <div class="ranking-field"><label for="timer_product_id">Campanha</label><select name="product_id" id="timer_product_id" required><option value="">Selecione</option><?php foreach ($products as $product): ?><option value="<?= (int) $product['id'] ?>" <?= $timerProductId === (int) $product['id'] ? 'selected' : '' ?>><?= $escape($product['name']) ?></option><?php endforeach; ?></select></div>
@@ -90,7 +90,7 @@ $paginationUrl = static function ($targetPage) use ($productId, $startDate, $sta
           <div class="ranking-field"><label for="timer_end_at">Encerramento</label><input name="end_at" id="timer_end_at" type="datetime-local" value="<?= $escape($timerEndValue) ?>"></div>
           <div class="ranking-timer-actions"><label class="ranking-timer-switch"><input type="checkbox" name="enabled" id="timer_enabled" value="1" <?= $timerEnabled ? 'checked' : '' ?>> Exibir contador</label><button type="submit" class="ranking-primary">Salvar contador</button></div>
         </div>
-        <p class="ranking-timer-help">Horário de Brasília. Antes do início aparecerá “Começa em”; durante o período, “Termina em”; depois, “Encerrado”.</p>
+        <p class="ranking-timer-help">Horário de Brasília. Antes do início aparecerá “Começa em”; nos 30 minutos finais o contador ficará laranja e, nos 10 minutos finais, vermelho.</p>
         <div id="ranking-timer-feedback" class="ranking-timer-feedback" role="status"></div>
       </form>
     </section>

@@ -1990,6 +1990,14 @@ $winner = ['name' => '', 'number' => ''];
                 showCampaignFieldError('price', 'Informe um valor por cota maior que zero.', 'tab1');
                 return false;
             }
+            if (!$.trim($('#cotas_premiadas').val())) {
+                showCampaignFieldError('cotas_premiadas', 'Adicione pelo menos uma cota premiada e informe o prêmio correspondente.', 'tab7');
+                return false;
+            }
+            if (!$.trim($('#cotas_premiadas_premios').val())) {
+                showCampaignFieldError('cotas_premiadas_premios', 'Informe o prêmio de cada cota premiada.', 'tab7');
+                return false;
+            }
             return true;
         }
 

@@ -1,5 +1,26 @@
 <?php
 
+if (!function_exists('jnsalles_default_site_description')) {
+    function jnsalles_default_site_description()
+    {
+        return 'Participe de campanhas com cotas numeradas, acompanhe seus pedidos e confira todas as informações da premiação com clareza e segurança.';
+    }
+}
+
+if (!function_exists('jnsalles_default_terms')) {
+    function jnsalles_default_terms()
+    {
+        return '<h2>Descrição e regulamento</h2>'
+            . '<p>Este site organiza campanhas promocionais com cotas numeradas. Antes de participar, confira o prêmio, o valor da cota, a quantidade disponível, a data prevista e as regras específicas exibidas na página da campanha.</p>'
+            . '<h3>1. Participação</h3><p>A participação somente é confirmada depois da aprovação do pagamento. Pedidos pendentes não concorrem até que o pagamento seja identificado pelo sistema.</p>'
+            . '<h3>2. Cotas e premiações</h3><p>As cotas são distribuídas entre os números disponíveis. Quando houver cotas premiadas, os números, prêmios e a situação de cada uma serão informados na própria campanha.</p>'
+            . '<h3>3. Apuração</h3><p>O resultado seguirá o critério, a data e a referência de sorteio apresentados na campanha. Eventuais alterações necessárias serão comunicadas pelos canais oficiais do site.</p>'
+            . '<h3>4. Dados do participante</h3><p>O participante deve informar dados corretos e manter seu comprovante. Os dados são utilizados para identificar pedidos, confirmar pagamentos e contatar ganhadores.</p>'
+            . '<h3>5. Cancelamento</h3><p>Campanhas canceladas deverão ter sua solução comunicada aos participantes, incluindo reagendamento ou devolução quando aplicável.</p>'
+            . '<h3>6. Atendimento</h3><p>Dúvidas devem ser encaminhadas pelo canal de suporte indicado no site. Ao participar, o comprador declara que leu e aceitou este regulamento e as regras específicas da campanha.</p>';
+    }
+}
+
 
 
 function exibir_cabecalho($conn)

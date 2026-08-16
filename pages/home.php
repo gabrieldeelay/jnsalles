@@ -2,6 +2,7 @@
 .bg-azul-personalizado {
   background-color: #198754;
 }
+.home-shell{padding-top:18px;padding-bottom:28px}.home-hero{position:relative;overflow:hidden;margin-bottom:18px;padding:22px;border-radius:18px;background:linear-gradient(135deg,#111827 0%,#153d2d 58%,#198754 140%);color:#fff;box-shadow:0 14px 34px rgba(15,23,42,.18)}.home-hero:after{content:"";position:absolute;width:180px;height:180px;right:-70px;top:-85px;border-radius:50%;background:rgba(255,255,255,.09)}.home-hero__eyebrow{display:inline-flex;margin-bottom:8px;color:#a7f3d0;font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.home-hero h1{max-width:520px;margin:0 0 8px;font-size:1.55rem;font-weight:850;letter-spacing:-.035em}.home-hero p{max-width:570px;margin:0;color:rgba(255,255,255,.76);font-size:.82rem;line-height:1.6}.home-trust{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:17px}.home-trust span{padding:8px;border:1px solid rgba(255,255,255,.13);border-radius:10px;background:rgba(255,255,255,.07);font-size:.66rem;text-align:center}.home-campaign-grid{display:grid;gap:10px}.home-info-card{margin:18px 0;padding:18px;border:1px solid rgba(25,135,84,.2);border-radius:16px;background:linear-gradient(145deg,#fff,#f5faf7);box-shadow:0 8px 24px rgba(15,23,42,.07)}.home-info-card h2{margin:0 0 6px;color:#17211b;font-size:1.05rem;font-weight:800}.home-info-card p{margin:0;color:#66736b;font-size:.76rem;line-height:1.65}.home-info-actions{display:flex;gap:8px;margin-top:13px}.home-info-actions a{flex:1;padding:9px 10px;border-radius:9px;background:#198754;color:#fff!important;font-size:.7rem;font-weight:750;text-align:center}.home-featured{height:350px!important}.home-shell .SorteioTpl_sorteioTpl__home{overflow:hidden;border:1px solid rgba(15,23,42,.08)!important;border-radius:15px!important;box-shadow:0 10px 24px rgba(15,23,42,.1)!important}.home-shell .SorteioTpl_info__t1BZr{padding:12px!important}.home-shell .app-title{margin-top:6px}@media(min-width:760px){.home-shell{max-width:820px!important}.home-campaign-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.home-campaign-grid>.col-12:only-child{grid-column:1/-1;max-width:560px;justify-self:center;width:100%}}@media(max-width:520px){.home-hero{padding:18px}.home-hero h1{font-size:1.3rem}.home-trust{grid-template-columns:1fr}.home-featured{height:300px!important}}
 </style>
 <script>
   // Oculta o loader apenas depois de 2 segundos ao carregar a nova página
@@ -19,7 +20,20 @@
 <div id="loadingSystem" style="display: none;"></div>
 <!-- Estilos básicos -->
 
-<div class="container app-main">
+<?php
+$siteDescription = trim((string) $_settings->info('site_description'));
+if ($siteDescription === '') {
+	$siteDescription = jnsalles_default_site_description();
+}
+?>
+
+<div class="container app-main home-shell">
+	<section class="home-hero">
+		<span class="home-hero__eyebrow">Sua sorte começa aqui</span>
+		<h1>Campanhas transparentes, participação simples.</h1>
+		<p><?= htmlspecialchars($siteDescription, ENT_QUOTES, 'UTF-8') ?></p>
+		<div class="home-trust"><span>✓ Escolha sua campanha</span><span>✓ Confirme o PIX</span><span>✓ Acompanhe suas cotas</span></div>
+	</section>
 	<div class="row">
 		<div class="col-12">
 			<div class="app-title">
@@ -32,7 +46,7 @@
 	<?php
 	$qry = $conn->query('SELECT * FROM `product_list` WHERE status_display <> \'4\' AND featured_draw = \'1\' ORDER BY RAND() LIMIT 1');
 	while ($row = $qry->fetch_assoc()) { ?>
-		<div class="col-12 mb-2" style="height: 450px;">
+		<div class="col-12 mb-2 home-featured">
 			<a href="/campanha/<?php echo $row['slug']; ?>" class="h-100 SorteioTpl_sorteioTpl__home SorteioTpl_destaque__3vnWR pointer custom-highlight-card">
 			    
 			    <div style="bottom: 68px !important;" class="custom-badge-display">
@@ -95,6 +109,7 @@ if (!empty($row['date_of_draw'])) {
 		</div>
 	<?php } ?>
 
+	<div class="home-campaign-grid">
 	<?php
 $qry = $conn->query('SELECT * FROM `product_list` WHERE featured_draw = \'0\' AND private_draw = \'0\' ORDER BY id DESC LIMIT 10');
 
@@ -145,6 +160,13 @@ if ($qry->num_rows > 0) {
 	}
 }
 ?>
+	</div>
+
+	<section class="home-info-card">
+		<h2>Como funciona e quais são as regras?</h2>
+		<p>Escolha uma campanha, selecione a quantidade de cotas e finalize o pagamento. A participação entra no sorteio somente depois da confirmação. Cada campanha informa seu prêmio, suas cotas premiadas e o critério de apuração.</p>
+		<div class="home-info-actions"><a href="/termos-de-uso">Ler regulamento completo</a><a href="/campanhas">Ver todas as campanhas</a></div>
+	</section>
 
 	<?php
 
