@@ -378,16 +378,18 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
     #campaign-save-feedback.success { background: #047857; }
     #campaign-save-feedback.error { background: #b91c1c; }
     #campaign-save-feedback.info { background: #6d28d9; }
+    .campaign-editor-shell{max-width:1180px;padding-bottom:52px}.campaign-editor-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:28px 0 20px}.campaign-editor-heading h2{margin:0;color:#f8fafc;font-size:28px;font-weight:780;letter-spacing:-.03em}.campaign-editor-eyebrow{margin:0 0 4px;color:#a78bfa;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.campaign-editor-subtitle{margin:6px 0 0;color:#94a3b8;font-size:13px}.campaign-editor-new{display:inline-flex;min-height:40px;align-items:center;padding:0 14px;border:1px solid #6d5ca5;border-radius:10px;background:rgba(109,40,217,.2);color:#ede9fe;font-size:13px;font-weight:750}.campaign-editor-card{overflow:hidden;padding:0!important;border:1px solid #2d3748;border-radius:17px!important;background:linear-gradient(145deg,rgba(30,41,59,.72),rgba(17,24,39,.96))!important;box-shadow:0 20px 55px rgba(0,0,0,.2)!important}.campaign-tabs-wrap{overflow-x:auto;padding:14px 16px 0;border-bottom:1px solid #2d3748;background:rgba(15,23,42,.42)}#tabs{gap:7px;min-width:max-content}#tabs li{margin:0!important}#tabs a{border:1px solid transparent!important;border-radius:9px 9px 0 0!important;background:transparent!important;color:#94a3b8!important;font-size:12px!important;transition:.18s}#tabs a:hover{background:#202838!important;color:#e2e8f0!important}#tabs a.active-tab{border-color:#3f4d63!important;border-bottom-color:#171d28!important;background:#171d28!important;color:#fff!important}.campaign-editor-card form{padding:20px 22px 22px}.campaign-editor-card .tabcontent{padding:3px 2px 8px}.campaign-editor-card input.form-input,.campaign-editor-card select.form-select,.campaign-editor-card textarea.form-textarea{min-height:44px!important;border:1px solid #3f4d63!important;border-radius:9px!important;background:#111827!important;color:#f8fafc!important;box-shadow:none!important}.campaign-editor-card input.form-input:focus,.campaign-editor-card select.form-select:focus,.campaign-editor-card textarea.form-textarea:focus{border-color:#8b5cf6!important;box-shadow:0 0 0 3px rgba(139,92,246,.15)!important}.campaign-editor-card label>span{font-size:12px!important;font-weight:650}.campaign-editor-card .shadow-xs{border:1px solid #303a4b!important;border-radius:11px!important;background:rgba(17,24,39,.7)!important;box-shadow:none!important}.campaign-quantity-note{display:block;margin-top:6px;color:#6ee7b7;font-size:11px}.campaign-save-row{display:flex;align-items:center;justify-content:flex-end;margin-top:22px;padding-top:18px;border-top:1px solid #2d3748}.campaign-save-row #save-product-button{min-width:170px;border-radius:10px!important;background:linear-gradient(135deg,#8b5cf6,#7c3aed)!important;box-shadow:0 9px 22px rgba(124,58,237,.22)}@media(max-width:700px){.campaign-editor-heading{align-items:flex-start;flex-direction:column}.campaign-editor-new{width:100%;justify-content:center}.campaign-editor-card form{padding:16px}.campaign-save-row #save-product-button{width:100%}}
 </style>
 
 <main class="h-full pb-16 overflow-y-auto">
-    <div class="container px-6 mx-auto grid">
-        <h2 class="my-6 text-2xl font-semibold text-gray-700 dark:text-gray-200">
-            <?= isset($id) ? 'Atualizar campanha <a href="./?page=products/manage_product" id="create_new"><button class="px-4 py-2 text-sm font-medium leading-5 text-white transition-colors duration-150 bg-purple-600 border border-transparent rounded-lg active:bg-purple-600 hover:bg-purple-700 focus:outline-none focus:shadow-outline-purple">Criar novo</button></a>' : 'Nova campanha' ?>
-        </h2>
+    <div class="container px-6 mx-auto campaign-editor-shell">
+        <header class="campaign-editor-heading">
+            <div><p class="campaign-editor-eyebrow">Campanhas</p><h2><?= isset($id) ? 'Editar campanha' : 'Nova campanha' ?></h2><p class="campaign-editor-subtitle">Organize os dados, imagens e regras da campanha em um só lugar.</p></div>
+            <?php if (isset($id)): ?><a href="./?page=products/manage_product" id="create_new" class="campaign-editor-new">+ Criar nova campanha</a><?php endif; ?>
+        </header>
         <div id="campaign-save-feedback" role="status" aria-live="polite"></div>
-        <div class="px-4 py-3 mb-8 bg-white rounded-lg shadow-md dark:bg-gray-800">
-            <div class="flex">
+        <div class="px-4 py-3 mb-8 bg-white rounded-lg shadow-md dark:bg-gray-800 campaign-editor-card">
+            <div class="flex campaign-tabs-wrap">
                 <ul class="flex" id="tabs">
                     <li class="mr-1">
                         <a href="#tab1" class="bg-white dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700 active-tab">Dados</a>
@@ -496,14 +498,8 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
                                     </label></div>
                             </label>
                         </div>
-                        <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3 mt-4"><label class="block mt-4 text-sm qtd-numeros"><span class="text-gray-700 dark:text-gray-400">Quantidade de números</span><select name="qty_numbers" id="qty_numbers" class="block w-full mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray">
-                                    <option value="100" <?= isset($qty_numbers) && $qty_numbers == '100' ? 'selected' : '' ?>>100 títulos - 00 à 99 )</option>
-                                    <option value="1000" <?= isset($qty_numbers) && $qty_numbers == '1000' ? 'selected' : '' ?>>1 mil títulos - 000 a 999 )</option>
-                                    <option value="10000" <?= isset($qty_numbers) && $qty_numbers == '10000' ? 'selected' : '' ?>>10 mil títulos - 0000 a 9999 )</option>
-                                    <option value="100000" <?= isset($qty_numbers) && $qty_numbers == '100000' ? 'selected' : '' ?>>100 mil títulos - 00000 a 99999 )</option>
-                                    <option value="1000000" <?= isset($qty_numbers) && $qty_numbers == '1000000' ? 'selected' : '' ?>>1 milhão títulos - 000000 a 999999 )</option>
-                                    <option value="10000000" <?= isset($qty_numbers) && $qty_numbers == '10000000' ? 'selected' : '' ?>>10 milhôes títulos - 0000000 à 9999999 )</option>
-                                </select>
+                        <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3 mt-4"><label class="block mt-4 text-sm qtd-numeros"><span class="text-gray-700 dark:text-gray-400">Quantidade total de números</span><input name="qty_numbers" id="qty_numbers" type="number" min="10" max="10000000" step="1" required class="block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input" placeholder="Ex.: 1000000" value="<?= isset($qty_numbers) ? htmlspecialchars($qty_numbers, ENT_QUOTES, 'UTF-8') : '1000000' ?>">
+                                    <small class="campaign-quantity-note" id="campaign-quantity-note">Defina manualmente quantas cotas existirão na campanha.</small>
                             </label>
                             <label class="block mt-4 text-sm"><span class="text-gray-700 dark:text-gray-400">Valor por cada titulos</span><input name="price" id="price" class="block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input" placeholder="10,00" value="<?= isset($price) ? $price : '' ?>" />
                             </label>
@@ -1423,7 +1419,7 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
                     </div>
                 </div>
 
-                <div style="margin-top:20px;">
+                <div class="campaign-save-row">
                     <button id="save-product-button" form="product-form" class="px-5 py-3 font-medium leading-5 text-white transition-colors duration-150 bg-purple-600 border border-transparent rounded-lg active:bg-purple-600 hover:bg-purple-700 focus:outline-none focus:shadow-outline-purple"> Salvar
                     </button>
                 </div>
@@ -1495,12 +1491,27 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
             $('.qtd-maxima').show();
             $('.qtd-select').show();
         }
-        $('#min_purchase, #max_purchase, .discount_qty, #sale_qty, #ranking_qty, #draw_number').keypress(function(event) {
+        $('#qty_numbers, #min_purchase, #max_purchase, .discount_qty, #sale_qty, #ranking_qty, #draw_number').keypress(function(event) {
             var charCode = (event.which) ? event.which : event.keyCode;
             if (charCode > 31 && (charCode < 48 || charCode > 57)) {
                 return false;
             }
         });
+        function updateCampaignQuantityNote() {
+            var total = parseInt($('#qty_numbers').val(), 10);
+            if (!Number.isInteger(total) || total < 10) {
+                $('#campaign-quantity-note').text('Defina manualmente entre 10 e 10.000.000 de cotas.');
+                return;
+            }
+            var lastNumber = total - 1;
+            var width = String(lastNumber).length;
+            $('#campaign-quantity-note').text(
+                'Serão criadas ' + total.toLocaleString('pt-BR') + ' cotas, numeradas de ' +
+                String(0).padStart(width, '0') + ' a ' + String(lastNumber).padStart(width, '0') + '.'
+            );
+        }
+        $('#qty_numbers').on('input change', updateCampaignQuantityNote);
+        updateCampaignQuantityNote();
          jQuery("#price, #enable_progress_bar_fake_value, .discount_price, #sale_price, #desconto_upsell").mask("#.##0,00", {
             reverse: true
         });
@@ -1932,6 +1943,12 @@ if (isset($_GET['id']) && 0 < $_GET['id']) {
         $('#product-form').submit(async function(e) {
             e.preventDefault();
             $('.err-msg').remove();
+            var totalNumbers = parseInt($('#qty_numbers').val(), 10);
+            if (!Number.isInteger(totalNumbers) || totalNumbers < 10 || totalNumbers > 10000000) {
+                showCampaignFeedback('error', 'Informe uma quantidade total entre 10 e 10.000.000 de cotas.');
+                $('#qty_numbers').focus();
+                return;
+            }
             var form = this;
             var button = $('#save-product-button');
             button.prop('disabled', true).text('Salvando...');

@@ -250,6 +250,13 @@ class Main extends DBConnection
         if ($type_of_draw == 4) {
             $qty_numbers = 50;
         }
+        $qty_numbers = (int) $qty_numbers;
+        if ($qty_numbers < 10 || $qty_numbers > 10000000) {
+            return json_encode([
+                'status' => 'failed',
+                'msg' => 'Informe uma quantidade total entre 10 e 10.000.000 de números.',
+            ]);
+        }
         $price = $this->conn->real_escape_string($_POST["price"]);
         $price = str_replace(".", "", $price);
         $price = str_replace(",", ".", $price);
@@ -1032,7 +1039,179 @@ class Main extends DBConnection
         return json_encode($resp);
     }
 
+    private function generate_manual_free_numbers($productId, $totalNumbers, $quantity)
+    {
+        $used = [];
+        $statement = $this->conn->prepare('SELECT order_numbers FROM order_list WHERE product_id = ? AND status <> 3');
+        $statement->bind_param('i', $productId);
+        $statement->execute();
+        $result = $statement->get_result();
+        while ($row = $result->fetch_assoc()) {
+            foreach (explode(',', (string) $row['order_numbers']) as $number) {
+                $number = trim($number);
+                if ($number !== '' && ctype_digit($number)) {
+                    $numericNumber = (int) $number;
+                    if ($numericNumber >= 0 && $numericNumber < $totalNumbers) {
+                        $used[$numericNumber] = true;
+                    }
+                }
+            }
+        }
+        $statement->close();
+
+        if (($totalNumbers - count($used)) < $quantity) {
+            return [];
+        }
+
+        $selected = [];
+        $attemptLimit = max(1000, $quantity * 60);
+        for ($attempt = 0; count($selected) < $quantity && $attempt < $attemptLimit; $attempt++) {
+            $candidate = random_int(0, $totalNumbers - 1);
+            if (!isset($used[$candidate]) && !isset($selected[$candidate])) {
+                $selected[$candidate] = true;
+            }
+        }
+        if (count($selected) < $quantity) {
+            $start = random_int(0, $totalNumbers - 1);
+            for ($offset = 0; $offset < $totalNumbers && count($selected) < $quantity; $offset++) {
+                $candidate = ($start + $offset) % $totalNumbers;
+                if (!isset($used[$candidate]) && !isset($selected[$candidate])) {
+                    $selected[$candidate] = true;
+                }
+            }
+        }
+
+        $width = max(1, strlen((string) ($totalNumbers - 1)));
+        $numbers = array_map(static function ($number) use ($width) {
+            return str_pad((string) $number, $width, '0', STR_PAD_LEFT);
+        }, array_keys($selected));
+        shuffle($numbers);
+        return $numbers;
+    }
+
+    public function preview_manual_order_numbers()
+    {
+        if (empty($this->settings->userdata('firstname')) || (int) $this->settings->userdata('type') !== 1) {
+            return json_encode(['status' => 'failed', 'msg' => 'Não autorizado.']);
+        }
+        $productId = (int) ($_POST['raffle'] ?? 0);
+        $quantity = (int) ($_POST['quantidade'] ?? 0);
+        if ($productId <= 0 || $quantity <= 0 || $quantity > 50000) {
+            return json_encode(['status' => 'failed', 'msg' => 'Selecione uma campanha e informe uma quantidade válida.']);
+        }
+        $product = $this->conn->prepare('SELECT qty_numbers, price FROM product_list WHERE id = ? LIMIT 1');
+        $product->bind_param('i', $productId);
+        $product->execute();
+        $productInfo = $product->get_result()->fetch_assoc();
+        $product->close();
+        if (!$productInfo || (int) $productInfo['qty_numbers'] <= 0) {
+            return json_encode(['status' => 'failed', 'msg' => 'Campanha não encontrada.']);
+        }
+        $numbers = $this->generate_manual_free_numbers($productId, (int) $productInfo['qty_numbers'], $quantity);
+        if (count($numbers) !== $quantity) {
+            return json_encode(['status' => 'failed', 'msg' => 'Não existem cotas livres suficientes nesta campanha.']);
+        }
+        return json_encode([
+            'status' => 'success',
+            'numbers' => $numbers,
+            'total' => number_format((float) $productInfo['price'] * $quantity, 2, ',', '.'),
+        ]);
+    }
+
     public function create_order()
+    {
+        if (empty($this->settings->userdata('firstname')) || (int) $this->settings->userdata('type') !== 1) {
+            return json_encode(['status' => 'failed', 'msg' => 'Não autorizado.']);
+        }
+
+        $productId = (int) ($_POST['raffle'] ?? 0);
+        $customerId = (int) ($_POST['customer_id'] ?? 0);
+        $quantity = (int) ($_POST['quantidade'] ?? 0);
+        $status = (int) ($_POST['status'] ?? 0);
+        if ($productId <= 0 || $customerId <= 0 || $quantity <= 0 || $quantity > 50000 || !in_array($status, [1, 2], true)) {
+            return json_encode(['status' => 'failed', 'msg' => 'Preencha corretamente a campanha, o cliente, a quantidade e o status.']);
+        }
+
+        $customer = $this->conn->prepare('SELECT id FROM customer_list WHERE id = ? LIMIT 1');
+        $customer->bind_param('i', $customerId);
+        $customer->execute();
+        $customerExists = $customer->get_result()->num_rows === 1;
+        $customer->close();
+        if (!$customerExists) {
+            return json_encode(['status' => 'failed', 'msg' => 'Cliente não localizado.']);
+        }
+
+        $this->conn->begin_transaction();
+        try {
+            $product = $this->conn->prepare('SELECT name, price, limit_order_remove, qty_numbers FROM product_list WHERE id = ? LIMIT 1 FOR UPDATE');
+            $product->bind_param('i', $productId);
+            $product->execute();
+            $productInfo = $product->get_result()->fetch_assoc();
+            $product->close();
+            if (!$productInfo || (int) $productInfo['qty_numbers'] <= 0) {
+                throw new RuntimeException('Campanha não encontrada.');
+            }
+
+            $numbers = $this->generate_manual_free_numbers($productId, (int) $productInfo['qty_numbers'], $quantity);
+            if (count($numbers) !== $quantity) {
+                throw new RuntimeException('Não existem cotas livres suficientes nesta campanha.');
+            }
+
+            $code = 'M-' . uniqidReal();
+            $orderToken = md5(date('Ymdhis.u') . $code);
+            $productName = (string) $productInfo['name'];
+            $totalAmount = round((float) $productInfo['price'] * $quantity, 2);
+            $orderNumbers = implode(',', $numbers);
+            $paymentMethod = 'Manual';
+            $expiration = (string) $productInfo['limit_order_remove'];
+            $dateCreated = date('Y-m-d H:i:s');
+
+            $insertOrder = $this->conn->prepare('INSERT INTO order_list (code, customer_id, product_name, quantity, status, total_amount, order_token, order_numbers, product_id, payment_method, order_expiration, date_created, date_updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $insertOrder->bind_param('sisiidssissss', $code, $customerId, $productName, $quantity, $status, $totalAmount, $orderToken, $orderNumbers, $productId, $paymentMethod, $expiration, $dateCreated, $dateCreated);
+            if (!$insertOrder->execute()) {
+                throw new RuntimeException('Não foi possível gravar o pedido.');
+            }
+            $orderId = $this->conn->insert_id;
+            $insertOrder->close();
+
+            $insertItem = $this->conn->prepare('INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)');
+            $insertItem->bind_param('iiid', $orderId, $productId, $quantity, $totalAmount);
+            if (!$insertItem->execute()) {
+                throw new RuntimeException('Não foi possível gravar os itens do pedido.');
+            }
+            $insertItem->close();
+
+            $counterField = $status === 2 ? 'paid_numbers' : 'pending_numbers';
+            $updateProduct = $this->conn->prepare("UPDATE product_list SET {$counterField} = CAST({$counterField} AS UNSIGNED) + ? WHERE id = ?");
+            $updateProduct->bind_param('ii', $quantity, $productId);
+            if (!$updateProduct->execute()) {
+                throw new RuntimeException('Não foi possível atualizar a campanha.');
+            }
+            $updateProduct->close();
+            $this->conn->commit();
+        } catch (Throwable $error) {
+            $this->conn->rollback();
+            error_log('[manual-order] create failed: ' . $error->getMessage());
+            return json_encode(['status' => 'failed', 'msg' => $error->getMessage()]);
+        }
+
+        $this->correct_stock($productId);
+        order_email($this->settings->info('email_order'), '[' . $this->settings->info('name') . '] - Confirmação de pedido', $orderId);
+        if ($status === 2) {
+            order_email($this->settings->info('email_purchase'), '[' . $this->settings->info('name') . '] - Pagamento aprovado', $orderId);
+        }
+        $userName = $this->conn->real_escape_string((string) $this->settings->userdata('firstname'));
+        $this->conn->query("INSERT INTO logs (origin, description) VALUES ('ORDER', 'Pedido manual {$orderId} criado pelo usuário {$userName}')");
+        return json_encode([
+            'status' => 'success',
+            'msg' => 'Pedido criado com sucesso!',
+            'order_id' => $orderId,
+            'numbers' => $numbers,
+            'total' => number_format($totalAmount, 2, ',', '.'),
+        ]);
+    }
+
+    public function create_order_legacy()
     {
         if (!$this->settings->userdata("firstname")) {
             $resp["status"] = "failed";
@@ -5737,6 +5916,9 @@ switch ($action) {
         break;
     case "create_order":
         echo $Main->create_order();
+        break;
+    case "preview_manual_order_numbers":
+        echo $Main->preview_manual_order_numbers();
         break;
     case "create_payment_affiliate":
         echo $Main->create_payment_affiliate();
