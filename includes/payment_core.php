@@ -54,16 +54,19 @@ function payment_requires_customer_document()
 function payment_venopag_default_document()
 {
     $configured = getenv('VENOPAG_DEFAULT_DOCUMENT');
-    return preg_replace('/\D+/', '', (string) ($configured !== false ? $configured : ''));
+    if ($configured === false || trim((string) $configured) === '') {
+        $configured = payment_setting('venopag_default_document');
+    }
+    return preg_replace('/\D+/', '', (string) $configured);
 }
 
 function payment_venopag_minimum_amount()
 {
     $configured = getenv('VENOPAG_MIN_AMOUNT');
     if ($configured === false || trim((string) $configured) === '') {
-        return 0.01;
+        $configured = payment_setting('venopag_min_amount', '1.00');
     }
-    return max(0.01, round((float) str_replace(',', '.', (string) $configured), 2));
+    return max(1.00, round((float) str_replace(',', '.', (string) $configured), 2));
 }
 
 function payment_customer_document_is_valid($value)
@@ -160,7 +163,6 @@ function payment_http($method, $url, array $headers = [], $body = null, $certifi
     $raw = curl_exec($curl);
     $error = curl_error($curl);
     $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
-    curl_close($curl);
 
     $json = is_string($raw) ? json_decode($raw, true) : null;
     $ok = $error === '' && $status >= 200 && $status < 300;
@@ -242,6 +244,13 @@ function payment_create_mercadopago($orderId, $amount, $name, $email, $cpf, $exp
         'date_of_expiration' => payment_expiration_datetime($expiration),
         'payer' => ['email' => payment_customer_email($email), 'first_name' => trim((string) $name)],
     ];
+    $document = preg_replace('/\D+/', '', (string) $cpf);
+    if (payment_customer_document_is_valid($document)) {
+        $payload['payer']['identification'] = [
+            'type' => strlen($document) === 14 ? 'CNPJ' : 'CPF',
+            'number' => $document,
+        ];
+    }
     $response = payment_http('POST', 'https://api.mercadopago.com/v1/payments', [
         'Authorization: Bearer ' . $token,
         'Content-Type: application/json',
@@ -403,7 +412,7 @@ function payment_efi_token()
     $clientSecret = (string) payment_setting('gerencianet_client_secret');
     $certificate = payment_efi_certificate();
     if ($clientId === '' || $clientSecret === '' || !$certificate) {
-        return ['ok' => false, 'message' => 'A Efí exige Client ID, Client Secret e EFI_CERTIFICATE_BASE64 na Vercel.'];
+        return ['ok' => false, 'message' => 'A Efí exige Client ID, Client Secret e o certificado PIX (pagamentos.pem ou EFI_CERTIFICATE_BASE64).'];
     }
     $response = payment_http('POST', payment_efi_base_url() . '/oauth/token', [
         'Authorization: Basic ' . base64_encode($clientId . ':' . $clientSecret),
@@ -612,10 +621,12 @@ function payment_create_venopag($orderId, $amount, $name, $email, $cpf, $expirat
     $document = preg_replace('/\D+/', '', (string) $cpf);
     if (!payment_customer_document_is_valid($document)) {
         $document = payment_venopag_default_document();
-        if (!payment_customer_document_is_valid($document)) {
-            return ['ok' => false, 'message' => 'Documento padrão da VenoPag não configurado.'];
+        if (payment_customer_document_is_valid($document)) {
+            error_log('[payments] venopag default document used order=' . (int) $orderId . ' reason=customer_document_missing_or_invalid');
+        } else {
+            $document = '';
+            error_log('[payments] venopag document omitted order=' . (int) $orderId . ' reason=no_valid_document_configured');
         }
-        error_log('[payments] venopag default document used order=' . (int) $orderId . ' reason=customer_document_missing_or_invalid');
     }
     $webhookUrl = payment_venopag_webhook_url();
     if ($webhookUrl === '') {
@@ -624,11 +635,12 @@ function payment_create_venopag($orderId, $amount, $name, $email, $cpf, $expirat
     $payload = [
         'amount' => $chargeAmount,
         'name' => trim((string) $name),
-        'email' => payment_customer_email($email),
-        'document' => $document,
         'description' => 'Pedido #' . (int) $orderId,
         'webhook_url' => $webhookUrl,
     ];
+    if ($document !== '') {
+        $payload['document'] = $document;
+    }
     $response = payment_venopag_request('POST', '/api/cashin', $payload);
     $data = $response['json'] ?? [];
     if (empty($response['ok']) || ($data['status'] ?? '') !== 'pending' || empty($data['copyPaste']) || empty($data['request_number'])) {

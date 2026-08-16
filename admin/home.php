@@ -122,6 +122,7 @@ if (!empty($start_date) && !empty($end_date)) {
 
 <style>
 body main.h-full>.container{display:block!important;width:100%;max-width:1280px!important;padding:30px 24px 56px}body main.h-full>.container>p:first-of-type{margin:0 0 5px!important;color:#a78bfa!important;font-size:12px!important;font-weight:750!important;letter-spacing:.04em}body main.h-full>.container>h2{margin:0 0 22px!important;color:#f8fafc!important;font-size:30px!important;font-weight:800!important;letter-spacing:-.035em}.dashboard-section-title{color:#f8fafc}.grid.gap-6.mb-8{gap:16px!important;margin-bottom:18px!important}.grid.gap-6.mb-8>div{min-width:0!important;max-width:100%}.grid.gap-6.mb-8>.bg-white,.grid.gap-6.mb-8>.dark\:bg-gray-800,.grid.gap-6.mb-8>.items-center{min-width:0!important;padding:18px!important;overflow:hidden;border:1px solid #2d3748!important;border-radius:15px!important;background:linear-gradient(145deg,rgba(30,41,59,.76),rgba(17,24,39,.96))!important;box-shadow:0 16px 38px rgba(0,0,0,.14)!important}.grid.gap-6.mb-8 form{max-width:100%}.grid.gap-6.mb-8 form>table{table-layout:auto!important}.grid.gap-6.mb-8 table{width:100%!important;min-width:0!important}.grid.gap-6.mb-8 th,.grid.gap-6.mb-8 td{min-width:0;overflow-wrap:anywhere}.grid.gap-6.mb-8 thead{font-size:11px}.grid.gap-6.mb-8 input,.grid.gap-6.mb-8 select{width:100%!important;min-width:0;min-height:42px!important;border:1px solid #3f4d63!important;border-radius:9px!important;background:#0f172a!important;color:#f8fafc!important;box-shadow:none!important}.grid.gap-6.mb-8 button{min-width:max-content;height:42px;border-radius:9px!important;white-space:nowrap}.dashboard-ranking-form>table>tbody>tr:last-child{display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,150px) auto;gap:10px;align-items:center}.dashboard-ranking-form>table>tbody>tr:last-child>td{width:auto!important}.dashboard-ranking-form>table>tbody>tr:last-child>td:nth-child(3){display:none}.dashboard-prize-form>table>tbody>tr:last-child{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}.dashboard-prize-form>table>tbody>tr:last-child>td{width:auto!important}.dashboard-prize-form>table>tbody>tr:last-child>td:nth-child(2){display:none}.dashboard-legacy-removed{display:none!important}.w-full.overflow-hidden.rounded-lg{border:1px solid #2d3748!important;border-radius:14px!important;background:#151b27!important;box-shadow:none!important}.w-full.overflow-x-auto{max-width:100%;overflow-x:auto!important}.container>.w-full table.w-full{min-width:680px}.span-whats{gap:8px;flex-wrap:wrap}.span-whats>a,.span-whats>button{width:auto;min-width:150px;flex:1}.results-container{max-width:100%;overflow-wrap:anywhere}@media(max-width:760px){body main.h-full>.container{padding:22px 14px 44px}body main.h-full>.container>h2{font-size:24px!important}.grid.gap-6.mb-8{grid-template-columns:1fr!important}.grid.gap-6.mb-8 table:not(.w-full),.grid.gap-6.mb-8 tbody,.grid.gap-6.mb-8 tr,.grid.gap-6.mb-8 td{display:block;width:100%!important}.grid.gap-6.mb-8 td[style*="width"]{width:100%!important}.grid.gap-6.mb-8 td+td{margin-top:8px}.grid.gap-6.mb-8 button{width:100%;min-width:0}.dashboard-ranking-form>table>tbody>tr:last-child,.dashboard-prize-form>table>tbody>tr:last-child{display:grid!important;grid-template-columns:1fr}.dashboard-ranking-form>table>tbody>tr:last-child>td:nth-child(3),.dashboard-prize-form>table>tbody>tr:last-child>td:nth-child(2){display:none!important}.span-whats>a,.span-whats>button{width:100%}.flex-container{flex-direction:column}.flex-container>*{width:100%!important}}
+.dashboard-intro{max-width:760px;margin:-12px 0 22px;color:#94a3b8;font-size:13px;line-height:1.6}.dashboard-card-help{margin:-3px 0 14px;color:#94a3b8;font-size:12px;line-height:1.55}.dashboard-card-help strong{color:#cbd5e1}
 </style>
 
 <div id="overlay" style="display: none;">
@@ -152,6 +153,7 @@ body main.h-full>.container{display:block!important;width:100%;max-width:1280px!
             <br> <?php echo $_settings->info('name'); ?>!
         </p>
         <h2 class="my-6 text-2xl font-semibold text-gray-700 dark:text-gray-200">Central de Comando do <?php echo $_settings->info('name'); ?>!</h2>
+        <p class="dashboard-intro">Use os atalhos abaixo para consultar resultados e conferir premiações. Cada ferramenta apenas consulta os pedidos existentes e não altera pagamentos ou cotas.</p>
 
         <!--Busca Ganhador x Ranking -->
         <div class="grid gap-6 mb-8 lg:grid-cols-2 xl:grid-cols-2">
@@ -172,6 +174,7 @@ body main.h-full>.container{display:block!important;width:100%;max-width:1280px!
                             </svg></i>
                         BUSCAR GANHADOR
                     </p>
+                    <p class="dashboard-card-help"><strong>Para que serve:</strong> encontra o comprador de um número sorteado e mostra os dados necessários para conferir o ganhador.</p>
                     <form action="" id="buscar-ganhador" style="margin-bottom:10px">
                         <table style="width:100%">
                             <tbody>
@@ -265,7 +268,7 @@ body main.h-full>.container{display:block!important;width:100%;max-width:1280px!
                     </div>
                 </div>
             </div>
-            <div class="items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800 dashboard-card"
+            <div class="items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800 dashboard-legacy-removed"
                 style="display: flex; align-items: flex-start;">
 
                 <div class="w-full">
@@ -486,6 +489,7 @@ if ($raffle && $top) {
 </svg>
                         </i>COTAS PREMIADAS
                     </p>
+                    <p class="dashboard-card-help"><strong>Para que serve:</strong> consulta os títulos definidos como premiados e informa se já foram adquiridos e por quem.</p>
                     <form action="" id="filter-form" class="dashboard-prize-form">
 
                         <table>
@@ -665,6 +669,7 @@ if ($raffle && $top) {
                         <i style="display: inline-flex" class="far fa-clock  p-3 mr-3 text-green-700 bg-green-100 rounded-full text-lg"></i>
                         HORA PREMIADA
                     </p>
+                    <p class="dashboard-card-help"><strong>Para que serve:</strong> localiza compras realizadas dentro de um intervalo de horário e a partir do valor escolhido.</p>
                     <form action="" id="buscar-hora-premiada">
                         <table style="width:100%">
                             <tbody>
@@ -792,6 +797,7 @@ if ($raffle && $top) {
                         </i>
                         MAIOR E MENOR COTA
                     </p>
+                    <p class="dashboard-card-help"><strong>Para que serve:</strong> mostra a menor ou a maior cota comprada em uma campanha durante o período informado.</p>
                     <form action="" id="buscar-ganhador-menor-maior-cota">
                         <table style="width:100%">
                             <tbody>

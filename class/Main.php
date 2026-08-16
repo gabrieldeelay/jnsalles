@@ -1947,7 +1947,9 @@ class Main extends DBConnection
                 );
             }
 
-            $order_discount_amount = "";
+            $order_discount_amount = 0.0;
+            $roletas = [];
+            $boxs = [];
             if ($enable_discount && $discount_amount) {
                 $discount_qty = json_decode($discount_qty, true);
                 $discount_amount = json_decode($discount_amount, true);
@@ -2012,8 +2014,6 @@ class Main extends DBConnection
                 if ($roleta_amount && $roleta_qty) {
                     $roleta_qty = json_decode($roleta_qty, true);
                     $roleta_amount = json_decode($roleta_amount, true);
-                    $roletas = [];
-
                     foreach ($roleta_qty as $qty_index => $qty) {
                         foreach ($roleta_amount as $amount_index => $amount) {
                             if ($qty_index === $amount_index) {
@@ -2032,8 +2032,6 @@ class Main extends DBConnection
                 if ($box_amount && $box_qty) {
                     $box_qty = json_decode($box_qty, true);
                     $box_amount = json_decode($box_amount, true);
-                    $boxs = [];
-
                     foreach ($box_qty as $qty_index => $qty) {
                         foreach ($box_amount as $amount_index => $amount) {
                             if ($qty_index === $amount_index) {
@@ -2322,19 +2320,22 @@ class Main extends DBConnection
 
                         // Probabilidade de 10%: Números mais concentrados no meio
                         if ($probabilidade <= 10) {
-                            $middle = $qty_numbers / 2;
+                            $middle = (int) floor($qty_numbers / 2);
                             // Ajuste mais forte no centro
-                            $adjusted_number = $middle + mt_rand(- ($middle / 4), $middle / 4);
+                            $spread = max(1, (int) floor($middle / 4));
+                            $adjusted_number = $middle + mt_rand(-$spread, $spread);
                         }
                         // Probabilidade de 25%: Ainda concentrado, mas com mais variação
                         elseif ($probabilidade <= 25) {
-                            $middle = $qty_numbers / 2;
-                            $adjusted_number = $middle + mt_rand(- ($middle / 3), $middle / 3);
+                            $middle = (int) floor($qty_numbers / 2);
+                            $spread = max(1, (int) floor($middle / 3));
+                            $adjusted_number = $middle + mt_rand(-$spread, $spread);
                         }
                         // Probabilidade de 50%: Números mais distribuídos, mas ainda próximos ao meio
                         elseif ($probabilidade <= 50) {
-                            $middle = $qty_numbers / 2;
-                            $adjusted_number = $middle + mt_rand(- ($middle / 2), $middle / 2);
+                            $middle = (int) floor($qty_numbers / 2);
+                            $spread = max(1, (int) floor($middle / 2));
+                            $adjusted_number = $middle + mt_rand(-$spread, $spread);
                         }
                         // Probabilidade de 75%: Maior dispersão
                         elseif ($probabilidade <= 75) {

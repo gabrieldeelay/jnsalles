@@ -346,6 +346,8 @@ INSERT INTO `system_info` (`meta_field`, `meta_value`) VALUES
   ('openpix', '2'),
   ('pay2m', '2'),
   ('venopag', '2'),
+  ('venopag_default_document', ''),
+  ('venopag_min_amount', '1.00'),
   ('enable_cpf', '2'),
   ('enable_email', '2'),
   ('enable_address', '2'),

@@ -561,7 +561,7 @@ class System extends DBConnection
             'paggue' => ['paggue_client_key', 'paggue_client_secret'],
             'openpix' => ['openpix_app_id'],
             'pay2m' => ['pay2m_client_id', 'pay2m_client_secret'],
-            'venopag' => ['venopag_client_id', 'venopag_client_secret'],
+            'venopag' => ['venopag_client_id', 'venopag_client_secret', 'venopag_default_document'],
         ];
         $secrets = [
             'mercadopago_access_token', 'mercadopago_webhook_secret',
@@ -581,6 +581,16 @@ class System extends DBConnection
             $posted = trim((string) ($_POST[$field] ?? ''));
             $values[$field] = $posted !== '' ? $posted : (string) $this->info($field);
         }
+
+        $postedVenoDocument = preg_replace('/\D+/', '', (string) ($_POST['venopag_default_document'] ?? ''));
+        $storedVenoDocument = preg_replace('/\D+/', '', (string) $this->info('venopag_default_document'));
+        $values['venopag_default_document'] = $postedVenoDocument !== '' ? $postedVenoDocument : $storedVenoDocument;
+        if ($values['venopag_default_document'] !== '' && !payment_customer_document_is_valid($values['venopag_default_document'])) {
+            return json_encode(['status' => 'failed', 'msg' => 'Informe um CPF ou CNPJ padrão válido para a VenoPag.']);
+        }
+
+        $venopagMinimum = (float) str_replace(',', '.', (string) ($_POST['venopag_min_amount'] ?? $this->info('venopag_min_amount')));
+        $values['venopag_min_amount'] = number_format(max(1, $venopagMinimum), 2, '.', '');
 
         if ($values['pay2m_webhook_secret'] === '') {
             $values['pay2m_webhook_secret'] = bin2hex(random_bytes(24));
