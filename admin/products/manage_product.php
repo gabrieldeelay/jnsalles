@@ -125,7 +125,7 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
         cursor: pointer;
     }
 
-    .campaign-tab-guide{margin:0 0 18px;padding:14px 16px;border:1px solid rgba(96,165,250,.24);border-radius:12px;background:rgba(30,58,138,.14);color:#bfdbfe;font-size:12px;line-height:1.55}.campaign-tab-guide strong{display:block;margin-bottom:3px;color:#eff6ff;font-size:13px}.campaign-field-help{display:block;margin-top:6px;color:#8fa2bc;font-size:11px;font-weight:400;line-height:1.45}.winning-editor{margin-top:16px}.winning-editor-header{display:grid;grid-template-columns:minmax(150px,.8fr) minmax(260px,2fr) 42px;gap:10px;padding:0 10px 7px;color:#94a3b8;font-size:11px;font-weight:750;text-transform:uppercase}.winning-ticket-row{display:grid;grid-template-columns:minmax(150px,.8fr) minmax(260px,2fr) 42px;gap:10px;align-items:center;margin-bottom:9px;padding:10px;border:1px solid #344158;border-radius:11px;background:rgba(15,23,42,.62)}.winning-ticket-row input{margin:0!important}.winning-ticket-remove{display:grid;width:38px;height:38px;place-items:center;border:1px solid rgba(248,113,113,.35);border-radius:9px;background:rgba(127,29,29,.25);color:#fecaca;font-size:20px}.winning-ticket-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}.winning-ticket-add{min-height:40px;padding:0 14px;border:1px solid #6d5ca5;border-radius:9px;background:rgba(109,40,217,.2);color:#ede9fe;font-size:12px;font-weight:750}.winning-ticket-count{color:#a7f3d0;font-size:12px;font-weight:700}@media(max-width:650px){.winning-editor-header{display:none}.winning-ticket-row{grid-template-columns:1fr 42px}.winning-ticket-row .winning-prize-input{grid-column:1/-1;grid-row:2}.winning-ticket-remove{grid-column:2;grid-row:1}.winning-ticket-actions{align-items:stretch;flex-direction:column}.winning-ticket-add{width:100%}}
+    .campaign-tab-guide{margin:0 0 18px;padding:14px 16px;border:1px solid rgba(96,165,250,.24);border-radius:12px;background:rgba(30,58,138,.14);color:#bfdbfe;font-size:12px;line-height:1.55}.campaign-tab-guide strong{display:block;margin-bottom:3px;color:#eff6ff;font-size:13px}.campaign-field-help{display:block;margin-top:6px;color:#8fa2bc;font-size:11px;font-weight:400;line-height:1.45}.winning-generator{display:grid;grid-template-columns:minmax(170px,230px) auto minmax(220px,1fr);gap:12px;align-items:end;margin:0 0 18px;padding:14px;border:1px solid #344158;border-radius:12px;background:rgba(15,23,42,.55)}.winning-generator label{margin:0!important}.winning-generator-button{min-height:44px;padding:0 16px;border:1px solid #7c3aed;border-radius:9px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;font-size:12px;font-weight:800;box-shadow:0 8px 20px rgba(124,58,237,.22)}.winning-generator-help{align-self:center;margin:0;color:#93a4bb;font-size:11px;line-height:1.5}.winning-editor{margin-top:16px}.winning-editor-header{display:grid;grid-template-columns:minmax(150px,.8fr) minmax(260px,2fr) 42px;gap:10px;padding:0 10px 7px;color:#94a3b8;font-size:11px;font-weight:750;text-transform:uppercase}.winning-ticket-row{display:grid;grid-template-columns:minmax(150px,.8fr) minmax(260px,2fr) 42px;gap:10px;align-items:center;margin-bottom:9px;padding:10px;border:1px solid #344158;border-radius:11px;background:rgba(15,23,42,.62)}.winning-ticket-row input{margin:0!important}.winning-ticket-row.has-error{border-color:#ef4444!important;box-shadow:0 0 0 2px rgba(239,68,68,.13)}.winning-ticket-remove{display:grid;width:38px;height:38px;place-items:center;border:1px solid rgba(248,113,113,.35);border-radius:9px;background:rgba(127,29,29,.25);color:#fecaca;font-size:20px}.winning-ticket-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}.winning-ticket-add{min-height:40px;padding:0 14px;border:1px solid #6d5ca5;border-radius:9px;background:rgba(109,40,217,.2);color:#ede9fe;font-size:12px;font-weight:750}.winning-ticket-count{color:#a7f3d0;font-size:12px;font-weight:700}@media(max-width:760px){.winning-generator{grid-template-columns:1fr}.winning-generator-button{width:100%}}@media(max-width:650px){.winning-editor-header{display:none}.winning-ticket-row{grid-template-columns:1fr 42px}.winning-ticket-row .winning-prize-input{grid-column:1/-1;grid-row:2}.winning-ticket-remove{grid-column:2;grid-row:1}.winning-ticket-actions{align-items:stretch;flex-direction:column}.winning-ticket-add{width:100%}}
 </style>
 <style>
     .add_field,
@@ -868,13 +868,21 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
                     </div>
                 </div>
                 <div id="tab7" class="tabcontent text-gray-700 dark:text-gray-400 hidden">
-                    <div class="campaign-tab-guide"><strong>Cotas premiadas</strong>Cada linha liga uma cota específica a um prêmio. Novas campanhas já começam com 10 linhas; revise os números e troque “Prêmio surpresa” pelo prêmio real antes de publicar.</div>
+                    <div class="campaign-tab-guide"><strong>Cotas premiadas</strong>Cada linha liga uma cota específica a um prêmio. Você pode gerar números válidos automaticamente e depois editar livremente tanto o número quanto o prêmio antes de salvar.</div>
+                    <div class="winning-generator">
+                        <label class="block text-sm">
+                            <span class="text-gray-700 dark:text-gray-400">Quantidade a gerar</span>
+                            <input type="number" id="winning-ticket-generate-count" min="1" max="30" step="1" value="10" class="block w-full mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-input" aria-label="Quantidade de cotas premiadas para gerar">
+                        </label>
+                        <button type="button" class="winning-generator-button" id="generate-winning-tickets">Gerar 10 números</button>
+                        <p class="winning-generator-help">Os números são sorteados sem repetição dentro da quantidade total definida em “Dados”. A geração apenas preenche a lista: tudo continua editável.</p>
+                    </div>
                     <div class="winning-editor" id="winning-ticket-editor">
                         <div class="winning-editor-header"><span>Número da cota</span><span>Prêmio entregue</span><span></span></div>
                         <div id="winning-ticket-rows">
                             <?php foreach ($winningTicketRows as $winningTicket): ?>
                                 <div class="winning-ticket-row">
-                                    <input type="number" min="0" step="1" class="winning-number-input block w-full text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-input" aria-label="Número da cota premiada" value="<?= htmlspecialchars($winningTicket['number'], ENT_QUOTES, 'UTF-8') ?>">
+                                    <input type="text" inputmode="numeric" pattern="[0-9]*" class="winning-number-input block w-full text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-input" aria-label="Número da cota premiada" value="<?= htmlspecialchars($winningTicket['number'], ENT_QUOTES, 'UTF-8') ?>">
                                     <input type="text" class="winning-prize-input block w-full text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-input" aria-label="Prêmio desta cota" placeholder="Ex.: PIX de R$ 100" value="<?= htmlspecialchars($winningTicket['prize'], ENT_QUOTES, 'UTF-8') ?>">
                                     <button type="button" class="winning-ticket-remove" title="Remover esta cota" aria-label="Remover esta cota">&times;</button>
                                 </div>
@@ -1909,13 +1917,13 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
 
         //Fim imagem e galeria
         //Save products
-        function showCampaignFeedback(type, message) {
+        window.showCampaignFeedback = function(type, message) {
             var feedback = $('#campaign-save-feedback');
             feedback.stop(true, true).removeClass('success error info').addClass(type).text(message).fadeIn(150);
             if (type !== 'info') {
                 setTimeout(function() { feedback.fadeOut(250); }, 6500);
             }
-        }
+        };
 
         var persistedFeedback = sessionStorage.getItem('campaignSaveFeedback');
         if (persistedFeedback) {
@@ -2022,7 +2030,7 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
             return data;
         }
 
-        function showCampaignFieldError(fieldId, message, tabId) {
+        window.showCampaignFieldError = function(fieldId, message, tabId) {
             var target = $('#' + fieldId);
             var tab = tabId || (target.closest('.tabcontent').attr('id')) || 'tab1';
             $('#tabs a').removeClass('active-tab');
@@ -2034,7 +2042,7 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
                 target.attr('aria-invalid', 'true').focus();
                 target.one('input change', function () { $(this).removeAttr('aria-invalid'); });
             }
-        }
+        };
 
         function validateCampaignForm() {
             syncWinningEditor();
@@ -2051,6 +2059,9 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
             var priceValue = String($('#price').val() || '').replace(/\./g, '').replace(',', '.');
             if (!(parseFloat(priceValue) > 0)) {
                 showCampaignFieldError('price', 'Informe um valor por cota maior que zero.', 'tab1');
+                return false;
+            }
+            if (!validateWinningEditor(totalNumbers)) {
                 return false;
             }
             if (!$.trim($('#cotas_premiadas').val())) {
@@ -2318,21 +2329,125 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
             $('#winning-ticket-count').text(numbers.length + (numbers.length === 1 ? ' cota configurada' : ' cotas configuradas'));
         }
 
-        function addWinningTicketRow(number, prize) {
+        window.validateWinningEditor = function(totalNumbers) {
+            var rows = $('#winning-ticket-rows .winning-ticket-row');
+            var seen = {};
+            var errorMessage = '';
+            var errorInput = null;
+            rows.removeClass('has-error').find('input').removeAttr('aria-invalid');
+
+            if (!rows.length) {
+                errorMessage = 'Adicione ou gere pelo menos uma cota premiada.';
+            }
+            rows.each(function(index) {
+                if (errorMessage) return false;
+                var row = $(this);
+                var numberInput = row.find('.winning-number-input');
+                var prizeInput = row.find('.winning-prize-input');
+                var rawNumber = $.trim(numberInput.val());
+                var prize = $.trim(prizeInput.val());
+                if (!/^\d+$/.test(rawNumber)) {
+                    errorMessage = 'Informe somente números na cota premiada da linha ' + (index + 1) + '.';
+                    errorInput = numberInput;
+                } else {
+                    var numericNumber = parseInt(rawNumber, 10);
+                    if (numericNumber < 0 || numericNumber >= totalNumbers) {
+                        errorMessage = 'A cota premiada da linha ' + (index + 1) + ' precisa estar entre 0 e ' + (totalNumbers - 1) + '.';
+                        errorInput = numberInput;
+                    } else if (seen[numericNumber]) {
+                        errorMessage = 'A cota ' + rawNumber + ' aparece mais de uma vez. Use números diferentes.';
+                        errorInput = numberInput;
+                    } else {
+                        seen[numericNumber] = true;
+                    }
+                }
+                if (!errorMessage && !prize) {
+                    errorMessage = 'Informe qual é o prêmio da linha ' + (index + 1) + '.';
+                    errorInput = prizeInput;
+                }
+                if (errorMessage) row.addClass('has-error');
+            });
+
+            if (errorMessage) {
+                $('#tabs a').removeClass('active-tab');
+                $('#tabs a[href="#tab7"]').addClass('active-tab');
+                $('.tabcontent').hide();
+                $('#tab7').show();
+                showCampaignFeedback('error', errorMessage);
+                if (errorInput && errorInput.length) errorInput.attr('aria-invalid', 'true').focus();
+                return false;
+            }
+            syncWinningEditor();
+            return true;
+        };
+
+        function addWinningTicketRow(number, prize, shouldFocus) {
             if ($('#winning-ticket-rows .winning-ticket-row').length >= 30) {
                 showCampaignFeedback('error', 'O limite é de 30 cotas premiadas por campanha.');
                 return;
             }
             var row = $('<div class="winning-ticket-row">');
-            row.append($('<input type="number" min="0" step="1" class="winning-number-input block w-full text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-input" aria-label="Número da cota premiada">').val(number || ''));
+            row.append($('<input type="text" inputmode="numeric" pattern="[0-9]*" class="winning-number-input block w-full text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-input" aria-label="Número da cota premiada">').val(number || ''));
             row.append($('<input type="text" class="winning-prize-input block w-full text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-input" aria-label="Prêmio desta cota" placeholder="Ex.: PIX de R$ 100">').val(prize || ''));
             row.append('<button type="button" class="winning-ticket-remove" title="Remover esta cota" aria-label="Remover esta cota">&times;</button>');
             $('#winning-ticket-rows').append(row);
-            row.find('.winning-number-input').focus();
+            if (shouldFocus !== false) row.find('.winning-number-input').focus();
             syncWinningEditor();
         }
 
-        $('#add-winning-ticket').on('click', function() { addWinningTicketRow('', ''); });
+        function randomWinningNumber(limit) {
+            if (window.crypto && window.crypto.getRandomValues) {
+                var maximum = 4294967296;
+                var cutoff = maximum - (maximum % limit);
+                var value = new Uint32Array(1);
+                do { window.crypto.getRandomValues(value); } while (value[0] >= cutoff);
+                return value[0] % limit;
+            }
+            return Math.floor(Math.random() * limit);
+        }
+
+        function generateWinningTickets() {
+            var totalNumbers = parseInt($('#qty_numbers').val(), 10);
+            var requested = parseInt($('#winning-ticket-generate-count').val(), 10);
+            if (!Number.isInteger(totalNumbers) || totalNumbers < 10 || totalNumbers > 10000000) {
+                showCampaignFieldError('qty_numbers', 'Defina primeiro a quantidade total de cotas na aba Dados.', 'tab1');
+                return;
+            }
+            if (!Number.isInteger(requested) || requested < 1 || requested > 30) {
+                showCampaignFeedback('error', 'Escolha entre 1 e 30 cotas premiadas para gerar.');
+                $('#winning-ticket-generate-count').focus();
+                return;
+            }
+            if (requested > totalNumbers) {
+                showCampaignFeedback('error', 'A quantidade de cotas premiadas não pode ultrapassar o total da campanha.');
+                return;
+            }
+
+            var currentPrizes = [];
+            $('#winning-ticket-rows .winning-prize-input').each(function(index) {
+                currentPrizes.push($.trim($(this).val()) || ('Prêmio surpresa ' + (index + 1)));
+            });
+            var generated = {};
+            while (Object.keys(generated).length < requested) {
+                generated[randomWinningNumber(totalNumbers)] = true;
+            }
+            var numbers = Object.keys(generated).map(Number).sort(function(a, b) { return a - b; });
+            var width = String(totalNumbers - 1).length;
+            $('#winning-ticket-rows').empty();
+            numbers.forEach(function(number, index) {
+                addWinningTicketRow(String(number).padStart(width, '0'), currentPrizes[index] || ('Prêmio surpresa ' + (index + 1)), false);
+            });
+            syncWinningEditor();
+            showCampaignFeedback('success', requested + ' números premiados foram gerados. Você pode editar qualquer linha antes de salvar.');
+            $('#winning-ticket-rows .winning-number-input').first().focus();
+        }
+
+        $('#winning-ticket-generate-count').on('input change', function() {
+            var quantity = parseInt($(this).val(), 10);
+            $('#generate-winning-tickets').text('Gerar ' + (Number.isInteger(quantity) && quantity > 0 ? quantity : '') + ' números');
+        });
+        $('#generate-winning-tickets').on('click', generateWinningTickets);
+        $('#add-winning-ticket').on('click', function() { addWinningTicketRow('', '', true); });
         $('#winning-ticket-rows').on('input change', 'input', syncWinningEditor);
         $('#winning-ticket-rows').on('click', '.winning-ticket-remove', function() {
             $(this).closest('.winning-ticket-row').remove();

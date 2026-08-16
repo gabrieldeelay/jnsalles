@@ -95,6 +95,11 @@ if ($requestedPage === 'products/manage_product') {
         fwrite(STDERR, "A nova campanha não abriu com 10 cotas premiadas.\n");
         exit(1);
     }
+    if (!str_contains($html, 'id="generate-winning-tickets"') || !str_contains($html, 'id="winning-ticket-generate-count"')
+        || !str_contains($html, 'validateWinningEditor')) {
+        fwrite(STDERR, "O gerador de cotas premiadas não foi carregado.\n");
+        exit(1);
+    }
 }
 
 echo "Página administrativa renderizada: {$requestedPage}.\n";

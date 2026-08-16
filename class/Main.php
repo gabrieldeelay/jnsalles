@@ -324,6 +324,8 @@ class Main extends DBConnection
         if ($qty_numbers < 10 || $qty_numbers > 10000000) {
             return json_encode([
                 'status' => 'failed',
+                'field' => 'qty_numbers',
+                'tab' => 'tab1',
                 'msg' => 'Informe uma quantidade total entre 10 e 10.000.000 de números.',
             ]);
         }
@@ -354,11 +356,19 @@ class Main extends DBConnection
         }
         $prizesByNumber = [];
         foreach (explode(',', (string) $_POST['cotas_premiadas_premios']) as $prizeEntry) {
-            $parts = explode(':', trim($prizeEntry), 2);
-            if (count($parts) === 2 && trim($parts[0]) !== '' && trim($parts[1]) !== '') {
-                $prizesByNumber[trim($parts[0])] = trim($parts[1]);
+            $parts = array_map('trim', explode(':', trim($prizeEntry)));
+            $prizeNumber = array_shift($parts);
+            if ($parts !== [] && in_array(strtolower((string) end($parts)), ['premiada', 'normal', 'ouro'], true)) {
+                array_pop($parts);
+            }
+            $prizeDescription = trim(implode(' - ', array_filter($parts, static function ($part) {
+                return $part !== '';
+            })));
+            if ($prizeNumber !== '' && $prizeDescription !== '') {
+                $prizesByNumber[$prizeNumber] = $prizeDescription;
             }
         }
+        $normalizedPrizeEntries = [];
         foreach ($winningNumbers as $winningNumber) {
             if (!isset($prizesByNumber[$winningNumber])) {
                 return json_encode([
@@ -366,8 +376,10 @@ class Main extends DBConnection
                     'msg' => 'Informe o prêmio de cada cota premiada antes de salvar.',
                 ]);
             }
+            $normalizedPrizeEntries[] = $winningNumber . ':' . $prizesByNumber[$winningNumber] . ':premiada';
         }
         $_POST['cotas_premiadas'] = implode(',', $winningNumbers);
+        $_POST['cotas_premiadas_premios'] = implode(',', $normalizedPrizeEntries);
         if (trim((string) $_POST['cotas_premiadas_descricao']) === '') {
             $_POST['cotas_premiadas_descricao'] = 'Além do prêmio principal, esta campanha possui cotas premiadas. Consulte os números e os prêmios disponíveis abaixo.';
         }

@@ -59,6 +59,21 @@ if ($defaultProductId > 0) {
 $defaultConnection->close();
 
 $_POST = [
+    'name' => 'Campanha prêmio vazio ' . $suffix,
+    'description' => 'Validação do editor de premiadas',
+    'type_of_draw' => '1',
+    'qty_numbers' => '1000',
+    'price' => '0,20',
+    'cotas_premiadas' => '0001',
+    'cotas_premiadas_premios' => '0001::premiada',
+];
+$emptyPrizeResponse = json_decode($Main->save_product(), true);
+if (($emptyPrizeResponse['status'] ?? '') !== 'failed' || ($emptyPrizeResponse['field'] ?? '') !== 'cotas_premiadas_premios') {
+    fwrite(STDERR, "Uma cota sem descrição do prêmio foi aceita indevidamente.\n");
+    exit(1);
+}
+
+$_POST = [
     'name' => 'Campanha premiada ' . $suffix,
     'description' => 'Campanha criada no teste automatizado',
     'type_of_draw' => '1',
