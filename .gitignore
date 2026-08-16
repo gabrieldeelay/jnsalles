@@ -1,3 +1,5 @@
 .vercel
 .env*
 /banco_de_dados.sql
+db.local.php
+**/db.local.php

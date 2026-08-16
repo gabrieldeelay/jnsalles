@@ -611,12 +611,18 @@ $blockedFiles = [
     '/initialize.php',
     '/deploy.php',
     '/banco_de_dados.sql',
+    '/db.local.php',
+    '/db.local.example.php',
     '/composer.json',
     '/composer.lock',
     '/pedido.lock',
 ];
 
 if (in_array($requestPath, $blockedFiles, true)) {
+    stop_request(404);
+}
+
+if (strpos($requestPath, '/database/') === 0 || strpos($requestPath, '/bin/') === 0) {
     stop_request(404);
 }
 

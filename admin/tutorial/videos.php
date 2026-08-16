@@ -1,7 +1,8 @@
 <?php
 // Conexão com o banco
-$conn = new mysqli("localhost", "usuario", "senha", "nome_do_banco");
-if ($conn->connect_error) die("Erro de conexão: " . $conn->connect_error);
+if (!isset($conn) || !($conn instanceof mysqli)) {
+  require_once dirname(__DIR__, 2) . '/settings.php';
+}
 
 // Busca os vídeos
 $result = $conn->query("SELECT * FROM videos");

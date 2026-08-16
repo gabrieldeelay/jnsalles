@@ -3,6 +3,10 @@ Header set Access-Control-Allow-Origin "*"
 ErrorDocument 404 /404.php
 
 RewriteEngine On
+
+# Arquivos de instalacao e configuracao nunca devem ser servidos pela web.
+RewriteRule ^(?:database|bin)(?:/|$) - [F,L,NC]
+RewriteRule ^db\.local(?:\.example)?\.php$ - [F,L,NC]
 RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
 RewriteRule ^ %{REQUEST_SCHEME}://%1%{REQUEST_URI} [R=301,L]
 

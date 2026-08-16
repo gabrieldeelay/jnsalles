@@ -3,8 +3,8 @@
 
 class DBConnection
 {
-	private $host = DB_SERVER;
-	private $username = DB_USERNAME;
+	private $host = DB_HOST;
+	private $username = DB_USER;
 	private $password = DB_PASSWORD;
 	private $database = DB_NAME;
 	public $conn = null;
@@ -44,7 +44,7 @@ class DBConnection
 	}
 }
 
-if (!defined('DB_SERVER')) {
+if (!defined('DB_HOST')) {
 	require_once '../initialize.php';
 }
 

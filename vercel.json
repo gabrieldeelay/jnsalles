@@ -15,7 +15,7 @@
   ],
   "routes": [
     {
-      "src": "/(?:banco_de_dados\\.sql|composer\\.(?:json|lock)|Instruções\\.txt|pedido\\.lock|deploy\\.php)",
+      "src": "/(?:database(?:/.*)?|bin(?:/.*)?|db\\.local(?:\\.example)?\\.php|banco_de_dados\\.sql|composer\\.(?:json|lock)|Instruções\\.txt|pedido\\.lock|deploy\\.php)",
       "status": 404
     },
     {

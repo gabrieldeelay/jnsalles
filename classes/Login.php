@@ -26,14 +26,25 @@ class Login extends DBConnection
 	public function login()
 	{
 		extract($_POST);
-		$stmt = $this->conn->prepare('SELECT * from users where username = ? and password = ? ');
-		$password = md5($password);
-		$stmt->bind_param('ss', $username, $password);
+		$stmt = $this->conn->prepare('SELECT * from users where username = ? and type = 1 LIMIT 1');
+		$stmt->bind_param('s', $username);
 		$stmt->execute();
 		$result = $stmt->get_result();
 
 		if (0 < $result->num_rows) {
-			foreach ($result->fetch_array() as $k => $v) {
+			$account = $result->fetch_array();
+			if (!jnsalles_admin_password_verify($password, $account['password'])) {
+				return json_encode(['status' => 'incorrect']);
+			}
+			if (password_get_info((string) $account['password'])['algoName'] === 'unknown') {
+				$newHash = jnsalles_admin_password_hash($password);
+				$accountId = (int) $account['id'];
+				$rehash = $this->conn->prepare('UPDATE users SET password = ? WHERE id = ?');
+				$rehash->bind_param('si', $newHash, $accountId);
+				$rehash->execute();
+				$rehash->close();
+			}
+			foreach ($account as $k => $v) {
 				if (!is_numeric($k) && $k != 'password') {
 					$this->settings->set_userdata($k, $v);
 				}
@@ -43,7 +54,7 @@ class Login extends DBConnection
 			return json_encode(['status' => 'success']);
 		}
 		else {
-			return json_encode(['status' => 'incorrect', 'last_qry' => 'SELECT * from users where username = \'' . $username . '\' and password = md5(\'' . $password . '\') ']);
+			return json_encode(['status' => 'incorrect']);
 		}
 	}
 

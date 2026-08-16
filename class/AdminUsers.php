@@ -36,14 +36,14 @@ if ($action === 'password') {
     $check->execute();
     $account = $check->get_result()->fetch_assoc();
     $check->close();
-    if (!$account || !hash_equals((string) $account['password'], md5($currentPassword))) {
+    if (!$account || !jnsalles_admin_password_verify($currentPassword, $account['password'])) {
         admin_users_reply('failed', 'A senha atual está incorreta.');
     }
-    if (hash_equals((string) $account['password'], md5($newPassword))) {
+    if (jnsalles_admin_password_verify($newPassword, $account['password'])) {
         admin_users_reply('failed', 'A nova senha deve ser diferente da senha atual.');
     }
 
-    $hash = md5($newPassword);
+    $hash = jnsalles_admin_password_hash($newPassword);
     $statement = $conn->prepare('UPDATE users SET password = ? WHERE id = ? AND type = 1');
     $statement->bind_param('si', $hash, $currentId);
     if (!$statement->execute()) {
@@ -84,7 +84,7 @@ if ($action === 'save') {
         }
         $existing->close();
         if ($password !== '') {
-            $hash = md5($password);
+            $hash = jnsalles_admin_password_hash($password);
             $stmt = $conn->prepare('UPDATE users SET firstname = ?, lastname = ?, username = ?, password = ?, type = 1 WHERE id = ?');
             $stmt->bind_param('ssssi', $firstname, $lastname, $username, $hash, $id);
         } else {
@@ -103,7 +103,7 @@ if ($action === 'save') {
     }
 
     $email = $username . '@admin.local';
-    $hash = md5($password);
+    $hash = jnsalles_admin_password_hash($password);
     $stmt = $conn->prepare('INSERT INTO users (firstname, lastname, username, password, email, type, date_added) VALUES (?, ?, ?, ?, ?, 1, NOW())');
     $stmt->bind_param('sssss', $firstname, $lastname, $username, $hash, $email);
     if (!$stmt->execute()) {
