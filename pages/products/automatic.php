@@ -1939,7 +1939,7 @@ if ($available > 0 && $status == '1') {
                                                     endif;
                                                     ?>
                                                     <?php
-                                                    $ranking_limit = max(3, min(20, (int) $ranking_qty ?: 5));
+                                                    $ranking_limit = 3;
                                                     $ranking_window_start = $conn->real_escape_string($rankingWindowStart);
                                                     $ranking_window_end = $conn->real_escape_string($rankingWindowEnd);
                                                     $ranking_window_start_operator = $rankingWindowUsesReset ? '>' : '>=';
@@ -1960,6 +1960,8 @@ if ($available > 0 && $status == '1') {
 
                                                     while ($row = $requests->fetch_assoc()) {
                                                         ++$count;
+                                                        $ranking_name_parts = preg_split('/\s+/u', trim((string) $row['firstname']), -1, PREG_SPLIT_NO_EMPTY);
+                                                        $ranking_first_name = $ranking_name_parts[0] ?? 'Cliente';
 
                                                         if ($count == 1) {
                                                             $medal = '1º 🥇';
@@ -1975,7 +1977,7 @@ if ($available > 0 && $status == '1') {
                                                         <div class="ranking-buyer-row">
                                                             <div class="ranking-buyer-medal"><?= $medal ?></div>
                                                             <div class="ranking-buyer-info">
-                                                                <span class="ranking-buyer-name"><?= htmlspecialchars(trim($row['firstname'] . ' ' . $row['lastname']), ENT_QUOTES, 'UTF-8') ?></span>
+                                                                <span class="ranking-buyer-name"><?= htmlspecialchars($ranking_first_name, ENT_QUOTES, 'UTF-8') ?></span>
                                                                 <span class="ranking-buyer-total"><?= number_format((int) $row['total_quantity'], 0, ',', '.') ?> cotas</span>
                                                             </div>
                                                         </div>
