@@ -16,6 +16,41 @@ if ((int) $_settings->userdata('login_type') !== 1 || (int) $_settings->userdata
 
 $action = $_GET['action'] ?? '';
 $currentId = (int) $_settings->userdata('id');
+$primaryRow = $conn->query('SELECT MIN(id) AS id FROM users WHERE type = 1')->fetch_assoc();
+$primaryId = (int) ($primaryRow['id'] ?? 0);
+
+if ($action === 'password') {
+    $currentPassword = (string) ($_POST['current_password'] ?? '');
+    $newPassword = (string) ($_POST['new_password'] ?? '');
+    $confirmation = (string) ($_POST['password_confirmation'] ?? '');
+
+    if ($currentPassword === '' || strlen($newPassword) < 8) {
+        admin_users_reply('failed', 'Informe a senha atual e uma nova senha com pelo menos 8 caracteres.');
+    }
+    if (!hash_equals($newPassword, $confirmation)) {
+        admin_users_reply('failed', 'A confirmação da nova senha não confere.');
+    }
+
+    $check = $conn->prepare('SELECT password FROM users WHERE id = ? AND type = 1 LIMIT 1');
+    $check->bind_param('i', $currentId);
+    $check->execute();
+    $account = $check->get_result()->fetch_assoc();
+    $check->close();
+    if (!$account || !hash_equals((string) $account['password'], md5($currentPassword))) {
+        admin_users_reply('failed', 'A senha atual está incorreta.');
+    }
+    if (hash_equals((string) $account['password'], md5($newPassword))) {
+        admin_users_reply('failed', 'A nova senha deve ser diferente da senha atual.');
+    }
+
+    $hash = md5($newPassword);
+    $statement = $conn->prepare('UPDATE users SET password = ? WHERE id = ? AND type = 1');
+    $statement->bind_param('si', $hash, $currentId);
+    if (!$statement->execute()) {
+        admin_users_reply('failed', 'Não foi possível alterar a senha.');
+    }
+    admin_users_reply('success', 'Senha da sua conta alterada com sucesso.');
+}
 
 if ($action === 'save') {
     $id = (int) ($_POST['id'] ?? 0);
@@ -41,6 +76,13 @@ if ($action === 'save') {
     $firstname = $parts[0];
     $lastname = $parts[1] ?? 'Administrador';
     if ($id > 0) {
+        $existing = $conn->prepare('SELECT id FROM users WHERE id = ? AND type = 1 LIMIT 1');
+        $existing->bind_param('i', $id);
+        $existing->execute();
+        if (!$existing->get_result()->num_rows) {
+            admin_users_reply('failed', 'Administrador não encontrado.');
+        }
+        $existing->close();
         if ($password !== '') {
             $hash = md5($password);
             $stmt = $conn->prepare('UPDATE users SET firstname = ?, lastname = ?, username = ?, password = ?, type = 1 WHERE id = ?');
@@ -72,7 +114,10 @@ if ($action === 'save') {
 
 if ($action === 'delete') {
     $id = (int) ($_POST['id'] ?? 0);
-    if ($id <= 0 || $id === $currentId) {
+    if ($id <= 0 || $id === $primaryId) {
+        admin_users_reply('failed', 'A conta principal não pode ser excluída.');
+    }
+    if ($id === $currentId) {
         admin_users_reply('failed', 'Você não pode excluir o administrador usado nesta sessão.');
     }
     $count = $conn->query('SELECT COUNT(*) AS total FROM users WHERE type = 1')->fetch_assoc();
@@ -89,4 +134,3 @@ if ($action === 'delete') {
 }
 
 admin_users_reply('failed', 'Ação inválida.');
-

@@ -1679,6 +1679,7 @@ if ($available > 0 && $status == '1') {
                                                 }
                                             }
                                         }
+                                    }
 
                                         if ($cotas_premiadas) {
                                             $cotas_premiada = explode(',', $cotas_premiadas);
@@ -1723,8 +1724,7 @@ if ($available > 0 && $status == '1') {
                                             </div>
                                         <?php
                                          }
-                                            }
-                                        
+
                                         ?>
 
           <?php 

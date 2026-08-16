@@ -6,6 +6,7 @@ require_once 'sess_auth.php';
 echo '<!DOCTYPE html>' . "\r\n" . '<html :class="{ \'theme-dark\': dark }" x-data="data()" lang="en" class="theme-dark">' . "\r\n\r\n" . '<head>' . "\r\n" . '  <meta charset="UTF-8" />' . "\r\n" . '  <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no">' . "\r\n" . '  <title>' . "\r\n" . '    ';
 $pageTitle = isset($_GET['page']) ? $_GET['page'] : '';
 $siteName = $_settings->info('name');
+$adminLogo = validate_image($_settings->info('logo'));
 
 switch ($pageTitle) {
     case 'products':
@@ -43,6 +44,9 @@ switch ($pageTitle) {
         break;
     case 'system_info':
         echo 'Configuração - ' . $siteName;
+        break;
+    case 'admin_accounts':
+        echo 'Administradores - ' . $siteName;
         break;
     default:
         echo $siteName;
@@ -86,13 +90,13 @@ echo '\';' . "\r\n" . '  </script>' . "\r\n" .
 '
 . "\r\n" .
 
-'</head>' . "\r\n\r\n" . '<body>' . "\r\n" . '  <div class="flex h-screen bg-gray-50 dark:bg-gray-900" :class="{ \'overflow-hidden\': isSideMenuOpen}">' . "\r\n" . '    <!-- Desktop sidebar -->' . "\r\n" . '    <aside class="z-20 hidden w-64 overflow-y-auto bg-white dark:bg-gray-800 md:block flex-shrink-0 relative">' . "\r\n" . '      <div class="py-4 text-gray-500 dark:text-gray-400">' . "\r\n" . '        <a style="display:inline-flex" class="ml-6 text-lg font-bold text-gray-800 dark:text-gray-200" href="';
+'<style>.admin-sidebar{width:272px!important;background:#10131a!important;border-right:1px solid #272c37;box-shadow:10px 0 30px rgba(0,0,0,.08)}.admin-sidebar-content{display:flex;min-height:100%;flex-direction:column;padding:0 12px 18px!important}.admin-brand{display:flex!important;width:100%;height:82px;align-items:center;justify-content:center;margin:0!important;border-bottom:1px solid #272c37}.admin-brand-logo{display:flex;width:100%;height:64px;align-items:center;justify-content:center;overflow:hidden}.admin-brand-logo img{display:block!important;max-width:172px!important;max-height:52px!important;width:auto!important;height:auto!important;object-fit:contain}.admin-nav{margin:10px 0 0!important;padding:0!important}.admin-sidebar ul li{padding:3px 0!important}.admin-sidebar ul li a{display:flex!important;min-height:43px;align-items:center;padding:0 13px!important;border-radius:10px;color:#aab3c3!important;font-size:13px!important;font-weight:650!important;transition:background .18s,color .18s,transform .18s}.admin-sidebar ul li a i{width:21px!important;margin:0 12px 0 0!important;color:#737f93;text-align:center;transition:color .18s}.admin-sidebar ul li a span{margin-left:0!important}.admin-sidebar ul li a:hover{background:#1b2130;color:#f8fafc!important;transform:translateX(2px)}.admin-sidebar ul li a:hover i{color:#c4b5fd}.admin-sidebar ul li a.is-active{background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff!important;box-shadow:0 8px 22px rgba(109,40,217,.25)}.admin-sidebar ul li a.is-active i{color:#fff}.admin-sidebar-support{margin-top:auto!important;padding:12px 0 0!important}.admin-sidebar-support button{min-height:42px;border-radius:10px!important;background:linear-gradient(135deg,#8b5cf6,#7c3aed)!important;box-shadow:0 8px 20px rgba(124,58,237,.22)}.admin-sidebar-mobile{margin-top:64px!important}.admin-sidebar-mobile .admin-sidebar-content{padding-bottom:24px!important}@media(max-width:767px){.admin-sidebar{width:278px!important}}</style><script>document.addEventListener("DOMContentLoaded",function(){var page=new URLSearchParams(location.search).get("page")||"";document.querySelectorAll(".admin-sidebar a[href]").forEach(function(link){var href=link.getAttribute("href")||"";if(href==="#")return;var match=href.match(/[?&]page=([^&]+)/);var target=match?decodeURIComponent(match[1]):"";if(target===page&&(target!==""||href==="./")){link.classList.add("is-active");}});});</script></head>' . "\r\n\r\n" . '<body>' . "\r\n" . '  <div class="flex h-screen bg-gray-50 dark:bg-gray-900" :class="{ \'overflow-hidden\': isSideMenuOpen}">' . "\r\n" . '    <!-- Desktop sidebar -->' . "\r\n" . '    <aside class="admin-sidebar z-20 hidden w-64 overflow-y-auto bg-white dark:bg-gray-800 md:block flex-shrink-0 relative">' . "\r\n" . '      <div class="admin-sidebar-content py-4 text-gray-500 dark:text-gray-400">' . "\r\n" . '        <a style="display:inline-flex" class="admin-brand ml-6 text-lg font-bold text-gray-800 dark:text-gray-200" href="';
 echo BASE_URL;
 echo '" target="_blank">' . "\r\n" . '        ';
-echo '<div style="display: flex; justify-content: center; align-items: center; height: 100px; overflow: hidden;width:145px; height: 55px;">';
-echo '<img src="/logo.png" style="max-width: 50%;  margin: 0; padding: 0; display: block;">';
+echo '<div class="admin-brand-logo">';
+echo '<img src="' . htmlspecialchars($adminLogo, ENT_QUOTES, 'UTF-8') . '" alt="' . htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8') . '">';
 echo '</div>';
-echo '        </a>' . "\r\n\r\n" . '        <ul class="">' . "\r\n" . '          ';
+echo '        </a>' . "\r\n\r\n" . '        <ul class="admin-nav">' . "\r\n" . '          ';
 
 echo "\r\n" .
     '            <li class="relative px-6 py-3">' .
@@ -319,7 +323,7 @@ echo "\r\n" .
 
 echo '          ' . "\r\n" . '          ';
 
-echo "\r\n" . '        </ul>' . "\r\n" . '        <div  class="px-6 mt-2 ">' . "\r\n" . '          <a href="';
+echo "\r\n" . '        </ul>' . "\r\n" . '        <div class="admin-sidebar-support px-6 mt-2">' . "\r\n" . '          <a href="';
 echo '#';
 echo '" target="_blank">' .
     "\r\n" .
@@ -372,7 +376,7 @@ echo '      </span>  </div>' .
     "\r\n" .
     '      class="fixed inset-0 z-10 flex items-end bg-black bg-opacity-50 sm:items-center sm:justify-center"></div>' .
     "\r\n" .
-    '    <aside class="fixed inset-y-0 z-20 flex-shrink-0 w-64 mt-16 overflow-y-auto bg-white dark:bg-gray-800 md:hidden"' .
+    '    <aside class="admin-sidebar admin-sidebar-mobile fixed inset-y-0 z-20 flex-shrink-0 w-64 mt-16 overflow-y-auto bg-white dark:bg-gray-800 md:hidden"' .
     "\r\n" .
     '      x-show="isSideMenuOpen" x-transition:enter="transition ease-in-out duration-150"' .
     "\r\n" .
@@ -384,13 +388,13 @@ echo '      </span>  </div>' .
     "\r\n" .
     '      @keydown.escape="closeSideMenu">' .
     "\r\n" .
-    '      <div class="py-4 text-gray-500 dark:text-gray-400">' .
+    '      <div class="admin-sidebar-content py-4 text-gray-500 dark:text-gray-400">' .
     "\r\n" .
-    '        <a class="ml-6 text-lg font-bold text-gray-800 dark:text-gray-200" href="#">' .
+    '        <a class="admin-brand ml-6 text-lg font-bold text-gray-800 dark:text-gray-200" href="#">' .
     "\r\n" .
     '          ';
-echo '<div style="display: flex; justify-content: center; align-items: center; height: 100px; overflow: hidden;">';
-echo '<img src="/logo.png" style="max-width: 50%; height: auto; margin: 0; padding: 0; display: block;">';
+echo '<div class="admin-brand-logo">';
+echo '<img src="' . htmlspecialchars($adminLogo, ENT_QUOTES, 'UTF-8') . '" alt="' . htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8') . '">';
 echo '</div>';
 echo '        </a>' .
     "\r\n" .
@@ -609,7 +613,7 @@ echo '        </a>' .
     "\r\n\r\n" .
     '          ';
 
-echo "\r\n" . '        </ul>' . "\r\n" . '        <div class="px-6 my-6">' . "\r\n" . '          <a href="';
+echo "\r\n" . '        </ul>' . "\r\n" . '        <div class="admin-sidebar-support px-6 my-6">' . "\r\n" . '          <a href="';
 echo '#';
 echo '" target="_blank">' .
     "\r\n" .

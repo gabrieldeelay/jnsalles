@@ -3,65 +3,163 @@ if ((int) $_settings->userdata('type') !== 1) {
     echo '<script>location.href="./"</script>';
     exit;
 }
-$admins = $conn->query("SELECT id, firstname, lastname, username, date_added FROM users WHERE type = 1 ORDER BY id ASC");
+
 $currentId = (int) $_settings->userdata('id');
+$primaryRow = $conn->query('SELECT MIN(id) AS id FROM users WHERE type = 1')->fetch_assoc();
+$primaryId = (int) ($primaryRow['id'] ?? 0);
+$adminsResult = $conn->query('SELECT id, firstname, lastname, username, date_added FROM users WHERE type = 1 ORDER BY id ASC');
+$admins = [];
+while ($row = $adminsResult->fetch_assoc()) {
+    $admins[] = $row;
+}
+$currentAdmin = null;
+foreach ($admins as $admin) {
+    if ((int) $admin['id'] === $currentId) {
+        $currentAdmin = $admin;
+        break;
+    }
+}
+
+function admin_initials($firstname, $lastname)
+{
+    $first = mb_substr(trim((string) $firstname), 0, 1);
+    $last = mb_substr(trim((string) $lastname), 0, 1);
+    return mb_strtoupper($first . $last);
+}
 ?>
+
+<style>
+  .admins-shell{max-width:1180px;padding:28px 24px 48px}.admins-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:22px}.admins-eyebrow{margin:0 0 5px;color:#a78bfa;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}.admins-head h2{margin:0;color:#f8fafc;font-size:30px;font-weight:800;letter-spacing:-.035em}.admins-head p{margin:7px 0 0;color:#94a3b8;font-size:14px}.admins-site-link{display:inline-flex;align-items:center;gap:8px;padding:10px 13px;border:1px solid #3b4659;border-radius:10px;background:#172033;color:#e2e8f0;font-size:12px;font-weight:700;transition:.18s}.admins-site-link:hover{border-color:#8b5cf6;color:#fff}.admins-feedback{position:sticky;top:14px;z-index:30;margin-bottom:16px;padding:12px 14px;border-radius:11px;font-size:13px;font-weight:700}.admins-feedback.success{border:1px solid rgba(52,211,153,.35);background:#064e3b;color:#d1fae5}.admins-feedback.error{border:1px solid rgba(248,113,113,.35);background:#7f1d1d;color:#fee2e2}.admins-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}.admins-stat{display:flex;align-items:center;gap:12px;padding:16px;border:1px solid #2d3748;border-radius:14px;background:linear-gradient(145deg,rgba(30,41,59,.78),rgba(17,24,39,.95))}.admins-stat__icon{display:flex;width:40px;height:40px;align-items:center;justify-content:center;border-radius:11px;background:rgba(124,58,237,.2);color:#c4b5fd}.admins-stat small{display:block;color:#94a3b8;font-size:10px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.admins-stat strong{display:block;margin-top:2px;color:#f8fafc;font-size:16px}.admins-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-bottom:20px}.admins-card{border:1px solid #2d3748;border-radius:16px;background:linear-gradient(145deg,rgba(30,41,59,.72),rgba(17,24,39,.94));box-shadow:0 18px 45px rgba(0,0,0,.14)}.admins-card__head{display:flex;align-items:flex-start;gap:12px;padding:19px 20px;border-bottom:1px solid #2d3748}.admins-card__icon{display:flex;width:38px;height:38px;flex:0 0 38px;align-items:center;justify-content:center;border-radius:10px;background:#312e81;color:#c4b5fd}.admins-card__head h3{margin:0;color:#f8fafc;font-size:16px;font-weight:750}.admins-card__head p{margin:4px 0 0;color:#94a3b8;font-size:11px;line-height:1.5}.admins-card__body{padding:20px}.admins-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.admins-field{min-width:0}.admins-field.full{grid-column:1/-1}.admins-field label{display:block;margin-bottom:6px;color:#cbd5e1;font-size:11px;font-weight:700}.admins-input-wrap{position:relative}.admins-input{width:100%;min-height:43px;padding:0 12px;border:1px solid #3f4d63;border-radius:9px;background:#0f172a;color:#f8fafc;font-size:13px;outline:none;transition:.18s}.admins-input:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,.15)}.admins-input-wrap .admins-input{padding-right:48px}.admins-show-password{position:absolute;top:5px;right:5px;width:34px;height:33px;border:0;border-radius:7px;background:#1e293b;color:#94a3b8}.admins-show-password:hover{color:#fff}.admins-submit{display:inline-flex;min-height:42px;align-items:center;justify-content:center;gap:8px;padding:0 16px;border:0;border-radius:9px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;font-size:12px;font-weight:800;box-shadow:0 8px 20px rgba(124,58,237,.2)}.admins-submit:disabled{cursor:wait;opacity:.6}.admins-list-card{overflow:hidden}.admins-list-head{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:20px;border-bottom:1px solid #2d3748}.admins-list-head h3{margin:0;color:#f8fafc;font-size:17px;font-weight:750}.admins-list-head p{margin:4px 0 0;color:#94a3b8;font-size:11px}.admins-count{padding:5px 9px;border-radius:999px;background:rgba(124,58,237,.2);color:#c4b5fd;font-size:10px;font-weight:800}.admins-list{display:grid;gap:10px;padding:14px}.admin-row{border:1px solid #334155;border-radius:13px;background:rgba(15,23,42,.68);overflow:hidden}.admin-row__summary{display:grid;grid-template-columns:minmax(230px,1.2fr) minmax(150px,.7fr) minmax(130px,.55fr) auto;gap:15px;align-items:center;padding:14px}.admin-identity{display:flex;align-items:center;min-width:0;gap:11px}.admin-avatar{display:flex;width:42px;height:42px;flex:0 0 42px;align-items:center;justify-content:center;border:1px solid rgba(167,139,250,.25);border-radius:12px;background:linear-gradient(135deg,#4c1d95,#312e81);color:#ede9fe;font-size:13px;font-weight:850}.admin-identity strong{display:block;overflow:hidden;color:#f1f5f9;font-size:13px;text-overflow:ellipsis;white-space:nowrap}.admin-identity small,.admin-meta small{display:block;margin-top:3px;color:#94a3b8;font-size:10px}.admin-meta span{display:block;color:#cbd5e1;font-size:12px}.admin-badges{display:flex;gap:5px;flex-wrap:wrap}.admin-badge{padding:4px 7px;border-radius:999px;font-size:9px;font-weight:800;letter-spacing:.03em;text-transform:uppercase}.admin-badge.primary{background:rgba(245,158,11,.16);color:#fcd34d}.admin-badge.session{background:rgba(16,185,129,.16);color:#6ee7b7}.admin-actions{display:flex;justify-content:flex-end;gap:7px}.admin-action{display:inline-flex;min-height:35px;align-items:center;justify-content:center;gap:6px;padding:0 10px;border-radius:8px;font-size:10px;font-weight:800}.admin-edit{border:1px solid #475569;background:#1e293b;color:#e2e8f0}.admin-delete{border:1px solid rgba(248,113,113,.35);background:rgba(127,29,29,.18);color:#fca5a5}.admin-delete.confirming{border-color:#ef4444;background:#b91c1c;color:#fff}.admin-delete:disabled{cursor:not-allowed;opacity:.38}.admin-edit-form{display:none;padding:16px;border-top:1px solid #334155;background:rgba(2,6,23,.38)}.admin-edit-form.open{display:block}.admin-edit-actions{display:flex;align-items:center;gap:8px;grid-column:1/-1}.admin-cancel{min-height:42px;padding:0 13px;border:1px solid #475569;border-radius:9px;background:#1e293b;color:#cbd5e1;font-size:11px;font-weight:750}@media(max-width:900px){.admins-stats{grid-template-columns:1fr}.admins-grid{grid-template-columns:1fr}.admin-row__summary{grid-template-columns:1fr auto}.admin-meta,.admin-badges{grid-column:1}.admin-actions{grid-column:2;grid-row:1/4;flex-direction:column}}@media(max-width:600px){.admins-shell{padding:20px 14px 42px}.admins-head{align-items:flex-start;flex-direction:column}.admins-head h2{font-size:25px}.admins-site-link{width:100%;justify-content:center}.admins-form-grid{grid-template-columns:1fr}.admins-field.full{grid-column:auto}.admin-row__summary{grid-template-columns:1fr}.admin-actions{grid-column:1;grid-row:auto;flex-direction:row;justify-content:flex-start}.admin-action{flex:1}.admin-edit-actions{grid-column:auto;flex-direction:column}.admin-edit-actions button{width:100%}}
+</style>
+
 <main class="h-full pb-16 overflow-y-auto">
-  <div class="container px-6 mx-auto grid">
-    <div class="flex items-center justify-between my-6">
-      <h2 class="text-2xl font-semibold text-gray-700 dark:text-gray-200">Configuração</h2>
-      <a href="./?page=system_info" class="px-4 py-2 text-sm font-medium text-purple-700 bg-purple-100 rounded-lg">Configurações do site</a>
-    </div>
-    <div id="admin-feedback" class="hidden px-4 py-3 mb-4 rounded-lg"></div>
-    <section class="p-5 mb-6 bg-white rounded-xl shadow-md dark:bg-gray-800">
-      <h3 class="mb-1 text-lg font-semibold text-gray-700 dark:text-gray-200">Novo administrador</h3>
-      <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">Crie acessos individuais para quem administra o site.</p>
-      <form class="admin-form grid gap-4 md:grid-cols-3" data-id="0">
-        <input name="name" required minlength="2" placeholder="Nome" class="form-input block w-full text-sm rounded-md dark:bg-gray-700 dark:text-gray-200">
-        <input name="username" required minlength="3" autocomplete="off" placeholder="Usuário" class="form-input block w-full text-sm rounded-md dark:bg-gray-700 dark:text-gray-200">
-        <input name="password" required minlength="8" type="password" autocomplete="new-password" placeholder="Senha (mínimo 8 caracteres)" class="form-input block w-full text-sm rounded-md dark:bg-gray-700 dark:text-gray-200">
-        <button class="md:col-span-3 px-5 py-3 font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700">Criar administrador</button>
-      </form>
+  <div class="container mx-auto admins-shell">
+    <header class="admins-head">
+      <div>
+        <p class="admins-eyebrow">Acesso e segurança</p>
+        <h2>Administradores</h2>
+        <p>Gerencie quem pode acessar o painel e proteja sua própria conta.</p>
+      </div>
+      <a class="admins-site-link" href="./?page=system_info"><i class="fa-duotone fa-sliders"></i> Configurações do site</a>
+    </header>
+
+    <div id="admin-feedback" class="admins-feedback" hidden></div>
+
+    <section class="admins-stats">
+      <div class="admins-stat"><span class="admins-stat__icon"><i class="fa-duotone fa-user-shield"></i></span><div><small>Contas ativas</small><strong><?= count($admins) ?> administradores</strong></div></div>
+      <div class="admins-stat"><span class="admins-stat__icon"><i class="fa-duotone fa-circle-user"></i></span><div><small>Sessão atual</small><strong><?= htmlspecialchars(trim(($currentAdmin['firstname'] ?? '') . ' ' . ($currentAdmin['lastname'] ?? '')), ENT_QUOTES, 'UTF-8') ?></strong></div></div>
+      <div class="admins-stat"><span class="admins-stat__icon"><i class="fa-duotone fa-shield-check"></i></span><div><small>Conta principal</small><strong>Protegida contra exclusão</strong></div></div>
     </section>
-    <section class="p-5 bg-white rounded-xl shadow-md dark:bg-gray-800">
-      <h3 class="mb-4 text-lg font-semibold text-gray-700 dark:text-gray-200">Administradores cadastrados</h3>
-      <div class="space-y-4">
-      <?php while ($admin = $admins->fetch_assoc()): $fullName = trim($admin['firstname'].' '.$admin['lastname']); ?>
-        <form class="admin-form grid gap-3 p-4 border rounded-lg md:grid-cols-12 dark:border-gray-700" data-id="<?= (int) $admin['id'] ?>">
-          <input name="name" required value="<?= htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8') ?>" class="md:col-span-3 form-input block w-full text-sm rounded-md dark:bg-gray-700 dark:text-gray-200">
-          <input name="username" required value="<?= htmlspecialchars($admin['username'], ENT_QUOTES, 'UTF-8') ?>" class="md:col-span-3 form-input block w-full text-sm rounded-md dark:bg-gray-700 dark:text-gray-200">
-          <input name="password" minlength="8" type="password" autocomplete="new-password" placeholder="Nova senha (opcional)" class="md:col-span-3 form-input block w-full text-sm rounded-md dark:bg-gray-700 dark:text-gray-200">
-          <button class="md:col-span-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg">Salvar</button>
-          <button type="button" class="delete-admin md:col-span-1 px-3 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-lg disabled:opacity-40" <?= (int)$admin['id'] === $currentId ? 'disabled title="Sessão atual"' : '' ?>>Excluir</button>
-          <?php if ((int)$admin['id'] === $currentId): ?><span class="md:col-span-12 text-xs text-green-600">Sessão atual</span><?php endif; ?>
-        </form>
-      <?php endwhile; ?>
+
+    <div class="admins-grid">
+      <section class="admins-card">
+        <header class="admins-card__head"><span class="admins-card__icon"><i class="fa-duotone fa-key"></i></span><div><h3>Alterar minha senha</h3><p>A senha atual é obrigatória. A alteração afeta somente a conta conectada.</p></div></header>
+        <div class="admins-card__body">
+          <form id="current-password-form" class="admins-form-grid" autocomplete="off">
+            <div class="admins-field full"><label>Senha atual</label><div class="admins-input-wrap"><input class="admins-input" name="current_password" type="password" required autocomplete="current-password"><button class="admins-show-password" type="button" aria-label="Mostrar senha"><i class="fa-regular fa-eye"></i></button></div></div>
+            <div class="admins-field"><label>Nova senha</label><div class="admins-input-wrap"><input class="admins-input" name="new_password" type="password" minlength="8" required autocomplete="new-password"><button class="admins-show-password" type="button" aria-label="Mostrar senha"><i class="fa-regular fa-eye"></i></button></div></div>
+            <div class="admins-field"><label>Confirmar nova senha</label><div class="admins-input-wrap"><input class="admins-input" name="password_confirmation" type="password" minlength="8" required autocomplete="new-password"><button class="admins-show-password" type="button" aria-label="Mostrar senha"><i class="fa-regular fa-eye"></i></button></div></div>
+            <button class="admins-submit full" type="submit"><i class="fa-duotone fa-lock-keyhole"></i> Atualizar minha senha</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="admins-card">
+        <header class="admins-card__head"><span class="admins-card__icon"><i class="fa-duotone fa-user-plus"></i></span><div><h3>Novo administrador</h3><p>Crie um acesso individual. Use pelo menos 8 caracteres na senha.</p></div></header>
+        <div class="admins-card__body">
+          <form class="admin-account-form admins-form-grid" data-id="0" autocomplete="off">
+            <div class="admins-field full"><label>Nome completo</label><input class="admins-input" name="name" required minlength="2" placeholder="Nome do administrador"></div>
+            <div class="admins-field"><label>Usuário</label><input class="admins-input" name="username" required minlength="3" maxlength="40" placeholder="usuario.admin"></div>
+            <div class="admins-field"><label>Senha</label><div class="admins-input-wrap"><input class="admins-input" name="password" required minlength="8" type="password" autocomplete="new-password"><button class="admins-show-password" type="button" aria-label="Mostrar senha"><i class="fa-regular fa-eye"></i></button></div></div>
+            <button class="admins-submit full" type="submit"><i class="fa-duotone fa-plus"></i> Criar administrador</button>
+          </form>
+        </div>
+      </section>
+    </div>
+
+    <section class="admins-card admins-list-card">
+      <header class="admins-list-head"><div><h3>Contas cadastradas</h3><p>Edite dados, redefina senhas ou remova acessos que não são mais necessários.</p></div><span class="admins-count"><?= count($admins) ?> contas</span></header>
+      <div class="admins-list">
+        <?php foreach ($admins as $admin):
+          $adminId = (int) $admin['id'];
+          $isPrimary = $adminId === $primaryId;
+          $isCurrent = $adminId === $currentId;
+          $fullName = trim($admin['firstname'] . ' ' . $admin['lastname']);
+          $created = !empty($admin['date_added']) ? date('d/m/Y', strtotime($admin['date_added'])) : 'Data não informada';
+        ?>
+          <article class="admin-row" data-admin-id="<?= $adminId ?>">
+            <div class="admin-row__summary">
+              <div class="admin-identity"><span class="admin-avatar"><?= htmlspecialchars(admin_initials($admin['firstname'], $admin['lastname']), ENT_QUOTES, 'UTF-8') ?></span><div><strong><?= htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8') ?></strong><small>@<?= htmlspecialchars($admin['username'], ENT_QUOTES, 'UTF-8') ?></small></div></div>
+              <div class="admin-meta"><small>Criada em</small><span><?= htmlspecialchars($created, ENT_QUOTES, 'UTF-8') ?></span></div>
+              <div class="admin-badges"><?php if ($isPrimary): ?><span class="admin-badge primary">Principal</span><?php endif; ?><?php if ($isCurrent): ?><span class="admin-badge session">Sua sessão</span><?php endif; ?></div>
+              <div class="admin-actions"><button type="button" class="admin-action admin-edit"><i class="fa-regular fa-pen"></i> Editar</button><button type="button" class="admin-action admin-delete" <?= ($isPrimary || $isCurrent) ? 'disabled title="Esta conta é protegida contra exclusão"' : '' ?>><i class="fa-regular fa-trash"></i> Excluir</button></div>
+            </div>
+            <form class="admin-account-form admin-edit-form admins-form-grid" data-id="<?= $adminId ?>" autocomplete="off">
+              <div class="admins-field"><label>Nome completo</label><input class="admins-input" name="name" required minlength="2" value="<?= htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8') ?>"></div>
+              <div class="admins-field"><label>Usuário</label><input class="admins-input" name="username" required minlength="3" maxlength="40" value="<?= htmlspecialchars($admin['username'], ENT_QUOTES, 'UTF-8') ?>"></div>
+              <div class="admins-field full"><label>Nova senha <small>(deixe vazio para manter)</small></label><div class="admins-input-wrap"><input class="admins-input" name="password" minlength="8" type="password" autocomplete="new-password"><button class="admins-show-password" type="button" aria-label="Mostrar senha"><i class="fa-regular fa-eye"></i></button></div></div>
+              <div class="admin-edit-actions"><button class="admins-submit" type="submit"><i class="fa-regular fa-check"></i> Salvar alterações</button><button class="admin-cancel" type="button">Cancelar</button></div>
+            </form>
+          </article>
+        <?php endforeach; ?>
       </div>
     </section>
   </div>
 </main>
+
 <script>
-(function () {
+(function ($) {
   function feedback(message, ok) {
-    $('#admin-feedback').removeClass('hidden bg-green-100 text-green-800 bg-red-100 text-red-800')
-      .addClass(ok ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800').text(message);
+    $('#admin-feedback').prop('hidden', false).removeClass('success error').addClass(ok ? 'success' : 'error').text(message);
+    window.scrollTo({top: 0, behavior: 'smooth'});
   }
-  $('.admin-form').on('submit', function (event) {
+
+  function submitForm(form, action) {
+    var button = form.find('button[type="submit"]');
+    var data = form.serializeArray();
+    if (action === 'save') data.push({name: 'id', value: form.data('id')});
+    button.prop('disabled', true);
+    $.post(_base_url_ + 'class/AdminUsers.php?action=' + action, data, function (response) {
+      var ok = response.status === 'success';
+      feedback(response.message || (ok ? 'Alteração salva.' : 'Não foi possível concluir.'), ok);
+      if (ok) {
+        form[0].reset();
+        setTimeout(function () { location.reload(); }, 900);
+      }
+    }, 'json').fail(function () { feedback('Não foi possível comunicar com o servidor.', false); }).always(function () { button.prop('disabled', false); });
+  }
+
+  $('.admin-account-form').on('submit', function (event) { event.preventDefault(); submitForm($(this), 'save'); });
+  $('#current-password-form').on('submit', function (event) {
     event.preventDefault();
-    var form = $(this), data = form.serializeArray();
-    data.push({name: 'id', value: form.data('id')});
-    $.post(_base_url_ + 'class/AdminUsers.php?action=save', data, function (response) {
-      feedback(response.message, response.status === 'success');
-      if (response.status === 'success') setTimeout(function () { location.reload(); }, 700);
-    }, 'json').fail(function () { feedback('Não foi possível salvar o administrador.', false); });
+    var form = $(this);
+    if (form.find('[name="new_password"]').val() !== form.find('[name="password_confirmation"]').val()) {
+      feedback('A confirmação da nova senha não confere.', false);
+      return;
+    }
+    submitForm(form, 'password');
   });
-  $('.delete-admin').on('click', function () {
-    if (!confirm('Excluir este administrador?')) return;
-    var id = $(this).closest('form').data('id');
+  $('.admin-edit').on('click', function () { $(this).closest('.admin-row').find('.admin-edit-form').toggleClass('open'); });
+  $('.admin-cancel').on('click', function () { $(this).closest('.admin-edit-form').removeClass('open'); });
+  $('.admins-show-password').on('click', function () {
+    var button = $(this), input = button.siblings('input'), showing = input.attr('type') === 'text';
+    input.attr('type', showing ? 'password' : 'text');
+    button.attr('aria-label', showing ? 'Mostrar senha' : 'Ocultar senha').find('i').toggleClass('fa-eye', showing).toggleClass('fa-eye-slash', !showing);
+  });
+  $('.admin-delete:not(:disabled)').on('click', function () {
+    var button = $(this), row = button.closest('.admin-row'), id = row.data('admin-id');
+    if (!button.hasClass('confirming')) {
+      button.addClass('confirming').html('<i class="fa-regular fa-triangle-exclamation"></i> Confirmar');
+      setTimeout(function () { button.removeClass('confirming').html('<i class="fa-regular fa-trash"></i> Excluir'); }, 3500);
+      return;
+    }
+    button.prop('disabled', true);
     $.post(_base_url_ + 'class/AdminUsers.php?action=delete', {id: id}, function (response) {
-      feedback(response.message, response.status === 'success');
-      if (response.status === 'success') setTimeout(function () { location.reload(); }, 700);
-    }, 'json').fail(function () { feedback('Não foi possível excluir o administrador.', false); });
+      var ok = response.status === 'success';
+      feedback(response.message || (ok ? 'Administrador excluído.' : 'Não foi possível excluir.'), ok);
+      if (ok) row.slideUp(220, function () { location.reload(); });
+      else button.prop('disabled', false);
+    }, 'json').fail(function () { feedback('Não foi possível comunicar com o servidor.', false); button.prop('disabled', false); });
   });
-})();
+})(jQuery);
 </script>
