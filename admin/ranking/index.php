@@ -44,7 +44,7 @@ if ($productId > 0) {
 }
 $startDatetime = $conn->real_escape_string($startDate . ' ' . $startTime . ':00');
 $endDatetime = $conn->real_escape_string($endDate . ' ' . $endTime . ':59');
-$confirmationDatetime = "COALESCE(NULLIF(o.date_updated, '0000-00-00 00:00:00'), o.date_created)";
+$confirmationDatetime = payment_ranking_datetime_sql('o');
 $conditions[] = "{$confirmationDatetime} BETWEEN '{$startDatetime}' AND '{$endDatetime}'";
 $whereSql = ' WHERE ' . implode(' AND ', $conditions);
 

@@ -1943,13 +1943,14 @@ if ($available > 0 && $status == '1') {
                                                     $ranking_window_start = $conn->real_escape_string($rankingWindowStart);
                                                     $ranking_window_end = $conn->real_escape_string($rankingWindowEnd);
                                                     $ranking_window_start_operator = $rankingWindowUsesReset ? '>' : '>=';
+                                                    $ranking_datetime_sql = payment_ranking_datetime_sql('o');
                                                     $requests = $conn->query(
                                                         'SELECT c.id, c.firstname, c.lastname, SUM(o.quantity) AS total_quantity ' .
                                                         'FROM order_list o ' .
                                                         'INNER JOIN customer_list c ON c.id = o.customer_id ' .
                                                         'WHERE o.product_id = ' . (int) $id . ' AND o.status = 2 ' .
-                                                        "AND COALESCE(o.date_updated, o.date_created) {$ranking_window_start_operator} '{$ranking_window_start}' " .
-                                                        "AND COALESCE(o.date_updated, o.date_created) <= '{$ranking_window_end}' " .
+                                                        "AND {$ranking_datetime_sql} {$ranking_window_start_operator} '{$ranking_window_start}' " .
+                                                        "AND {$ranking_datetime_sql} <= '{$ranking_window_end}' " .
                                                         'GROUP BY c.id, c.firstname, c.lastname ' .
                                                         'ORDER BY total_quantity DESC, c.firstname ASC, c.lastname ASC ' .
                                                         'LIMIT ' . $ranking_limit

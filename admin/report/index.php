@@ -14,6 +14,7 @@ $paymentMethods = [
     'Gerencianet' => 'Efí / Gerencianet',
     'OpenPix' => 'OpenPix / Woovi',
     'Pay2m' => 'Pay2M',
+    'VenoPag' => 'VenoPag',
     'Manual' => 'Manual',
 ];
 $statusLabels = [1 => 'Pendente', 2 => 'Pago', 3 => 'Cancelado'];

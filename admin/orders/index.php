@@ -22,6 +22,7 @@ $payment_methods = [
     'Gerencianet' => 'Efí / Gerencianet',
     'OpenPix' => 'OpenPix / Woovi',
     'Pay2m' => 'Pay2M',
+    'VenoPag' => 'VenoPag',
     'Manual' => 'Manual',
 ];
 $payment_method = isset($_GET['payment_method'], $payment_methods[$_GET['payment_method']]) ? $_GET['payment_method'] : '';

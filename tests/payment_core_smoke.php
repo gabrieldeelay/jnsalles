@@ -30,6 +30,14 @@ if (payment_venopag_minimum_amount() < 1.00) {
     exit(1);
 }
 
+$rankingExpression = payment_ranking_datetime_sql('purchase');
+if (strpos($rankingExpression, "purchase.payment_method = 'VenoPag'") === false
+    || strpos($rankingExpression, 'purchase.date_created') === false
+    || strpos($rankingExpression, 'purchase.date_updated') === false) {
+    fwrite(STDERR, "Regra de data do ranking VenoPag ausente.\n");
+    exit(1);
+}
+
 $expiration = payment_expiration_datetime(30);
 if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}-03:00$/', $expiration)) {
     fwrite(STDERR, "Data de expiração inválida.\n");

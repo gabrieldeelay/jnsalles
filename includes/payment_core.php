@@ -117,6 +117,27 @@ function payment_amount($amount, $provider)
     return round($base + ($base * max(0, $tax) / 100), 2);
 }
 
+function payment_local_datetime()
+{
+    return (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d H:i:s');
+}
+
+/**
+ * VenoPag confirms asynchronously. Rank its paid orders by the reservation
+ * time so a database server running in UTC cannot move the purchase outside
+ * the configured ranking window.
+ */
+function payment_ranking_datetime_sql($alias = 'o')
+{
+    $alias = preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', (string) $alias) ? (string) $alias : 'o';
+    $created = "NULLIF({$alias}.date_created, '0000-00-00 00:00:00')";
+    $updated = "NULLIF({$alias}.date_updated, '0000-00-00 00:00:00')";
+
+    return "CASE WHEN {$alias}.payment_method = 'VenoPag' "
+        . "THEN COALESCE({$created}, {$updated}) "
+        . "ELSE COALESCE({$updated}, {$created}) END";
+}
+
 function payment_uuid_v4()
 {
     $data = random_bytes(16);
@@ -954,8 +975,9 @@ function payment_mark_order_paid($provider, array $verified)
             throw new RuntimeException('O pedido não está pendente.', 409);
         }
 
-        $updated = $conn->prepare("UPDATE order_list SET status = 2, date_updated = NOW(), whatsapp_status = '' WHERE id = ? AND status = 1");
-        $updated->bind_param('i', $orderId);
+        $paidAt = payment_local_datetime();
+        $updated = $conn->prepare("UPDATE order_list SET status = 2, date_updated = ?, whatsapp_status = '' WHERE id = ? AND status = 1");
+        $updated->bind_param('si', $paidAt, $orderId);
         $updated->execute();
         if ($updated->affected_rows !== 1) {
             throw new RuntimeException('O pedido já foi alterado.', 409);
@@ -1093,6 +1115,28 @@ function payment_process_webhook($provider, $raw, array $headers)
         if (in_array($confirmedStatus, ['canceled', 'contested', 'chargedback', 'refunded'], true)) {
             return payment_reconcile_venopag_reversal((string) ($consult['json']['request_number'] ?? $requestNumber), $confirmedStatus);
         }
+
+        if ($confirmedStatus !== 'confirmed') {
+            $validNonPaid = ['pending', 'expired'];
+            return [
+                'ok' => false,
+                'http' => 200,
+                'message' => in_array($confirmedStatus, $validNonPaid, true)
+                    ? 'Pagamento VenoPag ainda não liberável.'
+                    : 'Status VenoPag desconhecido.',
+            ];
+        }
+
+        // A consulta autenticada acima já é a confirmação exigida pela VenoPag.
+        // Processar por aqui evita uma segunda consulta e mantém o webhook abaixo
+        // do limite de 10 segundos do provedor.
+        $confirmed = $consult['json'];
+        $reference = (string) ($confirmed['request_number'] ?? $requestNumber);
+        return payment_mark_order_paid('venopag', [
+            'order_id' => payment_find_order_id_by_reference('id_mp', $reference),
+            'amount' => $confirmed['amount'] ?? 0,
+            'reference' => $reference,
+        ]);
     }
 
     $verified = payment_verify_webhook($provider, $raw, $headers);
