@@ -103,16 +103,28 @@ class Main extends DBConnection
     private function delete_campaign_blob($url)
     {
         $host = strtolower((string) parse_url((string) $url, PHP_URL_HOST));
-        if (!preg_match('/^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/', $host)) {
+        if (preg_match('/^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/', $host)) {
+            $this->campaign_blob_request(
+                '/delete',
+                'POST',
+                json_encode(['urls' => [(string) $url]]),
+                ['Content-Type: application/json']
+            );
             return;
         }
 
-        $this->campaign_blob_request(
-            '/delete',
-            'POST',
-            json_encode(['urls' => [(string) $url]]),
-            ['Content-Type: application/json']
-        );
+        $path = (string) parse_url((string) $url, PHP_URL_PATH);
+        $relativePath = ltrim($path !== '' ? $path : (string) $url, '/\\');
+        if (strpos($relativePath, 'uploads/campaigns/') !== 0 || strpos($relativePath, '..') !== false) {
+            return;
+        }
+
+        $uploadsRoot = realpath(BASE_APP . 'uploads/campaigns');
+        $localFile = realpath(BASE_APP . str_replace('/', DIRECTORY_SEPARATOR, $relativePath));
+        if ($uploadsRoot && $localFile && is_file($localFile)
+            && strpos($localFile, $uploadsRoot . DIRECTORY_SEPARATOR) === 0) {
+            @unlink($localFile);
+        }
     }
 
     private function save_campaign_main_image($file, $productId)
@@ -204,6 +216,23 @@ class Main extends DBConnection
 
         $extension = $extensions[$outputMime] ?? 'jpg';
         $pathname = 'campanhas/' . (int) $productId . '/campanha-' . bin2hex(random_bytes(8)) . '.' . $extension;
+
+        if (!$this->campaign_blob_credentials()) {
+            $relativeDirectory = 'uploads/campaigns/' . (int) $productId;
+            $absoluteDirectory = BASE_APP . str_replace('/', DIRECTORY_SEPARATOR, $relativeDirectory);
+            if (!is_dir($absoluteDirectory) && !@mkdir($absoluteDirectory, 0755, true)) {
+                return ['ok' => false, 'message' => 'O servidor não conseguiu criar a pasta de imagens da campanha.'];
+            }
+
+            $filename = 'campanha-' . bin2hex(random_bytes(8)) . '.' . $extension;
+            $absolutePath = $absoluteDirectory . DIRECTORY_SEPARATOR . $filename;
+            if (@file_put_contents($absolutePath, $imageBytes, LOCK_EX) === false) {
+                return ['ok' => false, 'message' => 'O servidor não possui permissão para gravar a imagem em uploads/campaigns.'];
+            }
+            @chmod($absolutePath, 0644);
+            return ['ok' => true, 'path' => $relativeDirectory . '/' . $filename];
+        }
+
         $blobResult = $this->campaign_blob_request(
             '/?pathname=' . rawurlencode($pathname),
             'PUT',
@@ -255,6 +284,18 @@ class Main extends DBConnection
             'cota_sorte' => '', 'quantidade_compra_sorte' => '', 'valor_base_auto' => '0',
         ];
         $_POST = array_replace($postDefaults, $_POST);
+
+        $integerDefaults = [
+            'limit_orders' => 0, 'min_purchase' => 1, 'max_purchase' => 0,
+            'status' => 1, 'ranking_qty' => 0, 'ranking_type' => 1,
+            'limit_order_remove' => 0, 'qty_select_1' => 10, 'qty_select_2' => 20,
+            'qty_select_3' => 50, 'qty_select_4' => 100, 'qty_select_5' => 200,
+            'qty_select_6' => 300, 'probabilidade' => 0, 'valor_base_auto' => 0,
+        ];
+        foreach ($integerDefaults as $field => $defaultValue) {
+            $rawValue = trim((string) ($_POST[$field] ?? ''));
+            $_POST[$field] = ($rawValue !== '' && is_numeric($rawValue)) ? (int) $rawValue : $defaultValue;
+        }
 
         if (trim((string) $_POST['name']) === '') {
             return json_encode(['status' => 'failed', 'field' => 'name', 'tab' => 'tab1', 'msg' => 'Informe o título da campanha.']);
@@ -421,7 +462,7 @@ class Main extends DBConnection
         $quantidade_auto_cota_diario = isset($_POST["quantidade_auto_cota_diario"]) ? 1 : 0;
         $cota_diaria_ini = $this->conn->real_escape_string($_POST["cota_diaria_ini"]);
         $cota_diaria_fim = $this->conn->real_escape_string($_POST["cota_diaria_fim"]);
-        $probabilidade = $this->conn->real_escape_string($_POST["probabilidade"]);
+        $probabilidade = max(0, (int) $_POST["probabilidade"]);
         $tipo_auto_cota = $this->conn->real_escape_string($_POST["tipo_auto_cota"]);
         $tipo_auto_cota_roleta = $this->conn->real_escape_string($_POST["tipo_auto_cota_roleta"]);
         $tipo_auto_cota_box = $this->conn->real_escape_string($_POST["tipo_auto_cota_box"]);
@@ -5869,7 +5910,16 @@ $sysset = new System();
 
 switch ($action) {
     case "save_product_sys":
-        echo $Main->save_product();
+        try {
+            echo $Main->save_product();
+        } catch (Throwable $error) {
+            error_log('[campaign] unhandled save error: ' . $error->getMessage());
+            http_response_code(200);
+            $message = $error instanceof mysqli_sql_exception
+                ? 'O banco de dados recusou o salvamento: ' . $error->getMessage()
+                : 'O servidor não conseguiu concluir o salvamento: ' . $error->getMessage();
+            echo json_encode(['status' => 'failed', 'msg' => $message], JSON_UNESCAPED_UNICODE);
+        }
         break;
     case "delete_product_sys":
         echo $Main->delete_product();
