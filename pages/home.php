@@ -264,6 +264,22 @@ if ($qry->num_rows > 0) {
 	<?php
 	
 	// Perguntas frequentes
+	$faqItems = [];
+	for ($faqIndex = 1; $faqIndex <= 4; $faqIndex++) {
+		$faqQuestion = trim((string) $_settings->info('question' . $faqIndex));
+		$faqAnswer = trim((string) $_settings->info('answer' . $faqIndex));
+		if ($faqQuestion !== '' && $faqAnswer !== '') {
+			$faqItems[] = ['question' => $faqQuestion, 'answer' => $faqAnswer];
+		}
+	}
+	if (count($faqItems) === 0) {
+		$faqItems = [
+			['question' => 'Como faço para participar?', 'answer' => 'Escolha uma campanha, selecione a quantidade de cotas, informe seus dados e finalize o pagamento por PIX.'],
+			['question' => 'Quando minha participação é confirmada?', 'answer' => 'A participação é confirmada automaticamente depois que o pagamento é identificado pelo sistema.'],
+			['question' => 'Onde vejo minhas cotas?', 'answer' => 'Abra o menu do site e acesse “Meus títulos”. Informe os mesmos dados usados na compra para consultar seus pedidos e cotas.'],
+			['question' => 'Como funcionam as cotas premiadas?', 'answer' => 'Cada campanha informa quais números possuem prêmios extras. Se uma dessas cotas for atribuída ao seu pedido confirmado, ela aparecerá identificada na campanha.'],
+		];
+	}
 	?>
 	<style>
 		.pergunta-item{
@@ -275,69 +291,21 @@ if ($qry->num_rows > 0) {
 			<h1>🤷 Perguntas frequentes</h1>
 		</div>
 		<div id="perguntas-box">
-			<?php if (!!$_settings->info('question1') && !!$_settings->info('answer1')): ?>
+			<?php foreach ($faqItems as $faqIndex => $faqItem): ?>
 				<div class="mb-2">
 					<div class="pergunta-item d-flex flex-column p-2 bg-card box-shadow-08 rounded-10 font-weight-500 font-xs">
-						<div class="pergunta-item--pergunta collapsed" data-bs-toggle="collapse" data-bs-target="#pergunta-63c30d4b6bd40368220230114" aria-expanded="false" aria-controls="pergunta-63c30d4b6bd40368220230114">
+						<div class="pergunta-item--pergunta collapsed" data-bs-toggle="collapse" data-bs-target="#pergunta-faq-<?= (int) $faqIndex ?>" aria-expanded="false" aria-controls="pergunta-faq-<?= (int) $faqIndex ?>">
 							<i class="bi bi-arrow-right me-2 incrivel-primariaLink"></i>
-							<span><?php echo $_settings->info('question1'); ?></span>
+							<span><?= htmlspecialchars($faqItem['question'], ENT_QUOTES, 'UTF-8') ?></span>
 						</div>
 						<div class="d-block">
-							<div class="pergunta-item--resp mt-1 collapse" id="pergunta-63c30d4b6bd40368220230114" data-bs-parent="#perguntas-box">
-								<p class="mb-0"><?php echo $_settings->info('answer1'); ?></p>
+							<div class="pergunta-item--resp mt-1 collapse" id="pergunta-faq-<?= (int) $faqIndex ?>" data-bs-parent="#perguntas-box">
+								<p class="mb-0"><?= nl2br(htmlspecialchars($faqItem['answer'], ENT_QUOTES, 'UTF-8')) ?></p>
 							</div>
 						</div>
 					</div>
 				</div>
-			<?php endif; ?>
-
-			<?php if (!!$_settings->info('question2') && !!$_settings->info('answer2')): ?>
-				<div class="mb-2">
-					<div class="pergunta-item d-flex flex-column p-2 bg-card box-shadow-08 rounded-10 font-weight-500 font-xs">
-						<div class="pergunta-item--pergunta collapsed" data-bs-toggle="collapse" data-bs-target="#pergunta-1" aria-expanded="false" aria-controls="pergunta-1">
-							<i class="bi bi-arrow-right me-2 incrivel-primariaLink"></i>
-							<span><?php echo $_settings->info('question2'); ?></span>
-						</div>
-						<div class="d-block">
-							<div class="pergunta-item--resp mt-1 collapse" id="pergunta-1" data-bs-parent="#perguntas-box">
-								<p class="mb-0"><?php echo $_settings->info('answer2'); ?></p>
-							</div>
-						</div>
-					</div>
-				</div>
-			<?php endif; ?>
-
-			<?php if (!!$_settings->info('question3') && !!$_settings->info('answer3')): ?>
-				<div class="mb-2">
-					<div class="pergunta-item d-flex flex-column p-2 bg-card box-shadow-08 rounded-10 font-weight-500 font-xs">
-						<div class="pergunta-item--pergunta collapsed" data-bs-toggle="collapse" data-bs-target="#pergunta-2" aria-expanded="false" aria-controls="pergunta-2">
-							<i class="bi bi-arrow-right me-2 incrivel-primariaLink"></i>
-							<span><?php echo $_settings->info('question3'); ?></span>
-						</div>
-						<div class="d-block">
-							<div class="pergunta-item--resp mt-1 collapse" id="pergunta-2" data-bs-parent="#perguntas-box">
-								<p class="mb-0"><?php echo $_settings->info('answer3'); ?></p>
-							</div>
-						</div>
-					</div>
-				</div>
-			<?php endif; ?>
-
-			<?php if (!!$_settings->info('question4') && !!$_settings->info('answer4')): ?>
-				<div class="mb-2">
-					<div class="pergunta-item d-flex flex-column p-2 bg-card box-shadow-08 rounded-10 font-weight-500 font-xs">
-						<div class="pergunta-item--pergunta collapsed" data-bs-toggle="collapse" data-bs-target="#pergunta-3" aria-expanded="false" aria-controls="pergunta-3">
-							<i class="bi bi-arrow-right me-2 incrivel-primariaLink"></i>
-							<span><?php echo $_settings->info('question4'); ?></span>
-						</div>
-						<div class="d-block">
-							<div class="pergunta-item--resp mt-1 collapse" id="pergunta-3" data-bs-parent="#perguntas-box">
-								<p class="mb-0"><?php echo $_settings->info('answer4'); ?></p>
-							</div>
-						</div>
-					</div>
-				</div>
-			<?php endif; ?>
+			<?php endforeach; ?>
 
 			<?php if ($enable_password == 1): ?>
 				<div class="mb-2">
