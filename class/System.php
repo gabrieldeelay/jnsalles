@@ -684,25 +684,51 @@ class System extends DBConnection
         }
 
         $enabled = isset($_POST['enabled']) && (string) $_POST['enabled'] === '1';
+        $mode = strtolower(trim((string) ($_POST['mode'] ?? 'restart')));
+        if (!in_array($mode, ['restart', 'extend'], true)) {
+            return json_encode(['status' => 'failed', 'msg' => 'Escolha se deseja estender ou iniciar um novo período.']);
+        }
         $timezone = new DateTimeZone('America/Sao_Paulo');
         $startInput = trim((string) ($_POST['start_at'] ?? ''));
         $endInput = trim((string) ($_POST['end_at'] ?? ''));
-        $start = DateTime::createFromFormat('Y-m-d\\TH:i', $startInput, $timezone);
-        $end = DateTime::createFromFormat('Y-m-d\\TH:i', $endInput, $timezone);
+        $start = DateTime::createFromFormat('!Y-m-d\\TH:i', $startInput, $timezone);
+        $end = DateTime::createFromFormat('!Y-m-d\\TH:i', $endInput, $timezone);
 
-        if ($enabled && (!$start || !$end)) {
+        $prefix = 'ranking_timer_' . $productId . '_';
+        $existingStartValue = trim((string) $this->info($prefix . 'start'));
+        $existingEndValue = trim((string) $this->info($prefix . 'end'));
+        $existingResetValue = trim((string) $this->info($prefix . 'reset'));
+        $existingStart = DateTime::createFromFormat('!Y-m-d H:i:s', $existingStartValue, $timezone);
+        $existingEnd = DateTime::createFromFormat('!Y-m-d H:i:s', $existingEndValue, $timezone);
+
+        if ($mode === 'extend') {
+            if (!$existingStart || !$existingEnd || !$end) {
+                return json_encode(['status' => 'failed', 'msg' => 'Esta campanha ainda não possui um período para estender. Inicie um novo período.']);
+            }
+            if ($end <= $existingEnd) {
+                return json_encode(['status' => 'failed', 'msg' => 'O novo encerramento precisa ser posterior ao encerramento atual.']);
+            }
+            if ($end <= new DateTime('now', $timezone)) {
+                return json_encode(['status' => 'failed', 'msg' => 'O novo encerramento precisa ficar no futuro.']);
+            }
+            $start = $existingStart;
+        }
+
+        if (($enabled || $mode === 'extend') && (!$start || !$end)) {
             return json_encode(['status' => 'failed', 'msg' => 'Informe a data e o horÃ¡rio inicial e final.']);
         }
-        if ($enabled && $end <= $start) {
+        if (($enabled || $mode === 'extend') && $end <= $start) {
             return json_encode(['status' => 'failed', 'msg' => 'O encerramento precisa ser posterior ao inÃ­cio.']);
         }
 
-        $prefix = 'ranking_timer_' . $productId . '_';
+        $resetValue = $mode === 'extend'
+            ? ($existingResetValue !== '' ? $existingResetValue : $existingStartValue)
+            : ($enabled ? (new DateTime('now', $timezone))->format('Y-m-d H:i:s') : '');
         $values = [
             $prefix . 'enabled' => $enabled ? '1' : '0',
             $prefix . 'start' => $start ? $start->format('Y-m-d H:i:s') : '',
             $prefix . 'end' => $end ? $end->format('Y-m-d H:i:s') : '',
-            $prefix . 'reset' => $enabled ? (new DateTime('now', $timezone))->format('Y-m-d H:i:s') : '',
+            $prefix . 'reset' => $resetValue,
         ];
 
         $this->conn->begin_transaction();
@@ -722,9 +748,11 @@ class System extends DBConnection
 
         return json_encode([
             'status' => 'success',
-            'msg' => $enabled
-                ? 'Contador reiniciado. O Top Compradores começa vazio e considera somente pagamentos confirmados neste novo período.'
-                : 'Contador visual desativado.',
+            'msg' => !$enabled
+                ? 'Contador visual desativado.'
+                : ($mode === 'extend'
+                    ? 'Período estendido. Compradores, posições e cotas acumuladas foram preservados.'
+                    : 'Contador reiniciado. O Top Compradores começa vazio e considera somente pagamentos confirmados neste novo período.'),
         ]);
     }
 

@@ -41,6 +41,7 @@ $_GET['action'] = 'save_ranking_timer';
 $_POST = [
     'product_id' => $productId,
     'enabled' => '1',
+    'mode' => 'restart',
     'start_at' => $start->format('Y-m-d\TH:i'),
     'end_at' => $end->format('Y-m-d\TH:i'),
 ];
@@ -77,10 +78,36 @@ $newCount->execute();
 $newVisible = (int) $newCount->get_result()->fetch_assoc()['total'];
 $newCount->close();
 
+$extendedEnd = new DateTime('+4 hours', $timezone);
+$_POST = [
+    'product_id' => $productId,
+    'enabled' => '1',
+    'mode' => 'extend',
+    'start_at' => $start->format('Y-m-d\TH:i'),
+    'end_at' => $extendedEnd->format('Y-m-d\TH:i'),
+];
+$extendResponse = json_decode($sysset->save_ranking_timer(), true);
+
+$statement = $connection->prepare('SELECT meta_field, meta_value FROM system_info WHERE meta_field IN (?, ?)');
+$endField = $metaPrefix . 'end';
+$statement->bind_param('ss', $resetField, $endField);
+$statement->execute();
+$extendedMeta = [];
+$extendedResult = $statement->get_result();
+while ($extendedRow = $extendedResult->fetch_assoc()) {
+    $extendedMeta[$extendedRow['meta_field']] = $extendedRow['meta_value'];
+}
+$statement->close();
+$extendedResetAt = (string) ($extendedMeta[$resetField] ?? '');
+$savedExtendedEnd = (string) ($extendedMeta[$endField] ?? '');
+
 $valid = ($response['status'] ?? '') === 'success'
+    && ($extendResponse['status'] ?? '') === 'success'
     && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $resetAt)
     && $oldVisible === 0
-    && $newVisible === 4;
+    && $newVisible === 4
+    && $extendedResetAt === $resetAt
+    && $savedExtendedEnd === $extendedEnd->format('Y-m-d H:i:00');
 
 $connection->query("DELETE FROM system_info WHERE meta_field LIKE 'ranking_timer_{$productId}_%'");
 $connection->query("DELETE FROM order_list WHERE id IN ({$oldOrderId}, {$newOrderId})");
@@ -94,8 +121,11 @@ if (!$valid) {
         'reset_at' => $resetAt,
         'old_visible' => $oldVisible,
         'new_visible' => $newVisible,
+        'extend_response' => $extendResponse,
+        'extended_reset_at' => $extendedResetAt,
+        'extended_end' => $savedExtendedEnd,
     ], JSON_UNESCAPED_UNICODE) . "\n");
     exit(1);
 }
 
-echo "Ranking diário limpo no reinício e aceitando somente compras posteriores.\n";
+echo "Ranking reiniciado corretamente e preservado ao estender o período.\n";
