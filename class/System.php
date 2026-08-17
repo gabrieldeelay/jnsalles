@@ -592,6 +592,11 @@ class System extends DBConnection
         $venopagMinimum = (float) str_replace(',', '.', (string) ($_POST['venopag_min_amount'] ?? $this->info('venopag_min_amount')));
         $values['venopag_min_amount'] = number_format(max(1, $venopagMinimum), 2, '.', '');
 
+        $pay2mHighValueEnabled = (string) ($_POST['pay2m_high_value_enabled'] ?? '0') === '1';
+        $pay2mHighValueThreshold = (float) str_replace(',', '.', (string) ($_POST['pay2m_high_value_threshold'] ?? '999.00'));
+        $values['pay2m_high_value_enabled'] = $pay2mHighValueEnabled ? '1' : '0';
+        $values['pay2m_high_value_threshold'] = number_format(max(0, $pay2mHighValueThreshold), 2, '.', '');
+
         if ($values['pay2m_webhook_secret'] === '') {
             $values['pay2m_webhook_secret'] = bin2hex(random_bytes(24));
         }
@@ -608,6 +613,14 @@ class System extends DBConnection
             foreach ($required[$provider] as $field) {
                 if ($values[$field] === '') {
                     return json_encode(['status' => 'failed', 'msg' => 'Preencha todas as credenciais obrigatórias antes de ativar o gateway.']);
+                }
+            }
+        }
+
+        if ($provider !== 'none' && $pay2mHighValueEnabled) {
+            foreach ($required['pay2m'] as $field) {
+                if ($values[$field] === '') {
+                    return json_encode(['status' => 'failed', 'msg' => 'Informe o Client ID e o Client Secret da Pay2M para ativar o roteamento por valor.']);
                 }
             }
         }

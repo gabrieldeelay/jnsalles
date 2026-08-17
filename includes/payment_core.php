@@ -46,6 +46,28 @@ function payment_active_provider()
     return count($enabled) === 1 ? $enabled[0] : null;
 }
 
+function payment_pay2m_high_value_threshold()
+{
+    $configured = str_replace(',', '.', (string) payment_setting('pay2m_high_value_threshold', '999.00'));
+    return max(0, round((float) $configured, 2));
+}
+
+function payment_provider_for_amount($amount)
+{
+    $activeProvider = payment_active_provider();
+    if (!$activeProvider) {
+        return null;
+    }
+
+    $baseAmount = round((float) str_replace(',', '.', (string) $amount), 2);
+    $usePay2mForHighValue = (string) payment_setting('pay2m_high_value_enabled', '0') === '1';
+    if ($usePay2mForHighValue && $baseAmount > payment_pay2m_high_value_threshold()) {
+        return 'pay2m';
+    }
+
+    return $activeProvider;
+}
+
 function payment_requires_customer_document()
 {
     return false;
@@ -342,7 +364,7 @@ function payment_expiration_datetime($minutes)
 
 function payment_create_pix($orderId, $amount, $name, $email, $cpf, $expiration, $phone = '')
 {
-    $provider = payment_active_provider();
+    $provider = payment_provider_for_amount($amount);
     if (!$provider) {
         return ['ok' => false, 'message' => 'Ative exatamente um gateway de pagamento no painel administrativo.'];
     }

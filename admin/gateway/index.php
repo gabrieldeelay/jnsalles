@@ -78,6 +78,8 @@ $providerShortNames = [
     'openpix' => 'OP', 'pay2m' => 'P2', 'venopag' => 'VP',
 ];
 $activeLabel = $selected !== 'none' && isset($definitions[$selected]) ? $definitions[$selected]['label'] : 'Nenhum gateway ativo';
+$pay2mHighValueEnabled = (string) payment_setting('pay2m_high_value_enabled', '0') === '1';
+$pay2mHighValueThreshold = payment_pay2m_high_value_threshold();
 ?>
 
 <style>
@@ -194,8 +196,13 @@ $activeLabel = $selected !== 'none' && isset($definitions[$selected]) ? $definit
 
                 <section class="gateway-panel" data-provider="pay2m">
                     <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-200">Pay2M</h3>
+                    <div class="gateway-note"><strong>Roteamento por valor.</strong> Mesmo com outro gateway ativo, a Pay2M pode processar automaticamente somente as compras que ultrapassarem o limite definido abaixo.</div>
                     <div class="gateway-field"><label>Client ID</label><?= gateway_credential_input('pay2m_client_id', trim((string) payment_setting('pay2m_client_id')) !== '') ?></div>
                     <div class="gateway-field"><label>Client Secret</label><?= gateway_credential_input('pay2m_client_secret', trim((string) payment_setting('pay2m_client_secret')) !== '') ?></div>
+                    <div class="gateway-field">
+                        <label><input type="checkbox" name="pay2m_high_value_enabled" value="1" <?= $pay2mHighValueEnabled ? 'checked' : '' ?>> Usar Pay2M automaticamente nas compras de maior valor</label>
+                    </div>
+                    <div class="gateway-field"><label>Usar Pay2M quando o total for maior que (R$)</label><input class="form-input block w-full dark:bg-gray-700 dark:text-gray-300" type="number" min="0" step="0.01" name="pay2m_high_value_threshold" value="<?= htmlspecialchars(number_format($pay2mHighValueThreshold, 2, '.', ''), ENT_QUOTES, 'UTF-8') ?>"></div>
                     <div class="gateway-field"><label>Taxa adicional (%)</label><input class="form-input block w-full dark:bg-gray-700 dark:text-gray-300" type="number" min="0" max="100" step="0.01" name="pay2m_tax" value="<?= gateway_tax_value('pay2m_tax') ?>"></div>
                     <div class="gateway-field"><label>Webhook</label><input class="form-input block w-full dark:bg-gray-700 dark:text-gray-300" readonly value="<?= htmlspecialchars($webhookBase . 'pay2m', ENT_QUOTES, 'UTF-8') ?>"></div>
                 </section>
