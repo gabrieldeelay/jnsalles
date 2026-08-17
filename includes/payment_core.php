@@ -1372,7 +1372,8 @@ function payment_expire_pending_orders($productId = null, $limit = 10)
     $productId = $productId === null ? null : (int) $productId;
     $sql = 'SELECT id, product_id, payment_method FROM order_list '
         . 'WHERE status = 1 AND order_expiration > 0 '
-        . 'AND DATE_ADD(date_created, INTERVAL order_expiration MINUTE) <= NOW()';
+        . "AND ((payment_method = 'VenoPag' AND TIMESTAMPADD(MINUTE, order_expiration + 60, date_created) <= NOW()) "
+        . "OR (payment_method <> 'VenoPag' AND DATE_ADD(date_created, INTERVAL order_expiration MINUTE) <= NOW()))";
     if ($productId !== null && $productId > 0) {
         $sql .= ' AND product_id = ' . $productId;
     }
