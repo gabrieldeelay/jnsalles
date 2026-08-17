@@ -629,6 +629,15 @@ function payment_venopag_consult($requestNumber, $timeout = 7)
     return payment_venopag_request('GET', '/api/consult-transaction?request_number=' . rawurlencode($requestNumber), null, $timeout);
 }
 
+function payment_venopag_consult_transaction($transactionId, $timeout = 7)
+{
+    $transactionId = trim((string) $transactionId);
+    if ($transactionId === '') {
+        return ['ok' => false, 'message' => 'Referencia VenoPag ausente.', 'json' => [], 'status' => 0];
+    }
+    return payment_venopag_request('GET', '/api/consult-transaction?transaction_id=' . rawurlencode($transactionId), null, $timeout);
+}
+
 function payment_create_venopag($orderId, $amount, $name, $email, $cpf, $expiration, $phone)
 {
     $chargeAmount = round((float) $amount, 2);
@@ -1263,6 +1272,15 @@ function payment_check_order($orderId)
             return ['ok' => false, 'status' => 1, 'message' => 'Falha ao consultar a VenoPag.'];
         }
         $venoStatus = strtolower((string) ($data['status'] ?? ''));
+        if ($venoStatus !== 'confirmed' && trim((string) ($order['txid'] ?? '')) !== '') {
+            $transactionResponse = payment_venopag_consult_transaction((string) $order['txid']);
+            $transactionData = $transactionResponse['json'] ?? [];
+            if (!empty($transactionResponse['ok']) && strtolower((string) ($transactionData['status'] ?? '')) === 'confirmed') {
+                $response = $transactionResponse;
+                $data = $transactionData;
+                $venoStatus = 'confirmed';
+            }
+        }
         if ($venoStatus !== 'confirmed') {
             return ['ok' => true, 'status' => $currentStatus, 'provider_status' => $venoStatus];
         }
