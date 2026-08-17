@@ -138,6 +138,112 @@ function payment_ranking_datetime_sql($alias = 'o')
         . "ELSE COALESCE({$updated}, {$created}) END";
 }
 
+function ranking_timer_configuration($productId, $now = null)
+{
+    global $_settings;
+
+    $productId = (int) $productId;
+    $timezone = new DateTimeZone('America/Sao_Paulo');
+    $now = $now instanceof DateTimeImmutable ? $now : new DateTimeImmutable('now', $timezone);
+    $prefix = 'ranking_timer_' . $productId . '_';
+    $read = static function ($field) use ($_settings, $prefix) {
+        return trim((string) $_settings->info($prefix . $field));
+    };
+    $parse = static function ($value) use ($timezone) {
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', (string) $value, $timezone);
+        return $date && $date->format('Y-m-d H:i:s') === $value ? $date : null;
+    };
+
+    $start = $parse($read('start'));
+    $end = $parse($read('end'));
+    $reset = $parse($read('reset'));
+    $pausedAt = $parse($read('paused_at'));
+    $enabled = $read('enabled') === '1';
+    $configured = $start && $end && $end > $start;
+    $storedState = strtolower($read('state'));
+    $isPaused = $enabled && $configured && $storedState === 'paused' && $pausedAt;
+
+    if (!$enabled || !$configured) {
+        $state = 'disabled';
+    } elseif ($isPaused) {
+        $state = 'paused';
+    } elseif ($now < $start) {
+        $state = 'scheduled';
+    } elseif ($now >= $end) {
+        $state = 'ended';
+    } else {
+        $state = 'running';
+    }
+
+    $windowStart = $start;
+    $usesReset = false;
+    if ($configured && $reset && $reset >= $start) {
+        $windowStart = $reset;
+        $usesReset = true;
+    }
+    $windowEnd = $end;
+    if ($state === 'paused' && $pausedAt < $end) {
+        $windowEnd = $pausedAt;
+    }
+
+    $pauseIntervals = [];
+    $decoded = json_decode($read('pause_intervals'), true);
+    if (is_array($decoded)) {
+        foreach ($decoded as $interval) {
+            if (!is_array($interval)) {
+                continue;
+            }
+            $pauseStart = $parse($interval['start'] ?? '');
+            $pauseEnd = $parse($interval['end'] ?? '');
+            if ($pauseStart && $pauseEnd && $pauseEnd > $pauseStart) {
+                $pauseIntervals[] = [
+                    'start' => $pauseStart->format('Y-m-d H:i:s'),
+                    'end' => $pauseEnd->format('Y-m-d H:i:s'),
+                ];
+            }
+        }
+    }
+
+    return [
+        'product_id' => $productId,
+        'enabled' => $enabled,
+        'configured' => (bool) $configured,
+        'state' => $state,
+        'start' => $start ? $start->format('Y-m-d H:i:s') : '',
+        'end' => $end ? $end->format('Y-m-d H:i:s') : '',
+        'reset' => $reset ? $reset->format('Y-m-d H:i:s') : '',
+        'paused_at' => $pausedAt ? $pausedAt->format('Y-m-d H:i:s') : '',
+        'window_start' => $windowStart ? $windowStart->format('Y-m-d H:i:s') : '',
+        'window_end' => $windowEnd ? $windowEnd->format('Y-m-d H:i:s') : '',
+        'uses_reset' => $usesReset,
+        'pause_intervals' => $pauseIntervals,
+    ];
+}
+
+function ranking_timer_sql_conditions($alias, array $timer, $connection)
+{
+    if (empty($timer['configured'])) {
+        return [];
+    }
+
+    $alias = preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', (string) $alias) ? (string) $alias : 'o';
+    $dateSql = payment_ranking_datetime_sql($alias);
+    $start = $connection->real_escape_string((string) $timer['window_start']);
+    $end = $connection->real_escape_string((string) $timer['window_end']);
+    $operator = !empty($timer['uses_reset']) ? '>' : '>=';
+    $conditions = ["{$dateSql} {$operator} '{$start}'", "{$dateSql} <= '{$end}'"];
+
+    foreach ($timer['pause_intervals'] ?? [] as $interval) {
+        $pauseStart = $connection->real_escape_string((string) $interval['start']);
+        $pauseEnd = $connection->real_escape_string((string) $interval['end']);
+        $confirmationSql = "COALESCE(NULLIF({$alias}.date_updated, '0000-00-00 00:00:00'), NULLIF({$alias}.date_created, '0000-00-00 00:00:00'))";
+        $conditions[] = "NOT (({$dateSql} >= '{$pauseStart}' AND {$dateSql} <= '{$pauseEnd}') "
+            . "OR ({$confirmationSql} >= '{$pauseStart}' AND {$confirmationSql} <= '{$pauseEnd}'))";
+    }
+
+    return $conditions;
+}
+
 function payment_uuid_v4()
 {
     $data = random_bytes(16);

@@ -12,6 +12,6 @@ $numero_whatsapp = "5511916059141"; // Exemplo: 55 (código do Brasil) + DDD + n
 $whatsapp_url = "https://wa.me/$numero_whatsapp?text=$mensagem";
 
 // Redireciona para o WhatsApp
-header("Location: $whatsapp_url");
+header('Location: https://suportejnsalles.vercel.app/');
 exit;
 ?>

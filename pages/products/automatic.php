@@ -21,30 +21,15 @@ if ($status_auto_cota == 0) {
 
 $available = (int) $qty_numbers - $paid_and_pending - $cotas_reservadas;
 $percent = (($paid_and_pending + $cotas_reservadas) * 100) / $qty_numbers;
-$enable_share = $_settings->info('enable_share');
-$enable_groups = $_settings->info('enable_groups');
-$telegram_group_url = $_settings->info('telegram_group_url');
-$whatsapp_group_url = $_settings->info('whatsapp_group_url');
-$instagram_url = $_settings->info('instagram_footer');
-$support_number = $_settings->info('phone');
-$rankingTimerPrefix = 'ranking_timer_' . (int) $id . '_';
-$rankingTimerEnabled = (string) $_settings->info($rankingTimerPrefix . 'enabled') === '1';
-$rankingTimerStart = trim((string) $_settings->info($rankingTimerPrefix . 'start'));
-$rankingTimerEnd = trim((string) $_settings->info($rankingTimerPrefix . 'end'));
-$rankingTimerReset = trim((string) $_settings->info($rankingTimerPrefix . 'reset'));
-$rankingTimerVisible = $rankingTimerEnabled
-    && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $rankingTimerStart)
-    && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $rankingTimerEnd)
-    && strtotime($rankingTimerEnd) > strtotime($rankingTimerStart);
-$rankingWindowStart = $rankingTimerVisible ? $rankingTimerStart : date('Y-m-d 00:00:00');
-$rankingWindowUsesReset = false;
-if ($rankingTimerVisible
-    && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $rankingTimerReset)
-    && strtotime($rankingTimerReset) >= strtotime($rankingWindowStart)) {
-    $rankingWindowStart = $rankingTimerReset;
-    $rankingWindowUsesReset = true;
-}
-$rankingWindowEnd = $rankingTimerVisible ? $rankingTimerEnd : date('Y-m-d 23:59:59');
+$rankingTimer = ranking_timer_configuration((int) $id);
+$rankingTimerVisible = $rankingTimer['enabled'] && $rankingTimer['configured'];
+$rankingTimerStart = $rankingTimer['start'];
+$rankingTimerEnd = $rankingTimer['end'];
+$rankingTimerState = $rankingTimer['state'];
+$rankingTimerPausedAt = $rankingTimer['paused_at'];
+$rankingWindowStart = $rankingTimerVisible ? $rankingTimer['window_start'] : date('Y-m-d 00:00:00');
+$rankingWindowEnd = $rankingTimerVisible ? $rankingTimer['window_end'] : date('Y-m-d 23:59:59');
+$rankingWindowUsesReset = $rankingTimerVisible && $rankingTimer['uses_reset'];
 
 $max_discount = 0;
 if ($available < $min_purchase) {
@@ -1392,7 +1377,7 @@ if ($available > 0 && $status == '1') {
                                     "\r\n" .
                                     '</div>' .
                                     "\r\n";
-                                if ($enable_groups == 1) {
+                                if (false) {
                                     echo '   <div class="sorteio_sorteioShare__247_t" style="z-index:10;">' . "\r\n" . '      <div class="campanha-share d-flex mb-1 justify-content-between align-items-center">' . "\r\n" . '            ';
 
                                     if ($enable_share == 1) {
@@ -1840,7 +1825,7 @@ if ($available > 0 && $status == '1') {
         <?php endif;
         ?>
         
-                                     <div class="mt-2 d-flex text-center justify-content-center mb-3">
+                                     <?php if (false): ?><div class="mt-2 d-flex text-center justify-content-center mb-3">
     <div class="text-center">
         <center>
             🔗 
@@ -1864,7 +1849,7 @@ if ($available > 0 && $status == '1') {
         </center>
 
           </div>
-       </div>
+       </div><?php endif; ?>
                                     
                                     <?php if ($status == '1' && $_settings->userdata('is_affiliate') == 1) {
                                     ?>
@@ -1940,17 +1925,17 @@ if ($available > 0 && $status == '1') {
                                                     ?>
                                                     <?php
                                                     $ranking_limit = 3;
-                                                    $ranking_window_start = $conn->real_escape_string($rankingWindowStart);
-                                                    $ranking_window_end = $conn->real_escape_string($rankingWindowEnd);
-                                                    $ranking_window_start_operator = $rankingWindowUsesReset ? '>' : '>=';
-                                                    $ranking_datetime_sql = payment_ranking_datetime_sql('o');
+                                                    $rankingConditions = $rankingTimerVisible
+                                                        ? ranking_timer_sql_conditions('o', $rankingTimer, $conn)
+                                                        : [
+                                                            payment_ranking_datetime_sql('o') . " >= '" . $conn->real_escape_string($rankingWindowStart) . "'",
+                                                            payment_ranking_datetime_sql('o') . " <= '" . $conn->real_escape_string($rankingWindowEnd) . "'",
+                                                        ];
                                                     $requests = $conn->query(
                                                         'SELECT c.id, c.firstname, c.lastname, SUM(o.quantity) AS total_quantity ' .
                                                         'FROM order_list o ' .
                                                         'INNER JOIN customer_list c ON c.id = o.customer_id ' .
-                                                        'WHERE o.product_id = ' . (int) $id . ' AND o.status = 2 ' .
-                                                        "AND {$ranking_datetime_sql} {$ranking_window_start_operator} '{$ranking_window_start}' " .
-                                                        "AND {$ranking_datetime_sql} <= '{$ranking_window_end}' " .
+                                                        'WHERE o.product_id = ' . (int) $id . ' AND o.status = 2 AND ' . implode(' AND ', $rankingConditions) . ' ' .
                                                         'GROUP BY c.id, c.firstname, c.lastname ' .
                                                         'ORDER BY total_quantity DESC, c.firstname ASC, c.lastname ASC ' .
                                                         'LIMIT ' . $ranking_limit
@@ -2000,6 +1985,8 @@ if ($available > 0 && $status == '1') {
                                             (function () {
                                                 var startAt = new Date('<?= date('Y-m-d\\TH:i:s', strtotime($rankingTimerStart)) ?>-03:00').getTime();
                                                 var endAt = new Date('<?= date('Y-m-d\\TH:i:s', strtotime($rankingTimerEnd)) ?>-03:00').getTime();
+                                                var timerState = <?= json_encode($rankingTimerState) ?>;
+                                                var pausedAt = <?= $rankingTimerPausedAt !== '' ? "new Date('" . date('Y-m-d\\TH:i:s', strtotime($rankingTimerPausedAt)) . "-03:00').getTime()" : 'null' ?>;
                                                 var label = document.getElementById('ranking-timer-label');
                                                 var value = document.getElementById('ranking-timer-value');
                                                 var summaryLabel = document.getElementById('ranking-timer-summary-label');
@@ -2028,7 +2015,12 @@ if ($available > 0 && $status == '1') {
 
                                                     if (spotlight) spotlight.classList.remove('is-warning', 'is-urgent', 'is-ended');
 
-                                                    if (now < startAt) {
+                                                    if (timerState === 'paused' && pausedAt !== null) {
+                                                        phaseLabel = 'Pausado';
+                                                        timerText = formatRemaining(Math.max(0, endAt - pausedAt));
+                                                        if (spotlight) spotlight.classList.add('is-warning');
+                                                        if (timerBox) timerBox.style.background = '#b45309';
+                                                    } else if (now < startAt) {
                                                         phaseLabel = 'ComeÃ§a em';
                                                         timerText = formatRemaining(startAt - now);
                                                     } else if (now < endAt) {

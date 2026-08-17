@@ -698,6 +698,9 @@ class System extends DBConnection
         $existingStartValue = trim((string) $this->info($prefix . 'start'));
         $existingEndValue = trim((string) $this->info($prefix . 'end'));
         $existingResetValue = trim((string) $this->info($prefix . 'reset'));
+        $existingStateValue = strtolower(trim((string) $this->info($prefix . 'state')));
+        $existingPausedAtValue = trim((string) $this->info($prefix . 'paused_at'));
+        $existingPauseIntervalsValue = trim((string) $this->info($prefix . 'pause_intervals'));
         $existingStart = DateTime::createFromFormat('!Y-m-d H:i:s', $existingStartValue, $timezone);
         $existingEnd = DateTime::createFromFormat('!Y-m-d H:i:s', $existingEndValue, $timezone);
 
@@ -729,6 +732,9 @@ class System extends DBConnection
             $prefix . 'start' => $start ? $start->format('Y-m-d H:i:s') : '',
             $prefix . 'end' => $end ? $end->format('Y-m-d H:i:s') : '',
             $prefix . 'reset' => $resetValue,
+            $prefix . 'state' => $mode === 'extend' && $existingStateValue === 'paused' ? 'paused' : 'running',
+            $prefix . 'paused_at' => $mode === 'extend' && $existingStateValue === 'paused' ? $existingPausedAtValue : '',
+            $prefix . 'pause_intervals' => $mode === 'extend' ? ($existingPauseIntervalsValue !== '' ? $existingPauseIntervalsValue : '[]') : '[]',
         ];
 
         $this->conn->begin_transaction();
@@ -754,6 +760,79 @@ class System extends DBConnection
                     ? 'Período estendido. Compradores, posições e cotas acumuladas foram preservados.'
                     : 'Contador reiniciado. O Top Compradores começa vazio e considera somente pagamentos confirmados neste novo período.'),
         ]);
+    }
+
+    public function control_ranking_timer()
+    {
+        if (empty($_SESSION['userdata']['firstname']) || (int) ($_SESSION['userdata']['type'] ?? 0) !== 1) {
+            http_response_code(403);
+            return json_encode(['status' => 'failed', 'msg' => 'Nao autorizado.']);
+        }
+
+        $productId = filter_var($_POST['product_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $control = strtolower(trim((string) ($_POST['control'] ?? '')));
+        if (!$productId || !in_array($control, ['pause', 'resume'], true)) {
+            return json_encode(['status' => 'failed', 'msg' => 'Acao invalida para o contador.']);
+        }
+
+        $prefix = 'ranking_timer_' . $productId . '_';
+        $timezone = new DateTimeZone('America/Sao_Paulo');
+        $now = new DateTime('now', $timezone);
+        $startValue = trim((string) $this->info($prefix . 'start'));
+        $endValue = trim((string) $this->info($prefix . 'end'));
+        $state = strtolower(trim((string) $this->info($prefix . 'state')));
+        $pausedAtValue = trim((string) $this->info($prefix . 'paused_at'));
+        $start = DateTime::createFromFormat('!Y-m-d H:i:s', $startValue, $timezone);
+        $end = DateTime::createFromFormat('!Y-m-d H:i:s', $endValue, $timezone);
+        if (!$start || !$end || $end <= $start || (string) $this->info($prefix . 'enabled') !== '1') {
+            return json_encode(['status' => 'failed', 'msg' => 'Inicie e habilite um periodo antes de usar este controle.']);
+        }
+
+        $values = [];
+        $message = '';
+        if ($control === 'pause') {
+            if ($state === 'paused') {
+                return json_encode(['status' => 'success', 'msg' => 'O periodo ja esta pausado.']);
+            }
+            if ($now >= $end) {
+                return json_encode(['status' => 'failed', 'msg' => 'O periodo ja encerrou. Estenda-o ou inicie um novo periodo.']);
+            }
+            $values[$prefix . 'state'] = 'paused';
+            $values[$prefix . 'paused_at'] = $now->format('Y-m-d H:i:s');
+            $message = 'Periodo pausado. Tempo e ranking ficaram congelados.';
+        } else {
+            $pausedAt = DateTime::createFromFormat('!Y-m-d H:i:s', $pausedAtValue, $timezone);
+            if ($state !== 'paused' || !$pausedAt) {
+                return json_encode(['status' => 'failed', 'msg' => 'O periodo nao esta pausado.']);
+            }
+            $pauseSeconds = max(0, $now->getTimestamp() - $pausedAt->getTimestamp());
+            $newEnd = clone $end;
+            $newEnd->modify('+' . $pauseSeconds . ' seconds');
+            $intervals = json_decode((string) $this->info($prefix . 'pause_intervals'), true);
+            $intervals = is_array($intervals) ? $intervals : [];
+            $intervals[] = ['start' => $pausedAt->format('Y-m-d H:i:s'), 'end' => $now->format('Y-m-d H:i:s')];
+            $values[$prefix . 'state'] = 'running';
+            $values[$prefix . 'paused_at'] = '';
+            $values[$prefix . 'end'] = $newEnd->format('Y-m-d H:i:s');
+            $values[$prefix . 'pause_intervals'] = json_encode($intervals, JSON_UNESCAPED_SLASHES);
+            $message = 'Periodo retomado do ponto em que parou. Compras feitas durante a pausa nao entraram no ranking.';
+        }
+
+        $this->conn->begin_transaction();
+        try {
+            foreach ($values as $field => $value) {
+                if (!$this->save_gateway_meta($field, $value)) {
+                    throw new Exception('Falha ao controlar o contador.');
+                }
+            }
+            $this->conn->commit();
+            $this->update_system_info();
+        } catch (Throwable $error) {
+            $this->conn->rollback();
+            return json_encode(['status' => 'failed', 'msg' => 'Nao foi possivel alterar o estado do contador.']);
+        }
+
+        return json_encode(['status' => 'success', 'msg' => $message]);
     }
 
     public function set_userdata($field = '', $value = '')
@@ -817,6 +896,14 @@ class System extends DBConnection
     public function info($field = '')
     {
         if (!empty($field)) {
+            $disabledSocialFields = [
+                'enable_dwapi', 'enable_pixel', 'enable_share', 'enable_groups', 'enable_instagram',
+                'facebook_access_token', 'facebook_pixel_id', 'telegram_group_url', 'whatsapp_group_url',
+                'whatsapp_footer', 'instagram_footer', 'facebook_footer', 'twitter_footer', 'youtube_footer',
+            ];
+            if (in_array((string) $field, $disabledSocialFields, true)) {
+                return false;
+            }
             if (isset($_SESSION['system_info'][$field])) {
                 return $_SESSION['system_info'][$field];
             } else {
@@ -876,6 +963,10 @@ switch ($action) {
     case 'save_ranking_timer':
         header('Content-Type: application/json; charset=UTF-8');
         echo $sysset->save_ranking_timer();
+        break;
+    case 'control_ranking_timer':
+        header('Content-Type: application/json; charset=UTF-8');
+        echo $sysset->control_ranking_timer();
         break;
     default:
         break;

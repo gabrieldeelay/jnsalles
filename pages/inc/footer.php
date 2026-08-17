@@ -7,11 +7,11 @@ $enable_email = $_settings->info('enable_email');
 $enable_cpf = $_settings->info('enable_cpf') == 1 || payment_requires_customer_document();
 $enable_two_phone = $_settings->info('enable_two_phone');
 $text_footer = $_settings->info('text_footer');
-$whatsapp_footer = $_settings->info('whatsapp_footer');
-$instagram_footer = $_settings->info('instagram_footer');
-$facebook_footer = $_settings->info('facebook_footer');
-$twitter_footer = $_settings->info('twitter_footer');
-$youtube_footer = $_settings->info('youtube_footer');
+$whatsapp_footer = null;
+$instagram_footer = null;
+$facebook_footer = null;
+$twitter_footer = null;
+$youtube_footer = null;
 $favicon = $_settings->info('favicon');
 $site_name = trim((string) $_settings->info('name'));
 $site_name = $site_name !== '' ? htmlspecialchars($site_name, ENT_QUOTES, 'UTF-8') : 'Site';
@@ -130,6 +130,7 @@ if ($enable_footer == '1') { ?>
 					}
 					?>
 				</ul>
+				<a class="btn btn-sm btn-dark px-4 py-2" href="https://suportejnsalles.vercel.app/" target="_blank" rel="noopener noreferrer"><i class="bi bi-headset me-1"></i> Suporte</a>
 			</div>
 			<?php
 			if ($enable_footer) {

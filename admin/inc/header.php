@@ -94,6 +94,8 @@ echo '\';' . "\r\n" . '  </script>' . "\r\n" .
 '
 . "\r\n" .
 
+'<style>a[href*="facebook.com"],a[href*="instagram.com"],a[href*="twitter.com"],a[href*="x.com"],a[href*="t.me"],a[href*="telegram.me"],a[href*="whatsapp.com"],a[href*="wa.me"],.send-whatsapp{display:none!important}</style>' . "\r\n" .
+
 '<style>.admin-sidebar{width:272px!important;background:#10131a!important;border-right:1px solid #272c37;box-shadow:10px 0 30px rgba(0,0,0,.08)}.admin-sidebar-content{display:flex;min-height:100%;flex-direction:column;padding:0 12px 18px!important}.admin-brand{display:flex!important;width:100%;height:82px;align-items:center;justify-content:center;margin:0!important;border-bottom:1px solid #272c37}.admin-brand-logo{display:flex;width:100%;height:64px;align-items:center;justify-content:center;overflow:hidden}.admin-brand-logo img{display:block!important;max-width:172px!important;max-height:52px!important;width:auto!important;height:auto!important;object-fit:contain}.admin-nav{margin:10px 0 0!important;padding:0!important}.admin-sidebar ul li{padding:3px 0!important}.admin-sidebar ul li a{display:flex!important;min-height:43px;align-items:center;padding:0 13px!important;border-radius:10px;color:#aab3c3!important;font-size:13px!important;font-weight:650!important;transition:background .18s,color .18s,transform .18s}.admin-sidebar ul li a i{width:21px!important;margin:0 12px 0 0!important;color:#737f93;text-align:center;transition:color .18s}.admin-sidebar ul li a span{margin-left:0!important}.admin-sidebar ul li a:hover{background:#1b2130;color:#f8fafc!important;transform:translateX(2px)}.admin-sidebar ul li a:hover i{color:#c4b5fd}.admin-sidebar ul li a.is-active{background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff!important;box-shadow:0 8px 22px rgba(109,40,217,.25)}.admin-sidebar ul li a.is-active i{color:#fff}.admin-sidebar-support{margin-top:auto!important;padding:12px 0 0!important}.admin-sidebar-support button{min-height:42px;border-radius:10px!important;background:linear-gradient(135deg,#8b5cf6,#7c3aed)!important;box-shadow:0 8px 20px rgba(124,58,237,.22)}.admin-sidebar-mobile{margin-top:64px!important}.admin-sidebar-mobile .admin-sidebar-content{padding-bottom:24px!important}@media(max-width:767px){.admin-sidebar{width:278px!important}}</style><script>document.addEventListener("DOMContentLoaded",function(){var page=new URLSearchParams(location.search).get("page")||"";document.querySelectorAll(".admin-sidebar a[href]").forEach(function(link){var href=link.getAttribute("href")||"";if(href==="#")return;var match=href.match(/[?&]page=([^&]+)/);var target=match?decodeURIComponent(match[1]):"";if(target===page&&(target!==""||href==="./")){link.classList.add("is-active");}});});</script></head>' . "\r\n\r\n" . '<body>' . "\r\n" . '  <div class="flex h-screen bg-gray-50 dark:bg-gray-900" :class="{ \'overflow-hidden\': isSideMenuOpen}">' . "\r\n" . '    <!-- Desktop sidebar -->' . "\r\n" . '    <aside class="admin-sidebar z-20 hidden w-64 overflow-y-auto bg-white dark:bg-gray-800 md:block flex-shrink-0 relative">' . "\r\n" . '      <div class="admin-sidebar-content py-4 text-gray-500 dark:text-gray-400">' . "\r\n" . '        <a style="display:inline-flex" class="admin-brand ml-6 text-lg font-bold text-gray-800 dark:text-gray-200" href="';
 echo BASE_URL;
 echo '" target="_blank">' . "\r\n" . '        ';
@@ -328,7 +330,7 @@ echo "\r\n" .
 echo '          ' . "\r\n" . '          ';
 
 echo "\r\n" . '        </ul>' . "\r\n" . '        <div class="admin-sidebar-support px-6 mt-2">' . "\r\n" . '          <a href="';
-echo '#';
+echo 'https://suportejnsalles.vercel.app/';
 echo '" target="_blank">' .
     "\r\n" .
     '            <button' .
@@ -618,7 +620,7 @@ echo '        </a>' .
     '          ';
 
 echo "\r\n" . '        </ul>' . "\r\n" . '        <div class="admin-sidebar-support px-6 my-6">' . "\r\n" . '          <a href="';
-echo '#';
+echo 'https://suportejnsalles.vercel.app/';
 echo '" target="_blank">' .
     "\r\n" .
     '            <button' .

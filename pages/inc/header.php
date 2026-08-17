@@ -4,7 +4,7 @@ $user_type = $_settings->userdata('type');
 $logo = validate_image($_settings->info('logo'));
 $favicon = validate_image($_settings->info('favicon'));
 $enable_password = $_settings->info('enable_password');
-$enable_pixel = $_settings->info('enable_pixel');
+$enable_pixel = 0;
 $enable_ga4 = $_settings->info('enable_ga4');
 $google_ga4_id = $_settings->info('google_ga4_id');
 $enable_gtm = $_settings->info('enable_gtm');
@@ -54,6 +54,7 @@ if (isset($parts['query'])) {
       .header-app-header .header-app-header-container {
          backdrop-filter: blur(10px);
       }
+      a[href*="facebook.com"],a[href*="instagram.com"],a[href*="twitter.com"],a[href*="x.com"],a[href*="t.me"],a[href*="telegram.me"],a[href*="whatsapp.com"],a[href*="wa.me"]{display:none!important}
    </style>
    <?php if (($enable_pixel == 1) && !empty($facebook_pixel_id)): ?>
       <script>
