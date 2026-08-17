@@ -1344,6 +1344,7 @@ function payment_reconcile_canceled_venopag_orders($limit = 25)
     $checked = 0;
     $recovered = 0;
     $errors = [];
+    $statuses = [];
     $deadline = microtime(true) + 50;
     foreach ($orderIds as $orderId) {
         if (microtime(true) >= $deadline) {
@@ -1353,12 +1354,15 @@ function payment_reconcile_canceled_venopag_orders($limit = 25)
         $check = payment_check_order($orderId);
         if (!empty($check['ok']) && (int) ($check['status'] ?? 0) === 2) {
             $recovered++;
+            $statuses[] = ['order_id' => $orderId, 'provider_status' => 'confirmed'];
+        } elseif (!empty($check['ok'])) {
+            $statuses[] = ['order_id' => $orderId, 'provider_status' => (string) ($check['provider_status'] ?? 'unknown')];
         } elseif (empty($check['ok'])) {
             $errors[] = ['order_id' => $orderId, 'message' => $check['message'] ?? 'Falha na consulta.'];
         }
     }
 
-    return ['ok' => true, 'checked' => $checked, 'recovered' => $recovered, 'errors' => $errors];
+    return ['ok' => true, 'checked' => $checked, 'recovered' => $recovered, 'statuses' => $statuses, 'errors' => $errors];
 }
 
 function payment_expire_pending_orders($productId = null, $limit = 10)
