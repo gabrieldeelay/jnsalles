@@ -944,7 +944,7 @@ function payment_mark_order_paid($provider, array $verified)
 
     $conn->begin_transaction();
     try {
-        $statement = $conn->prepare('SELECT o.status, o.product_id, o.total_amount, o.quantity, o.payment_method, o.referral_id, c.firstname, c.lastname, c.phone FROM order_list o INNER JOIN customer_list c ON c.id = o.customer_id WHERE o.id = ? FOR UPDATE');
+        $statement = $conn->prepare('SELECT o.status, o.product_id, o.total_amount, o.quantity, o.payment_method, o.referral_id, o.order_numbers, p.qty_numbers, c.firstname, c.lastname, c.phone FROM order_list o INNER JOIN customer_list c ON c.id = o.customer_id INNER JOIN product_list p ON p.id = o.product_id WHERE o.id = ? FOR UPDATE');
         $statement->bind_param('i', $orderId);
         $statement->execute();
         $result = $statement->get_result();
@@ -971,13 +971,74 @@ function payment_mark_order_paid($provider, array $verified)
             $conn->commit();
             return ['ok' => true, 'already_processed' => true, 'message' => 'Pagamento já processado.'];
         }
-        if ((int) $order['status'] !== 1) {
+        $previousStatus = (int) $order['status'];
+        $recoveringVenoPag = $provider === 'venopag' && $previousStatus === 3;
+        if ($previousStatus !== 1 && !$recoveringVenoPag) {
             throw new RuntimeException('O pedido não está pendente.', 409);
         }
 
+        // A VenoPag pode confirmar o PIX poucos segundos depois do prazo local.
+        // Restaure um pedido expirado somente apos a consulta autenticada e sem
+        // permitir que duas compras ativas fiquem com a mesma cota.
+        $restoredNumbers = (string) ($order['order_numbers'] ?? '');
+        if ($recoveringVenoPag) {
+            $used = [];
+            $usedStatement = $conn->prepare('SELECT order_numbers FROM order_list WHERE product_id = ? AND id <> ? AND status <> 3 FOR UPDATE');
+            $productIdForLock = (int) $order['product_id'];
+            $usedStatement->bind_param('ii', $productIdForLock, $orderId);
+            $usedStatement->execute();
+            $usedResult = $usedStatement->get_result();
+            while ($usedRow = $usedResult->fetch_assoc()) {
+                foreach (explode(',', (string) ($usedRow['order_numbers'] ?? '')) as $usedNumber) {
+                    $usedNumber = trim($usedNumber);
+                    if ($usedNumber !== '' && ctype_digit($usedNumber)) {
+                        $used[(int) $usedNumber] = true;
+                    }
+                }
+            }
+            $usedStatement->close();
+
+            $originalNumbers = [];
+            $hasConflict = false;
+            foreach (explode(',', $restoredNumbers) as $originalNumber) {
+                $originalNumber = trim($originalNumber);
+                if ($originalNumber === '' || !ctype_digit($originalNumber)) {
+                    continue;
+                }
+                $numericNumber = (int) $originalNumber;
+                $originalNumbers[$numericNumber] = true;
+                if (isset($used[$numericNumber])) {
+                    $hasConflict = true;
+                }
+            }
+
+            $quantityToRestore = max(0, (int) $order['quantity']);
+            if ($hasConflict || count($originalNumbers) !== $quantityToRestore) {
+                $totalNumbers = max(0, (int) $order['qty_numbers']);
+                if ($totalNumbers <= 0 || ($totalNumbers - count($used)) < $quantityToRestore) {
+                    throw new RuntimeException('Pagamento confirmado, mas nao ha cotas livres suficientes para restaurar o pedido.', 409);
+                }
+                $replacement = [];
+                for ($candidate = 0; $candidate < $totalNumbers && count($replacement) < $quantityToRestore; $candidate++) {
+                    if (!isset($used[$candidate])) {
+                        $replacement[] = $candidate;
+                    }
+                }
+                if (count($replacement) !== $quantityToRestore) {
+                    throw new RuntimeException('Pagamento confirmado, mas nao foi possivel reservar novas cotas.', 409);
+                }
+                $width = max(1, strlen((string) ($totalNumbers - 1)));
+                $replacement = array_map(static function ($number) use ($width) {
+                    return str_pad((string) $number, $width, '0', STR_PAD_LEFT);
+                }, $replacement);
+                $restoredNumbers = implode(',', $replacement) . ',';
+            }
+        }
+
         $paidAt = payment_local_datetime();
-        $updated = $conn->prepare("UPDATE order_list SET status = 2, date_updated = ?, whatsapp_status = '' WHERE id = ? AND status = 1");
-        $updated->bind_param('si', $paidAt, $orderId);
+        $reference = trim((string) ($verified['reference'] ?? ''));
+        $updated = $conn->prepare("UPDATE order_list SET status = 2, date_updated = ?, whatsapp_status = '', order_numbers = ?, id_mp = CASE WHEN ? <> '' THEN ? ELSE id_mp END WHERE id = ? AND status = ?");
+        $updated->bind_param('ssssii', $paidAt, $restoredNumbers, $reference, $reference, $orderId, $previousStatus);
         $updated->execute();
         if ($updated->affected_rows !== 1) {
             throw new RuntimeException('O pedido já foi alterado.', 409);
@@ -987,7 +1048,8 @@ function payment_mark_order_paid($provider, array $verified)
         $quantity = max(0, (int) $order['quantity']);
         $productId = (int) $order['product_id'];
         $product = $conn->prepare('UPDATE product_list SET pending_numbers = GREATEST(0, CAST(pending_numbers AS SIGNED) - ?), paid_numbers = CAST(paid_numbers AS SIGNED) + ? WHERE id = ?');
-        $product->bind_param('iii', $quantity, $quantity, $productId);
+        $pendingDecrease = $previousStatus === 1 ? $quantity : 0;
+        $product->bind_param('iii', $pendingDecrease, $quantity, $productId);
         $product->execute();
         if ($product->affected_rows < 1) {
             throw new RuntimeException('Campanha não encontrada.', 409);
@@ -1162,7 +1224,9 @@ function payment_check_order($orderId)
     if ((int) $order['status'] === 2) {
         return ['ok' => true, 'status' => 2];
     }
-    if ((int) $order['status'] !== 1) {
+    $currentStatus = (int) $order['status'];
+    $recoverableVenoPag = $currentStatus === 3 && (string) $order['payment_method'] === 'VenoPag';
+    if ($currentStatus !== 1 && !$recoverableVenoPag) {
         return ['ok' => true, 'status' => (int) $order['status']];
     }
 
@@ -1200,7 +1264,7 @@ function payment_check_order($orderId)
         }
         $venoStatus = strtolower((string) ($data['status'] ?? ''));
         if ($venoStatus !== 'confirmed') {
-            return ['ok' => true, 'status' => 1, 'provider_status' => $venoStatus];
+            return ['ok' => true, 'status' => $currentStatus, 'provider_status' => $venoStatus];
         }
         $verified = [
             'order_id' => $orderId,
@@ -1256,7 +1320,45 @@ function payment_check_order($orderId)
     }
 
     $approved = payment_mark_order_paid($provider, $verified);
-    return !empty($approved['ok']) ? ['ok' => true, 'status' => 2] : ['ok' => false, 'status' => 1, 'message' => $approved['message'] ?? 'Confirmação recusada.'];
+    return !empty($approved['ok']) ? ['ok' => true, 'status' => 2] : ['ok' => false, 'status' => $currentStatus, 'message' => $approved['message'] ?? 'Confirmação recusada.'];
+}
+
+function payment_reconcile_canceled_venopag_orders($limit = 25)
+{
+    global $conn;
+    $limit = max(1, min(100, (int) $limit));
+    $result = $conn->query(
+        "SELECT id FROM order_list WHERE status = 3 AND payment_method = 'VenoPag' "
+        . "AND id_mp IS NOT NULL AND id_mp <> '' ORDER BY id DESC LIMIT " . $limit
+    );
+    if (!$result) {
+        return ['ok' => false, 'checked' => 0, 'recovered' => 0, 'message' => 'Nao foi possivel localizar os pedidos VenoPag.'];
+    }
+
+    $orderIds = [];
+    while ($row = $result->fetch_assoc()) {
+        $orderIds[] = (int) $row['id'];
+    }
+    $result->free();
+
+    $checked = 0;
+    $recovered = 0;
+    $errors = [];
+    $deadline = microtime(true) + 50;
+    foreach ($orderIds as $orderId) {
+        if (microtime(true) >= $deadline) {
+            break;
+        }
+        $checked++;
+        $check = payment_check_order($orderId);
+        if (!empty($check['ok']) && (int) ($check['status'] ?? 0) === 2) {
+            $recovered++;
+        } elseif (empty($check['ok'])) {
+            $errors[] = ['order_id' => $orderId, 'message' => $check['message'] ?? 'Falha na consulta.'];
+        }
+    }
+
+    return ['ok' => true, 'checked' => $checked, 'recovered' => $recovered, 'errors' => $errors];
 }
 
 function payment_expire_pending_orders($productId = null, $limit = 10)
@@ -1291,13 +1393,23 @@ function payment_expire_pending_orders($productId = null, $limit = 10)
             continue;
         }
 
+        // O prazo local nao deve cancelar um PIX que ainda esta pendente na VenoPag.
+        // Apenas os estados finais do proprio provedor liberam as cotas.
+        if ((string) $order['payment_method'] === 'VenoPag') {
+            $providerStatus = strtolower(trim((string) ($check['provider_status'] ?? '')));
+            if (!in_array($providerStatus, ['expired', 'canceled'], true)) {
+                continue;
+            }
+        }
+
+        $expiredAt = payment_local_datetime();
         $statement = $conn->prepare(
-            'UPDATE order_list SET status = 3, date_updated = NOW() '
+            'UPDATE order_list SET status = 3, date_updated = ? '
             . 'WHERE id = ? AND status = 1 AND order_expiration > 0 '
             . 'AND DATE_ADD(date_created, INTERVAL order_expiration MINUTE) <= NOW()'
         );
         $orderId = (int) $order['id'];
-        $statement->bind_param('i', $orderId);
+        $statement->bind_param('si', $expiredAt, $orderId);
         $statement->execute();
         if ($statement->affected_rows === 1) {
             $expired++;

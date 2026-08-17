@@ -646,6 +646,20 @@ class System extends DBConnection
         return json_encode(payment_test_gateway($provider));
     }
 
+    public function reconcile_venopag_canceled()
+    {
+        if (empty($_SESSION['userdata']['firstname']) || (int) ($_SESSION['userdata']['type'] ?? 0) !== 1) {
+            http_response_code(403);
+            return json_encode(['ok' => false, 'message' => 'Nao autorizado.']);
+        }
+
+        if (!function_exists('payment_reconcile_canceled_venopag_orders')) {
+            require_once dirname(__DIR__) . '/includes/payment_core.php';
+        }
+        $limit = (int) ($_POST['limit'] ?? 25);
+        return json_encode(payment_reconcile_canceled_venopag_orders($limit));
+    }
+
     public function save_ranking_timer()
     {
         if (empty($_SESSION['userdata']['firstname']) || (int) ($_SESSION['userdata']['type'] ?? 0) !== 1) {
@@ -826,6 +840,10 @@ switch ($action) {
     case 'test_gateway':
         header('Content-Type: application/json; charset=UTF-8');
         echo $sysset->test_gateway();
+        break;
+    case 'reconcile_venopag_canceled':
+        header('Content-Type: application/json; charset=UTF-8');
+        echo $sysset->reconcile_venopag_canceled();
         break;
     case 'save_ranking_timer':
         header('Content-Type: application/json; charset=UTF-8');
