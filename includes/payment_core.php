@@ -460,22 +460,47 @@ function payment_create_openpix($orderId, $amount, $name, $email, $cpf, $expirat
     return ['ok' => true, 'provider' => 'openpix'];
 }
 
-function payment_pay2m_token()
+function payment_pay2m_request_token($clientId, $clientSecret)
 {
-    $clientId = (string) payment_setting('pay2m_client_id');
-    $clientSecret = (string) payment_setting('pay2m_client_secret');
-    if ($clientId === '' || $clientSecret === '') {
-        return ['ok' => false, 'message' => 'Credenciais da Pay2M não configuradas.'];
-    }
     $response = payment_http('POST', 'https://portal.pay2m.com.br/api/auth/generate_token', [
         'Authorization: Basic ' . base64_encode($clientId . ':' . $clientSecret),
         'Content-Type: application/json',
     ], ['grant_type' => 'client_credentials']);
     $data = $response['json'];
     if (!$response['ok'] || empty($data['access_token'])) {
-        return ['ok' => false, 'message' => payment_safe_provider_error($response, 'Credenciais da Pay2M recusadas.')];
+        return ['ok' => false, 'response' => $response];
     }
-    return ['ok' => true, 'authorization' => ($data['token_type'] ?? 'Bearer') . ' ' . $data['access_token']];
+    return [
+        'ok' => true,
+        'authorization' => ($data['token_type'] ?? 'Bearer') . ' ' . $data['access_token'],
+    ];
+}
+
+function payment_pay2m_token()
+{
+    $clientId = trim((string) payment_setting('pay2m_client_id'));
+    $clientSecret = trim((string) payment_setting('pay2m_client_secret'));
+    if ($clientId === '' || $clientSecret === '') {
+        return ['ok' => false, 'message' => 'Credenciais da Pay2M não configuradas.'];
+    }
+    $token = payment_pay2m_request_token($clientId, $clientSecret);
+    if ($token['ok']) {
+        return $token;
+    }
+
+    // Both Pay2M values have the same UUID format and are easily pasted into
+    // the opposite fields. On an authentication refusal, try the reverse order once.
+    $response = $token['response'] ?? [];
+    $authStatus = (int) ($response['status'] ?? 0);
+    if ($authStatus === 401 || $authStatus === 403) {
+        $swappedToken = payment_pay2m_request_token($clientSecret, $clientId);
+        if ($swappedToken['ok']) {
+            error_log('[payments] Pay2M credentials accepted after client ID/secret order correction.');
+            return $swappedToken;
+        }
+    }
+
+    return ['ok' => false, 'message' => payment_safe_provider_error($response, 'Credenciais da Pay2M recusadas.')];
 }
 
 function payment_pay2m_register_webhook($authorization)
