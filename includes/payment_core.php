@@ -43,7 +43,13 @@ function payment_active_provider()
             $enabled[] = $provider;
         }
     }
-    return count($enabled) === 1 ? $enabled[0] : null;
+    if (count($enabled) === 1) {
+        return $enabled[0];
+    }
+    sort($enabled);
+    $automaticSplit = strtolower((string) payment_setting('gateway_provider')) === 'split'
+        && (string) payment_setting('pay2m_high_value_enabled', '0') === '1';
+    return $automaticSplit && $enabled === ['pay2m', 'venopag'] ? 'venopag' : null;
 }
 
 function payment_pay2m_high_value_threshold()
@@ -825,6 +831,15 @@ function payment_create_venopag($orderId, $amount, $name, $email, $cpf, $expirat
 
 function payment_test_gateway($provider)
 {
+    if ($provider === 'split') {
+        foreach (['venopag', 'pay2m'] as $splitProvider) {
+            $splitResult = payment_test_gateway($splitProvider);
+            if (($splitResult['status'] ?? '') !== 'success') {
+                return ['status' => 'failed', 'msg' => ($splitProvider === 'venopag' ? 'VenoPag: ' : 'Pay2M: ') . ($splitResult['msg'] ?? 'credenciais recusadas.')];
+            }
+        }
+        return ['status' => 'success', 'msg' => 'VenoPag e Pay2M validadas. A divisão por valor está pronta.'];
+    }
     if (!isset(payment_provider_definitions()[$provider])) {
         return ['status' => 'failed', 'msg' => 'Selecione um gateway válido.'];
     }

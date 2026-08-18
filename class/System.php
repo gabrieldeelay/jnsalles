@@ -548,7 +548,8 @@ class System extends DBConnection
 
     private function update_gateway_settings()
     {
-        $providers = ['none', 'mercadopago', 'gerencianet', 'paggue', 'openpix', 'pay2m', 'venopag'];
+        $providers = ['none', 'split', 'mercadopago', 'gerencianet', 'paggue', 'openpix', 'pay2m', 'venopag'];
+        $gatewayFlags = ['mercadopago', 'gerencianet', 'paggue', 'openpix', 'pay2m', 'venopag'];
         $provider = strtolower(trim((string) ($_POST['gateway_provider'] ?? 'none')));
 
         if (!in_array($provider, $providers, true)) {
@@ -561,7 +562,8 @@ class System extends DBConnection
             'paggue' => ['paggue_client_key', 'paggue_client_secret'],
             'openpix' => ['openpix_app_id'],
             'pay2m' => ['pay2m_client_id', 'pay2m_client_secret'],
-            'venopag' => ['venopag_client_id', 'venopag_client_secret', 'venopag_default_document'],
+            'venopag' => ['venopag_client_id', 'venopag_client_secret'],
+            'split' => ['venopag_client_id', 'venopag_client_secret', 'pay2m_client_id', 'pay2m_client_secret'],
         ];
         $secrets = [
             'mercadopago_access_token', 'mercadopago_webhook_secret',
@@ -573,8 +575,9 @@ class System extends DBConnection
         $taxes = ['mercadopago_tax', 'gerencianet_tax', 'paggue_tax', 'openpix_tax', 'pay2m_tax', 'venopag_tax'];
         $values = ['gateway_provider' => $provider, 'gateway' => '1'];
 
-        foreach (array_slice($providers, 1) as $flag) {
-            $values[$flag] = ($provider === $flag) ? '1' : '2';
+        foreach ($gatewayFlags as $flag) {
+            $enabledBySplit = $provider === 'split' && in_array($flag, ['venopag', 'pay2m'], true);
+            $values[$flag] = ($provider === $flag || $enabledBySplit) ? '1' : '2';
         }
 
         foreach ($secrets as $field) {
@@ -592,8 +595,10 @@ class System extends DBConnection
         $venopagMinimum = (float) str_replace(',', '.', (string) ($_POST['venopag_min_amount'] ?? $this->info('venopag_min_amount')));
         $values['venopag_min_amount'] = number_format(max(1, $venopagMinimum), 2, '.', '');
 
-        $pay2mHighValueEnabled = (string) ($_POST['pay2m_high_value_enabled'] ?? '0') === '1';
-        $pay2mHighValueThreshold = (float) str_replace(',', '.', (string) ($_POST['pay2m_high_value_threshold'] ?? '999.00'));
+        $pay2mHighValueEnabled = $provider === 'split' || (string) ($_POST['pay2m_high_value_enabled'] ?? '0') === '1';
+        $pay2mHighValueThreshold = $provider === 'split'
+            ? 999.99
+            : (float) str_replace(',', '.', (string) ($_POST['pay2m_high_value_threshold'] ?? '999.00'));
         $values['pay2m_high_value_enabled'] = $pay2mHighValueEnabled ? '1' : '0';
         $values['pay2m_high_value_threshold'] = number_format(max(0, $pay2mHighValueThreshold), 2, '.', '');
 
@@ -642,7 +647,9 @@ class System extends DBConnection
 
         $message = $provider === 'none'
             ? 'Gateway desativado. Todas as credenciais e configurações continuam salvas.'
-            : 'Gateway ativado. As credenciais foram salvas com segurança.';
+            : ($provider === 'split'
+                ? 'Divisão ativada: até R$ 999,99 na VenoPag e a partir de R$ 1.000,00 na Pay2M.'
+                : 'Gateway ativado. As credenciais foram salvas com segurança.');
         return json_encode(['status' => 'success', 'msg' => $message]);
     }
 

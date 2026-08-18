@@ -14,7 +14,13 @@ foreach ($definitions as $key => $definition) {
 }
 $selected = count($enabled) === 1 ? $enabled[0] : 'none';
 $storedSelection = strtolower((string) $_settings->info('gateway_provider'));
-if (isset($definitions[$storedSelection]) && count($enabled) <= 1) {
+$splitEnabled = $storedSelection === 'split'
+    && in_array('venopag', $enabled, true)
+    && in_array('pay2m', $enabled, true)
+    && count($enabled) === 2;
+if ($splitEnabled) {
+    $selected = 'split';
+} elseif (isset($definitions[$storedSelection]) && count($enabled) <= 1) {
     $selected = $storedSelection;
 }
 
@@ -24,7 +30,7 @@ $required = [
     'paggue' => ['paggue_client_key', 'paggue_client_secret'],
     'openpix' => ['openpix_app_id'],
     'pay2m' => ['pay2m_client_id', 'pay2m_client_secret'],
-    'venopag' => ['venopag_client_id', 'venopag_client_secret', 'venopag_default_document'],
+    'venopag' => ['venopag_client_id', 'venopag_client_secret'],
 ];
 $configured = [];
 foreach ($required as $provider => $fields) {
@@ -38,6 +44,7 @@ foreach ($required as $provider => $fields) {
 if (!getenv('EFI_CERTIFICATE_BASE64') && !is_file(BASE_APP . 'pagamentos.pem')) {
     $configured['gerencianet'] = false;
 }
+$configured['split'] = !empty($configured['venopag']) && !empty($configured['pay2m']);
 
 function gateway_secret_placeholder($configured)
 {
@@ -77,9 +84,14 @@ $providerShortNames = [
     'mercadopago' => 'MP', 'gerencianet' => 'EF', 'paggue' => 'PG',
     'openpix' => 'OP', 'pay2m' => 'P2', 'venopag' => 'VP',
 ];
-$activeLabel = $selected !== 'none' && isset($definitions[$selected]) ? $definitions[$selected]['label'] : 'Nenhum gateway ativo';
+$activeLabel = $selected === 'split'
+    ? 'VenoPag + Pay2M por valor'
+    : ($selected !== 'none' && isset($definitions[$selected]) ? $definitions[$selected]['label'] : 'Nenhum gateway ativo');
 $pay2mHighValueEnabled = (string) payment_setting('pay2m_high_value_enabled', '0') === '1';
 $pay2mHighValueThreshold = payment_pay2m_high_value_threshold();
+$activeDescription = $selected === 'split'
+    ? 'Até R$ 999,99 pela VenoPag; a partir de R$ 1.000,00 pela Pay2M.'
+    : ($selected !== 'none' ? 'As novas cobranças PIX usam este provedor.' : 'Nenhuma nova cobrança PIX será gerada até você ativar um provedor.');
 ?>
 
 <style>
@@ -100,7 +112,7 @@ $pay2mHighValueThreshold = payment_pay2m_high_value_threshold();
             </span>
         </header>
 
-        <?php if (count($enabled) > 1): ?>
+        <?php if (count($enabled) > 1 && $selected !== 'split'): ?>
             <div class="gateway-message error" style="display:block">Mais de um gateway estava ativo. Selecione apenas um e salve antes de receber novos pedidos.</div>
         <?php endif; ?>
 
@@ -120,7 +132,7 @@ $pay2mHighValueThreshold = payment_pay2m_high_value_threshold();
                     <div class="gateway-current__content">
                         <span class="gateway-current__label"><?php if ($selected !== 'none'): ?><i class="gateway-live-dot"></i><?php endif; ?> Status atual</span>
                         <strong><?= htmlspecialchars($activeLabel, ENT_QUOTES, 'UTF-8') ?></strong>
-                        <p><?= $selected !== 'none' ? 'Novas cobranças são processadas somente por este provedor.' : 'Nenhuma nova cobrança PIX será gerada até você ativar um provedor.' ?></p>
+                        <p><?= htmlspecialchars($activeDescription, ENT_QUOTES, 'UTF-8') ?></p>
                     </div>
                     <?php if ($selected !== 'none'): ?>
                         <button id="disable-gateway" class="gateway-disable-button" type="button">
@@ -140,9 +152,19 @@ $pay2mHighValueThreshold = payment_pay2m_high_value_threshold();
                 </div>
 
                 <div class="gateway-section-title">
-                    <div><h3>Escolha um provedor</h3><p>Somente o gateway selecionado ficará ativo após salvar.</p></div>
+                    <div><h3>Escolha como receber</h3><p>Use um provedor sozinho ou divida automaticamente os pagamentos entre VenoPag e Pay2M.</p></div>
                 </div>
                 <div class="gateway-grid">
+                    <label class="gateway-choice">
+                        <input type="radio" name="gateway_provider" value="split" data-label="VenoPag + Pay2M" <?= $selected === 'split' ? 'checked' : '' ?>>
+                        <span class="gateway-choice__top">
+                            <span class="gateway-choice__badge">2X</span>
+                            <span class="gateway-choice__check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4L19 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                        </span>
+                        <strong>VenoPag + Pay2M</strong>
+                        <span class="gateway-choice__description">Até R$ 999,99 na VenoPag e a partir de R$ 1.000,00 na Pay2M.</span>
+                        <small class="gateway-status <?= $selected === 'split' ? 'gateway-live' : ($configured['split'] ? 'gateway-ok' : 'gateway-missing') ?>"><?= $selected === 'split' ? 'Divisão ativa' : ($configured['split'] ? 'Credenciais salvas' : 'Informe as duas credenciais') ?></small>
+                    </label>
                     <?php foreach ($definitions as $key => $definition): ?>
                         <label class="gateway-choice">
                             <input type="radio" name="gateway_provider" value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>" data-label="<?= htmlspecialchars($definition['label'], ENT_QUOTES, 'UTF-8') ?>" <?= $selected === $key ? 'checked' : '' ?>>
@@ -238,9 +260,16 @@ $pay2mHighValueThreshold = payment_pay2m_high_value_threshold();
         var selectedInput = $('input[name="gateway_provider"]:checked');
         var label = selectedInput.data('label') || '';
         $('.gateway-panel').removeClass('active');
-        $('.gateway-panel[data-provider="' + provider + '"]').addClass('active');
+        if (provider === 'split') {
+            $('.gateway-panel[data-provider="pay2m"], .gateway-panel[data-provider="venopag"]').addClass('active');
+            $('input[name="pay2m_high_value_enabled"]').prop('checked', true);
+            $('input[name="pay2m_high_value_threshold"]').val('999.99').prop('readonly', true);
+        } else {
+            $('.gateway-panel[data-provider="' + provider + '"]').addClass('active');
+            $('input[name="pay2m_high_value_threshold"]').prop('readonly', false);
+        }
         $('#test-gateway').toggle(provider !== 'none');
-        $('#save-gateway').text(provider === 'none' ? 'Salvar gateway desativado' : 'Salvar e ativar ' + label);
+        $('#save-gateway').text(provider === 'none' ? 'Salvar gateway desativado' : (provider === 'split' ? 'Ativar divisão automática' : 'Salvar e ativar ' + label));
         $('#gateway-disable-confirm').prop('hidden', true);
     }
     function message(type, text) {
