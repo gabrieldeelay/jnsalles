@@ -476,28 +476,65 @@ function payment_pay2m_request_token($clientId, $clientSecret)
     ];
 }
 
-function payment_pay2m_token()
+function payment_pay2m_credential_candidates()
 {
-    $clientId = trim((string) payment_setting('pay2m_client_id'));
-    $clientSecret = trim((string) payment_setting('pay2m_client_secret'));
-    if ($clientId === '' || $clientSecret === '') {
-        return ['ok' => false, 'message' => 'Credenciais da Pay2M não configuradas.'];
-    }
-    $token = payment_pay2m_request_token($clientId, $clientSecret);
-    if ($token['ok']) {
-        return $token;
+    global $_settings;
+
+    $pairs = [];
+    $seen = [];
+    $addPair = static function ($clientId, $clientSecret) use (&$pairs, &$seen) {
+        $clientId = trim((string) $clientId, " \t\n\r\0\x0B\"'");
+        $clientSecret = trim((string) $clientSecret, " \t\n\r\0\x0B\"'");
+        if ($clientId === '' || $clientSecret === '') {
+            return;
+        }
+        $key = hash('sha256', $clientId . "\0" . $clientSecret);
+        if (isset($seen[$key])) {
+            return;
+        }
+        $seen[$key] = true;
+        $pairs[] = [$clientId, $clientSecret];
+    };
+
+    $configuredId = payment_setting('pay2m_client_id');
+    $configuredSecret = payment_setting('pay2m_client_secret');
+    $addPair($configuredId, $configuredSecret);
+    $addPair($configuredSecret, $configuredId);
+
+    // A legacy environment value can coexist with newer credentials saved in
+    // the Plesk admin panel. Keep each source paired and try both field orders.
+    if (isset($_settings) && is_object($_settings)) {
+        $storedId = $_settings->info('pay2m_client_id');
+        $storedSecret = $_settings->info('pay2m_client_secret');
+        $addPair($storedId, $storedSecret);
+        $addPair($storedSecret, $storedId);
     }
 
-    // Both Pay2M values have the same UUID format and are easily pasted into
-    // the opposite fields. On an authentication refusal, try the reverse order once.
-    $response = $token['response'] ?? [];
-    $authStatus = (int) ($response['status'] ?? 0);
-    if ($authStatus === 401 || $authStatus === 403) {
-        $swappedToken = payment_pay2m_request_token($clientSecret, $clientId);
-        if ($swappedToken['ok']) {
-            error_log('[payments] Pay2M credentials accepted after client ID/secret order correction.');
-            return $swappedToken;
+    $environmentId = getenv('PAY2M_CLIENT_ID');
+    $environmentSecret = getenv('PAY2M_CLIENT_SECRET');
+    $addPair($environmentId !== false ? $environmentId : '', $environmentSecret !== false ? $environmentSecret : '');
+    $addPair($environmentSecret !== false ? $environmentSecret : '', $environmentId !== false ? $environmentId : '');
+
+    return $pairs;
+}
+
+function payment_pay2m_token()
+{
+    $candidates = payment_pay2m_credential_candidates();
+    if (!$candidates) {
+        return ['ok' => false, 'message' => 'Credenciais da Pay2M não configuradas.'];
+    }
+
+    $response = [];
+    foreach ($candidates as $index => $credentials) {
+        $token = payment_pay2m_request_token($credentials[0], $credentials[1]);
+        if ($token['ok']) {
+            if ($index > 0) {
+                error_log('[payments] Pay2M credentials accepted from an alternate configured source/order.');
+            }
+            return $token;
         }
+        $response = $token['response'] ?? $response;
     }
 
     return ['ok' => false, 'message' => payment_safe_provider_error($response, 'Credenciais da Pay2M recusadas.')];
