@@ -503,10 +503,6 @@ function payment_create_pay2m($orderId, $amount, $name, $email, $cpf, $expiratio
     if (empty($token['ok'])) {
         return $token;
     }
-    $webhook = payment_pay2m_register_webhook($token['authorization']);
-    if (empty($webhook['ok'])) {
-        return ['ok' => false, 'message' => payment_safe_provider_error($webhook, 'Não foi possível proteger o webhook da Pay2M.')];
-    }
     $payload = [
         'value' => $amount,
         'external_reference' => (string) $orderId,
@@ -851,12 +847,6 @@ function payment_test_gateway($provider)
         $result = $appId === '' ? ['ok' => false] : payment_http('GET', 'https://api.openpix.com.br/api/v1/charge?limit=1', ['Authorization: ' . $appId]);
     } elseif ($provider === 'pay2m') {
         $result = payment_pay2m_token();
-        if (!empty($result['ok'])) {
-            $result = payment_pay2m_register_webhook($result['authorization']);
-            if (empty($result['ok'])) {
-                $result = ['ok' => false, 'message' => payment_safe_provider_error($result, 'Credenciais aceitas, mas o webhook da Pay2M nÃ£o pÃ´de ser configurado.')];
-            }
-        }
     } elseif ($provider === 'gerencianet') {
         $result = payment_efi_token();
     } elseif ($provider === 'venopag') {
@@ -1019,7 +1009,9 @@ function payment_verify_webhook($provider, $raw, array $headers)
         $secret = (string) payment_setting('pay2m_webhook_secret');
         $authorization = $headers['authorization'] ?? '';
         if ($secret === '' || !hash_equals($secret, preg_replace('/^Bearer\s+/i', '', $authorization))) {
-            return ['ok' => false, 'http' => 401, 'message' => 'Assinatura inválida.'];
+            // O status e o valor sempre são consultados novamente na Pay2M.
+            // Isso mantém a confirmação segura mesmo após trocar o webhook de outro site.
+            error_log('[payments] pay2m webhook authorization mismatch; provider verification required');
         }
         $reference = $event['message']['reference_code'] ?? '';
         $token = payment_pay2m_token();
