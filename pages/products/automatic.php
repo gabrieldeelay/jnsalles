@@ -12,16 +12,32 @@ if (substr($string, -1) == ',') {
     $cotas_reservadas--;
 }
 
-$paid_and_pending = $pending_numbers + $paid_numbers;
-$total_reservadas = $paid_numbers;
+$safeQtyNumbers = max(1, (int) $qty_numbers);
+$paid_and_pending = (int) $pending_numbers + (int) $paid_numbers;
+$total_reservadas = (int) $paid_numbers;
 
 if ($status_auto_cota == 0) {
     $cotas_reservadas = 0;
 }
 
-$available = (int) $qty_numbers - $paid_and_pending - $cotas_reservadas;
-$percent = (($paid_and_pending + $cotas_reservadas) * 100) / $qty_numbers;
-$rankingTimer = ranking_timer_configuration((int) $id);
+$available = max(0, (int) $qty_numbers - $paid_and_pending - $cotas_reservadas);
+$percent = (($paid_and_pending + $cotas_reservadas) * 100) / $safeQtyNumbers;
+try {
+    $rankingTimer = ranking_timer_configuration((int) $id);
+} catch (Throwable $rankingError) {
+    error_log('[campaign] ranking timer unavailable for product=' . (int) $id);
+    $rankingTimer = [
+        'enabled' => false,
+        'configured' => false,
+        'start' => '',
+        'end' => '',
+        'state' => 'disabled',
+        'paused_at' => '',
+        'window_start' => date('Y-m-d 00:00:00'),
+        'window_end' => date('Y-m-d 23:59:59'),
+        'uses_reset' => false,
+    ];
+}
 $rankingTimerVisible = $rankingTimer['enabled'] && $rankingTimer['configured'];
 $rankingTimerStart = $rankingTimer['start'];
 $rankingTimerEnd = $rankingTimer['end'];
@@ -45,68 +61,39 @@ if ($enable_cpf == 1) {
 
 $major = [];
 $minor = [];
-$order_numbers = '';
-// Prepare the base SQL query
-$sql = 'SELECT * FROM order_list WHERE product_id = ?';
-
-// Prepare and execute the query
-$stmt = $conn->prepare($sql);
-
-$stmt->bind_param('s', $id);
-
-$stmt->execute();
-$result = $stmt->get_result();
-
-// Loop through the results and calculate the major and minor values
-while ($row = $result->fetch_assoc()) {
-    $order_numbers .= $row['order_numbers'] . ',';
-}
-
-if (!empty($order_numbers)) {
-    $order_numbers = rtrim($order_numbers, ',');
-    $order_numbers = explode(',', $order_numbers);
-    $order_numbers = array_filter($order_numbers);
-    if (!empty($order_numbers)) {
-        $stmt = $conn->prepare('SELECT o.customer_id, c.firstname, c.lastname, o.date_created,c.phone
+$stmt = $conn->prepare('SELECT o.order_numbers, o.date_created, c.firstname, c.lastname, c.phone
                         FROM order_list o
                         INNER JOIN customer_list c ON o.customer_id = c.id
-                        WHERE FIND_IN_SET(?, order_numbers) AND product_id = ? AND status = 2');
-        $order_number = max($order_numbers); // Ensure $order_numbers is an array or list
-        $stmt->bind_param('si', $order_number, $id);
-        $stmt->execute();
+                        WHERE o.product_id = ? AND o.status = 2');
+if ($stmt) {
+    $productIdForRanking = (int) $id;
+    $stmt->bind_param('i', $productIdForRanking);
+    if ($stmt->execute()) {
         $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-
-        if ($row) {
-            // Check if a row is fetched
-            $major['cota'] = $order_number;
-            $major['winner'] = $row['firstname'] . ' ' . $row['lastname'];
-            $major['date_created'] = date('d/m/Y H:i:s', strtotime($row['date_created']));
-            $major['phone'] = $row['phone'];
+        while ($row = $result->fetch_assoc()) {
+            $confirmedNumbers = array_filter(array_map('trim', explode(',', (string) $row['order_numbers'])), 'strlen');
+            foreach ($confirmedNumbers as $confirmedNumber) {
+                $candidate = [
+                    'cota' => $confirmedNumber,
+                    'winner' => trim($row['firstname'] . ' ' . $row['lastname']),
+                    'date_created' => date('d/m/Y H:i:s', strtotime($row['date_created'])),
+                    'phone' => $row['phone'],
+                ];
+                if (empty($major['cota']) || (int) $confirmedNumber > (int) $major['cota']) {
+                    $major = $candidate;
+                }
+                if (empty($minor['cota']) || (int) $confirmedNumber < (int) $minor['cota']) {
+                    $minor = $candidate;
+                }
+            }
         }
-
-        $stmt = $conn->prepare('SELECT o.customer_id, c.firstname, c.lastname, o.date_created, c.phone
-                        FROM order_list o
-                        INNER JOIN customer_list c ON o.customer_id = c.id
-                        WHERE FIND_IN_SET(?, order_numbers) AND product_id = ? AND status = 2');
-        $order_number = min($order_numbers); // Ensure $order_numbers is an array or list
-        $stmt->bind_param('si', $order_number, $id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-
-        if ($row) {
-            // Check if a row is fetched
-            $minor['cota'] = $order_number;
-            $minor['winner'] = $row['firstname'] . ' ' . $row['lastname'];
-            $minor['date_created'] = date('d/m/Y H:i:s', strtotime($row['date_created']));
-            $minor['phone'] = $row['phone'];
-        }
+    } else {
+        error_log('[campaign] confirmed number query failed for product=' . (int) $id);
     }
+    $stmt->close();
+} else {
+    error_log('[campaign] confirmed number query could not be prepared for product=' . (int) $id);
 }
-
-// Close the statement and connection
-$stmt->close();
 
 if (empty($major['cota'])) {
     $major['cota'] = 'Seja o primeiro a comprar';
