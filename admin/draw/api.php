@@ -21,10 +21,7 @@ $csrf = (string) ($_POST['csrf'] ?? '');
 if (empty($_SESSION['draw_csrf']) || !hash_equals((string) $_SESSION['draw_csrf'], $csrf)) {
     jnsalles_draw_response(419, ['status' => 'error', 'message' => 'A sessão expirou. Atualize a página e tente novamente.']);
 }
-if (!jnsalles_draw_ensure_schema($conn)) {
-    jnsalles_draw_response(500, ['status' => 'error', 'message' => 'Não foi possível preparar o histórico de sorteios.']);
-}
-
+$action = (string) ($_POST['action'] ?? 'draw');
 $productId = isset($_POST['product_id']) && ctype_digit((string) $_POST['product_id'])
     ? (int) $_POST['product_id']
     : 0;
@@ -32,13 +29,33 @@ if ($productId <= 0) {
     jnsalles_draw_response(422, ['status' => 'error', 'message' => 'Selecione uma campanha válida.']);
 }
 
-$productStatement = $conn->prepare('SELECT id, name FROM product_list WHERE id = ? AND delete_flag = 0 LIMIT 1');
+$productStatement = $conn->prepare('SELECT id, name, qty_numbers FROM product_list WHERE id = ? AND delete_flag = 0 LIMIT 1');
 $productStatement->bind_param('i', $productId);
 $productStatement->execute();
 $product = $productStatement->get_result()->fetch_assoc();
 $productStatement->close();
 if (!$product) {
     jnsalles_draw_response(404, ['status' => 'error', 'message' => 'Campanha não encontrada.']);
+}
+
+if ($action === 'simulation_preview') {
+    $freeNumber = jnsalles_draw_free_demo_number($conn, $productId, (int) $product['qty_numbers']);
+    if ($freeNumber === null) {
+        jnsalles_draw_response(422, ['status' => 'error', 'message' => 'Não foi possível localizar uma cota livre para a demonstração.']);
+    }
+    jnsalles_draw_response(200, [
+        'status' => 'success',
+        'preview' => [
+            'number' => $freeNumber,
+            'phone' => jnsalles_draw_demo_phone(),
+        ],
+    ]);
+}
+if ($action !== 'draw') {
+    jnsalles_draw_response(422, ['status' => 'error', 'message' => 'Ação de sorteio inválida.']);
+}
+if (!jnsalles_draw_ensure_schema($conn)) {
+    jnsalles_draw_response(500, ['status' => 'error', 'message' => 'Não foi possível preparar o histórico de sorteios.']);
 }
 
 $lockName = 'jnsalles_draw_' . $productId;
