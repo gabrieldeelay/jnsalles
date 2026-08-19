@@ -194,7 +194,7 @@ if ($eligibleQuery) {
     function showSimulationResult(name, preview) {
         revealBase();
         result.classList.add('simulation');
-        winnerLabel.textContent = 'Ganhador demonstrativo';
+        winnerLabel.textContent = 'Ganhador';
         document.getElementById('draw-winner-name').textContent = name;
         document.getElementById('draw-winner-phone').textContent = preview.phone;
         document.getElementById('draw-winning-number').textContent = preview.number;
