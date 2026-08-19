@@ -47,17 +47,22 @@ if (!function_exists('jnsalles_report_filters')) {
         $timezone = new DateTimeZone('America/Sao_Paulo');
         $today = new DateTimeImmutable('today', $timezone);
         $defaultStart = $today->modify('-6 days')->format('Y-m-d 00:00:00');
-        $defaultEnd = $today->format('Y-m-d 00:00:00');
+        $defaultEnd = $today->format('Y-m-d 23:59:59');
 
         $legacyStart = trim((string) ($source['start_date'] ?? ''));
         $legacyEnd = trim((string) ($source['end_date'] ?? ''));
         $startValue = trim((string) ($source['start_at'] ?? ''));
         $endValue = trim((string) ($source['end_at'] ?? ''));
         if ($startValue === '' && $legacyStart !== '') {
-            $startValue = $legacyStart . ' ' . trim((string) ($source['start_time'] ?? '00:00'));
+            $legacyStartTime = trim((string) ($source['start_time'] ?? ''));
+            $startValue = $legacyStart . ' ' . ($legacyStartTime !== '' ? $legacyStartTime : '00:00');
         }
         if ($endValue === '' && $legacyEnd !== '') {
-            $endValue = $legacyEnd . ' ' . trim((string) ($source['end_time'] ?? '00:00'));
+            $legacyEndTime = trim((string) ($source['end_time'] ?? ''));
+            $endValue = $legacyEnd . ' ' . ($legacyEndTime !== '' ? $legacyEndTime : '23:59');
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $endValue)) {
+            $endValue .= ' 23:59';
         }
 
         $start = jnsalles_report_parse_datetime($startValue, $defaultStart);

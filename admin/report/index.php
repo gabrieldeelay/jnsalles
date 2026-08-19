@@ -91,14 +91,14 @@ $periodLabel = date('d/m/Y H:i', strtotime($filters['start'])) . ' até ' . date
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
 <script>
 (function () {
-    function activateDateTimePicker(selector) {
+    function activateDateTimePicker(selector, defaultHour, defaultMinute) {
         if (typeof flatpickr !== 'function') return;
         flatpickr(selector, {
             enableTime: true,
             time_24hr: true,
             minuteIncrement: 1,
-            defaultHour: 0,
-            defaultMinute: 0,
+            defaultHour: defaultHour,
+            defaultMinute: defaultMinute,
             allowInput: true,
             dateFormat: 'Y-m-d H:i',
             altInput: true,
@@ -107,7 +107,7 @@ $periodLabel = date('d/m/Y H:i', strtotime($filters['start'])) . ' até ' . date
             disableMobile: true
         });
     }
-    activateDateTimePicker('#report-start');
-    activateDateTimePicker('#report-end');
+    activateDateTimePicker('#report-start', 0, 0);
+    activateDateTimePicker('#report-end', 23, 59);
 })();
 </script>
