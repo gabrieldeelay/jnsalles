@@ -231,6 +231,33 @@ CREATE TABLE IF NOT EXISTS `order_list` (
   CONSTRAINT `fk_order_customer` FOREIGN KEY (`customer_id`) REFERENCES `customer_list` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `raffle_draws` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `product_id` INT UNSIGNED DEFAULT NULL,
+  `product_name_snapshot` TEXT NOT NULL,
+  `order_id` INT UNSIGNED DEFAULT NULL,
+  `customer_id` INT UNSIGNED DEFAULT NULL,
+  `winning_number` VARCHAR(191) NOT NULL,
+  `winner_name_snapshot` VARCHAR(500) NOT NULL,
+  `phone_masked_snapshot` VARCHAR(40) NOT NULL,
+  `eligible_entries` BIGINT UNSIGNED NOT NULL,
+  `random_position` BIGINT UNSIGNED NOT NULL,
+  `audit_hash` CHAR(64) NOT NULL,
+  `drawn_by` INT UNSIGNED DEFAULT NULL,
+  `date_created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_raffle_draw_audit_hash` (`audit_hash`),
+  UNIQUE KEY `uq_raffle_draw_product_number` (`product_id`, `winning_number`),
+  KEY `idx_raffle_draw_product_date` (`product_id`, `date_created`),
+  KEY `idx_raffle_draw_order` (`order_id`),
+  KEY `idx_raffle_draw_customer` (`customer_id`),
+  KEY `idx_raffle_draw_user` (`drawn_by`),
+  CONSTRAINT `fk_raffle_draw_product` FOREIGN KEY (`product_id`) REFERENCES `product_list` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_raffle_draw_order` FOREIGN KEY (`order_id`) REFERENCES `order_list` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_raffle_draw_customer` FOREIGN KEY (`customer_id`) REFERENCES `customer_list` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_raffle_draw_user` FOREIGN KEY (`drawn_by`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `order_items` (
   `order_id` INT UNSIGNED NOT NULL,
   `product_id` INT UNSIGNED NOT NULL,

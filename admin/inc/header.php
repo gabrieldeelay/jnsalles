@@ -25,6 +25,9 @@ switch ($pageTitle) {
     case 'report':
         echo 'Relatórios - ' . $siteName;
         break;
+    case 'draw':
+        echo 'Sortear - ' . $siteName;
+        break;
     case 'license':
         echo 'Licença - ' . $siteName;
         break;
@@ -190,6 +193,18 @@ echo "\r\n" .
 		'<i class="fa-duotone w-6 fa-chart-simple text-lg"></i>' .
     "\r\n" .
     '                <span class="ml-4">Relatórios</span>' .
+    "\r\n" .
+    '              </a>' .
+    "\r\n" .
+    '            </li>' .
+    "\r\n" .
+    '            <li class="relative px-6 py-3">' .
+    "\r\n" .
+    '              <a target="_parent" class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200" href="./?page=draw">' .
+    "\r\n" .
+    '<i class="fa-duotone w-6 fa-shuffle text-lg"></i>' .
+    "\r\n" .
+    '                <span class="ml-4">Sortear</span>' .
     "\r\n" .
     '              </a>' .
     "\r\n" .
@@ -463,6 +478,18 @@ echo '        </a>' .
  '<i class="fa-duotone w-6 fa-chart-simple text-lg"></i>' .
     "\r\n" .
     '              <span class="ml-4">Relatórios</span>' .
+    "\r\n" .
+    '            </a>' .
+    "\r\n" .
+    '          </li>' .
+    "\r\n" .
+    '          <li class="relative px-6 py-3">' .
+    "\r\n" .
+    '            <a class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200" href="./?page=draw">' .
+    "\r\n" .
+    '<i class="fa-duotone w-6 fa-shuffle text-lg"></i>' .
+    "\r\n" .
+    '              <span class="ml-4">Sortear</span>' .
     "\r\n" .
     '            </a>' .
     "\r\n" .
