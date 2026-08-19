@@ -1,208 +1,111 @@
 <?php
+require_once __DIR__ . '/data.php';
+
 $escape = static function ($value) {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 };
-
-$validDate = static function ($value, $fallback) {
-    $date = DateTime::createFromFormat('Y-m-d', (string) $value);
-    return $date && $date->format('Y-m-d') === $value ? $value : $fallback;
-};
-
-$paymentMethods = [
-    'MercadoPago' => 'Mercado Pago',
-    'Paggue' => 'Paggue',
-    'Gerencianet' => 'Efí / Gerencianet',
-    'OpenPix' => 'OpenPix / Woovi',
-    'Pay2m' => 'Pay2M',
-    'VenoPag' => 'VenoPag',
-    'Manual' => 'Manual',
-];
-$statusLabels = [1 => 'Pendente', 2 => 'Pago', 3 => 'Cancelado'];
-
-$product_id = isset($_GET['product_id']) && ctype_digit((string) $_GET['product_id'])
-    ? (int) $_GET['product_id']
-    : 0;
-$status_id = isset($_GET['status_id']) && in_array((int) $_GET['status_id'], [1, 2, 3], true)
-    ? (int) $_GET['status_id']
-    : 0;
-$payment_method = isset($_GET['payment_method'], $paymentMethods[$_GET['payment_method']])
-    ? $_GET['payment_method']
-    : '';
-$start_date = $validDate($_GET['start_date'] ?? '', date('Y-m-d', strtotime('-6 days')));
-$end_date = $validDate($_GET['end_date'] ?? '', date('Y-m-d'));
-if ($start_date > $end_date) {
-    [$start_date, $end_date] = [$end_date, $start_date];
-}
+$filters = jnsalles_report_filters($_GET);
+$paymentMethods = jnsalles_report_payment_methods();
+$statusLabels = jnsalles_report_status_labels();
+$summary = jnsalles_report_summary($conn, $filters);
 
 $products = [];
 $productsQuery = $conn->query('SELECT id, name FROM product_list ORDER BY id DESC');
-while ($product = $productsQuery->fetch_assoc()) {
-    $products[] = $product;
+if ($productsQuery) {
+    while ($product = $productsQuery->fetch_assoc()) {
+        $products[] = $product;
+    }
 }
-
-$conditions = [];
-if ($product_id > 0) {
-    $conditions[] = 'o.product_id = ' . $product_id;
-}
-if ($status_id > 0) {
-    $conditions[] = 'o.status = ' . $status_id;
-}
-if ($payment_method !== '') {
-    $conditions[] = "o.payment_method = '" . $conn->real_escape_string($payment_method) . "'";
-}
-$start_datetime = $conn->real_escape_string($start_date . ' 00:00:00');
-$end_datetime = $conn->real_escape_string($end_date . ' 23:59:59');
-$conditions[] = "o.date_created BETWEEN '{$start_datetime}' AND '{$end_datetime}'";
-$whereSql = ' WHERE ' . implode(' AND ', $conditions);
-
-$salesConditions = array_values(array_filter($conditions, static function ($condition) {
-    return strpos($condition, 'o.status = ') !== 0;
-}));
-$salesConditions[] = 'o.status = 2';
-$salesWhereSql = ' WHERE ' . implode(' AND ', $salesConditions);
-
-$salesQuery = $conn->query(
-    'SELECT COALESCE(SUM(o.quantity), 0) AS quantity, COALESCE(SUM(o.total_amount), 0) AS revenue ' .
-    'FROM order_list o' . $salesWhereSql
-);
-$sales = $salesQuery->fetch_assoc();
-$soldQuantity = (int) ($sales['quantity'] ?? 0);
-$revenue = (float) ($sales['revenue'] ?? 0);
-
-$ordersCountQuery = $conn->query('SELECT COUNT(*) AS total FROM order_list o' . $whereSql);
-$ordersCount = (int) ($ordersCountQuery->fetch_assoc()['total'] ?? 0);
-
-$customerStart = $conn->real_escape_string($start_date . ' 00:00:00');
-$customerEnd = $conn->real_escape_string($end_date . ' 23:59:59');
-$customersQuery = $conn->query(
-    "SELECT COUNT(*) AS total FROM customer_list c WHERE c.date_created BETWEEN '{$customerStart}' AND '{$customerEnd}'"
-);
-$newCustomers = (int) ($customersQuery->fetch_assoc()['total'] ?? 0);
 
 $perPage = 20;
 $page = max(1, (int) ($_GET['pg'] ?? 1));
-$totalResults = $ordersCount;
+$totalResults = $summary['orders_count'];
 $totalPages = max(1, (int) ceil($totalResults / $perPage));
 $page = min($page, $totalPages);
-$offset = ($page - 1) * $perPage;
-
-$ordersQuery = $conn->query(
-    'SELECT o.id, o.date_created, o.product_name, o.payment_method, o.quantity, o.total_amount, o.status ' .
-    'FROM order_list o' . $whereSql .
-    ' ORDER BY o.date_created DESC, o.id DESC LIMIT ' . $perPage . ' OFFSET ' . $offset
-);
-
-$paginationUrl = static function ($targetPage) use ($product_id, $status_id, $payment_method, $start_date, $end_date) {
-    return './?' . http_build_query([
-        'page' => 'report',
-        'product_id' => $product_id ?: '',
-        'status_id' => $status_id ?: '',
-        'payment_method' => $payment_method,
-        'start_date' => $start_date,
-        'end_date' => $end_date,
-        'pg' => $targetPage,
-    ]);
+$ordersQuery = jnsalles_report_orders($conn, $filters, $perPage, ($page - 1) * $perPage);
+$paginationUrl = static function ($targetPage) use ($filters) {
+    return './?' . jnsalles_report_query($filters, ['page' => 'report', 'pg' => $targetPage]);
 };
+$pdfUrl = './report/export.php?' . jnsalles_report_query($filters);
+$periodLabel = date('d/m/Y H:i', strtotime($filters['start'])) . ' até ' . date('d/m/Y H:i', strtotime($filters['end']));
 ?>
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
-    @media all and (max-width: 72em) {
-        .report-filters { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
-        .report-filters > * { margin-right: 0 !important; }
-    }
-    @media all and (max-width: 40em) {
-        .report-filters { grid-template-columns: 1fr; }
-    }
+    .report-shell{max-width:1260px;padding-bottom:36px}.report-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:28px 0 18px}.report-eyebrow{margin:0 0 4px;color:#a78bfa;font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}.report-heading h2{margin:0;color:#f8fafc;font-size:29px;font-weight:780;letter-spacing:-.035em}.report-heading p{margin:7px 0 0;color:#94a3b8;font-size:13px}.report-period-badge{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid #334155;border-radius:999px;background:#111827;color:#cbd5e1;font-size:11px;white-space:nowrap}.report-period-badge:before{content:'';width:7px;height:7px;border-radius:50%;background:#8b5cf6;box-shadow:0 0 0 4px rgba(139,92,246,.12)}
+    .report-filter-panel{margin-bottom:20px;padding:18px;border:1px solid #2f3b4f;border-radius:16px;background:linear-gradient(145deg,rgba(30,41,59,.76),rgba(15,23,42,.95));box-shadow:0 18px 44px rgba(0,0,0,.16)}.report-filter-title{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}.report-filter-title strong{display:block;color:#f1f5f9;font-size:15px}.report-filter-title span{display:block;margin-top:3px;color:#8fa2bb;font-size:11px}.report-filter-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}.report-field label{display:block;margin-bottom:6px;color:#aebdd0;font-size:11px;font-weight:700}.report-field select,.report-field input{width:100%;height:44px!important;margin:0!important;border:1px solid #3b4a61!important;border-radius:10px!important;background:#101827!important;color:#f1f5f9!important;font-size:12px!important;box-shadow:none!important}.report-field select:focus,.report-field input:focus{border-color:#8b5cf6!important;box-shadow:0 0 0 3px rgba(139,92,246,.16)!important}.report-date-range{grid-column:1/-1;display:grid;grid-template-columns:1fr 28px 1fr;align-items:end;gap:11px;padding-top:2px}.report-date-separator{display:flex;height:44px;align-items:center;justify-content:center;color:#64748b}.report-input-wrap{position:relative}.report-input-wrap input{padding-left:40px!important}.report-input-icon{position:absolute;top:50%;left:13px;z-index:2;display:flex;color:#8b9bb0;transform:translateY(-50%);pointer-events:none}.report-filter-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;margin-top:15px;padding-top:15px;border-top:1px solid #2c3748}.report-action{display:inline-flex;min-height:42px;align-items:center;justify-content:center;gap:8px;padding:0 15px;border-radius:10px;font-size:12px;font-weight:750;transition:.18s}.report-filter-button{border:0;background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;box-shadow:0 8px 20px rgba(124,58,237,.22)}.report-pdf-button{border:1px solid rgba(248,113,113,.42);background:rgba(127,29,29,.18);color:#fecaca}.report-pdf-button:hover{border-color:#f87171;background:rgba(127,29,29,.32);color:#fff}.report-reset-button{margin-right:auto;border:1px solid #3b4a61;background:#172033;color:#cbd5e1}
+    .report-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}.report-metric{display:flex;min-height:104px;align-items:center;gap:13px;padding:16px;border:1px solid #2d394b;border-radius:14px;background:linear-gradient(145deg,#172033,#121925);box-shadow:0 12px 28px rgba(0,0,0,.12)}.report-metric-icon{display:flex;width:43px;height:43px;align-items:center;justify-content:center;flex:0 0 43px;border-radius:12px;font-weight:850}.report-metric:nth-child(1) .report-metric-icon{background:rgba(16,185,129,.16);color:#6ee7b7}.report-metric:nth-child(2) .report-metric-icon{background:rgba(249,115,22,.15);color:#fdba74}.report-metric:nth-child(3) .report-metric-icon{background:rgba(59,130,246,.16);color:#93c5fd}.report-metric:nth-child(4) .report-metric-icon{background:rgba(20,184,166,.16);color:#5eead4}.report-metric small{display:block;margin-bottom:4px;color:#91a1b6;font-size:11px}.report-metric strong{display:block;color:#f8fafc;font-size:19px;letter-spacing:-.02em}
+    .report-table-card{overflow:hidden;border:1px solid #2d394b;border-radius:14px;background:#151d2a;box-shadow:0 14px 34px rgba(0,0,0,.13)}.report-table-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid #2d394b}.report-table-heading strong{color:#f1f5f9;font-size:14px}.report-table-heading span{color:#8fa2b8;font-size:11px}.report-table-card table{width:100%}.report-table-card thead tr{background:#111722!important}.report-table-card tbody{background:#151d2a!important}.report-table-card tbody tr{border-color:#263245!important}.report-empty{padding:34px 16px!important;color:#8fa2b8!important}.report-status{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:750}.report-status-1{background:rgba(245,158,11,.16);color:#fcd34d}.report-status-2{background:rgba(16,185,129,.16);color:#6ee7b7}.report-status-3{background:rgba(239,68,68,.16);color:#fca5a5}
+    .flatpickr-calendar{border:1px solid #39475b!important;background:#111827!important;box-shadow:0 22px 50px rgba(0,0,0,.45)!important;color:#e5e7eb!important}.flatpickr-months .flatpickr-month,.flatpickr-current-month .flatpickr-monthDropdown-months,.flatpickr-monthDropdown-month,.flatpickr-weekdays,.flatpickr-weekday{background:#111827!important;color:#dbe3ef!important}.flatpickr-day{color:#cbd5e1!important}.flatpickr-day:hover,.flatpickr-day:focus{border-color:#475569!important;background:#263247!important}.flatpickr-day.selected,.flatpickr-day.startRange,.flatpickr-day.endRange{border-color:#8b5cf6!important;background:#7c3aed!important;color:#fff!important}.flatpickr-day.today{border-color:#8b5cf6!important}.flatpickr-day.prevMonthDay,.flatpickr-day.nextMonthDay{color:#526074!important}.flatpickr-time{border-top-color:#334155!important}.flatpickr-time input,.flatpickr-time .flatpickr-am-pm{color:#e5e7eb!important}.flatpickr-time input:hover,.flatpickr-time .flatpickr-am-pm:hover{background:#1e293b!important}.numInputWrapper span{border-color:#334155!important}.flatpickr-current-month input.cur-year{color:#e5e7eb!important}
+    @media(max-width:900px){.report-filter-grid{grid-template-columns:1fr 1fr}.report-date-range{grid-column:1/-1}.report-metrics{grid-template-columns:1fr 1fr}.report-heading{align-items:flex-start;flex-direction:column}}
+    @media(max-width:590px){.report-shell{padding-inline:14px!important}.report-filter-grid,.report-date-range,.report-metrics{grid-template-columns:1fr}.report-date-separator{display:none}.report-filter-actions{align-items:stretch;flex-direction:column}.report-filter-actions .report-action{width:100%}.report-reset-button{margin-right:0}.report-period-badge{white-space:normal}.report-table-heading{align-items:flex-start;flex-direction:column}}
 </style>
 
 <main class="h-full pb-16 overflow-y-auto">
-    <div class="container grid px-6 mx-auto">
-        <h2 class="my-6 text-2xl font-semibold text-gray-700 dark:text-gray-200">Relatórios</h2>
+    <div class="container grid px-6 mx-auto report-shell">
+        <header class="report-heading">
+            <div><p class="report-eyebrow">Análise financeira</p><h2>Relatórios</h2><p>Consulte pedidos, clientes, cotas e faturamento dentro de um intervalo exato.</p></div>
+            <span class="report-period-badge"><?= $escape($periodLabel) ?></span>
+        </header>
 
-        <form action="./" class="mb-4" method="GET">
+        <form action="./" class="report-filter-panel" method="GET" id="report-filter-form">
             <input type="hidden" name="page" value="report">
-            <div class="flex report-filters">
-                <select name="product_id" class="mr-2 block w-full mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select">
-                    <option value="">Todas as campanhas</option>
-                    <?php foreach ($products as $product): ?>
-                        <option value="<?= (int) $product['id'] ?>" <?= $product_id === (int) $product['id'] ? 'selected' : '' ?>><?= $escape($product['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <select name="status_id" class="mr-2 block w-full mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select">
-                    <option value="">Todos os status</option>
-                    <?php foreach ($statusLabels as $value => $label): ?>
-                        <option value="<?= $value ?>" <?= $status_id === $value ? 'selected' : '' ?>><?= $escape($label) ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <select name="payment_method" class="mr-2 block w-full mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select">
-                    <option value="">Todos os métodos</option>
-                    <?php foreach ($paymentMethods as $value => $label): ?>
-                        <option value="<?= $escape($value) ?>" <?= $payment_method === $value ? 'selected' : '' ?>><?= $escape($label) ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <input name="start_date" type="date" value="<?= $escape($start_date) ?>" class="mr-2 block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 form-input">
-                <input name="end_date" type="date" value="<?= $escape($end_date) ?>" class="mr-2 block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 form-input">
-                <button class="mt-1 px-5 py-3 font-medium leading-5 text-white bg-purple-600 border border-transparent rounded-lg hover:bg-purple-700 focus:outline-none focus:shadow-outline-purple">Filtrar</button>
+            <div class="report-filter-title"><div><strong>Filtros do relatório</strong><span>Todos os cartões, pedidos e o PDF respeitam exatamente os filtros abaixo.</span></div></div>
+            <div class="report-filter-grid">
+                <div class="report-field"><label for="report-product">Campanha</label><select id="report-product" name="product_id"><option value="">Todas as campanhas</option><?php foreach ($products as $product): ?><option value="<?= (int) $product['id'] ?>" <?= $filters['product_id'] === (int) $product['id'] ? 'selected' : '' ?>><?= $escape($product['name']) ?></option><?php endforeach; ?></select></div>
+                <div class="report-field"><label for="report-status">Status do pedido</label><select id="report-status" name="status_id"><option value="">Todos os status</option><?php foreach ($statusLabels as $value => $label): ?><option value="<?= $value ?>" <?= $filters['status_id'] === $value ? 'selected' : '' ?>><?= $escape($label) ?></option><?php endforeach; ?></select></div>
+                <div class="report-field"><label for="report-payment">Forma de pagamento</label><select id="report-payment" name="payment_method"><option value="">Todos os métodos</option><?php foreach ($paymentMethods as $value => $label): ?><option value="<?= $escape($value) ?>" <?= $filters['payment_method'] === $value ? 'selected' : '' ?>><?= $escape($label) ?></option><?php endforeach; ?></select></div>
+                <div class="report-date-range">
+                    <div class="report-field"><label for="report-start">Início do período</label><div class="report-input-wrap"><span class="report-input-icon">◷</span><input id="report-start" name="start_at" type="text" value="<?= $escape($filters['start_at']) ?>" placeholder="dd/mm/aaaa 00:00" autocomplete="off"></div></div>
+                    <span class="report-date-separator">→</span>
+                    <div class="report-field"><label for="report-end">Fim do período</label><div class="report-input-wrap"><span class="report-input-icon">◷</span><input id="report-end" name="end_at" type="text" value="<?= $escape($filters['end_at']) ?>" placeholder="dd/mm/aaaa 00:00" autocomplete="off"></div></div>
+                </div>
+            </div>
+            <div class="report-filter-actions">
+                <a class="report-action report-reset-button" href="./?page=report">Limpar filtros</a>
+                <a class="report-action report-pdf-button" href="<?= $escape($pdfUrl) ?>">↓ Baixar PDF</a>
+                <button class="report-action report-filter-button" type="submit">Aplicar filtros</button>
             </div>
         </form>
 
-        <div class="grid gap-6 mb-4 md:grid-cols-2 xl:grid-cols-4">
-            <div class="flex items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800">
-                <div class="p-3 mr-4 text-green-500 bg-green-100 rounded-full dark:text-green-100 dark:bg-green-500">#</div>
-                <div><p class="mb-2 text-sm font-medium text-gray-600 dark:text-gray-400">Cotas vendidas</p><p class="text-lg font-semibold text-gray-700 dark:text-gray-200"><?= number_format($soldQuantity, 0, ',', '.') ?></p></div>
-            </div>
-            <div class="flex items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800">
-                <div class="p-3 mr-4 text-orange-500 bg-orange-100 rounded-full dark:text-orange-100 dark:bg-orange-500">+</div>
-                <div><p class="mb-2 text-sm font-medium text-gray-600 dark:text-gray-400">Novos clientes</p><p class="text-lg font-semibold text-gray-700 dark:text-gray-200"><?= number_format($newCustomers, 0, ',', '.') ?></p></div>
-            </div>
-            <div class="flex items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800">
-                <div class="p-3 mr-4 text-blue-500 bg-blue-100 rounded-full dark:text-blue-100 dark:bg-blue-500">✓</div>
-                <div><p class="mb-2 text-sm font-medium text-gray-600 dark:text-gray-400">Pedidos efetuados</p><p class="text-lg font-semibold text-gray-700 dark:text-gray-200"><?= number_format($ordersCount, 0, ',', '.') ?></p></div>
-            </div>
-            <div class="flex items-center p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800">
-                <div class="p-3 mr-4 text-teal-500 bg-teal-100 rounded-full dark:text-teal-100 dark:bg-teal-500">R$</div>
-                <div><p class="mb-2 text-sm font-medium text-gray-600 dark:text-gray-400">Faturamento confirmado</p><p class="text-lg font-semibold text-gray-700 dark:text-gray-200">R$ <?= number_format($revenue, 2, ',', '.') ?></p></div>
-            </div>
-        </div>
+        <section class="report-metrics" aria-label="Resumo do relatório">
+            <article class="report-metric"><span class="report-metric-icon">#</span><div><small>Cotas vendidas e pagas</small><strong><?= number_format($summary['sold_quantity'], 0, ',', '.') ?></strong></div></article>
+            <article class="report-metric"><span class="report-metric-icon">+</span><div><small>Novos clientes</small><strong><?= number_format($summary['new_customers'], 0, ',', '.') ?></strong></div></article>
+            <article class="report-metric"><span class="report-metric-icon">✓</span><div><small>Pedidos encontrados</small><strong><?= number_format($summary['orders_count'], 0, ',', '.') ?></strong></div></article>
+            <article class="report-metric"><span class="report-metric-icon">R$</span><div><small>Faturamento confirmado</small><strong>R$ <?= number_format($summary['revenue'], 2, ',', '.') ?></strong></div></article>
+        </section>
 
-        <div class="w-full overflow-hidden rounded-lg shadow-xs">
-            <div class="w-full overflow-x-auto">
-                <table class="w-full whitespace-no-wrap">
-                    <thead><tr class="text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800">
-                        <th class="px-4 py-3">ID</th><th class="px-4 py-3">Data</th><th class="px-4 py-3">Campanha</th><th class="px-4 py-3">Gateway</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Qtd. números</th><th class="px-4 py-3">Total</th>
-                    </tr></thead>
-                    <tbody class="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
-                        <?php if ($ordersQuery->num_rows === 0): ?>
-                            <tr><td colspan="7" class="px-4 py-6 text-center text-gray-600 dark:text-gray-400">Nenhum pedido encontrado neste período.</td></tr>
-                        <?php else: ?>
-                            <?php while ($row = $ordersQuery->fetch_assoc()): ?>
-                                <tr class="text-gray-700 dark:text-gray-400">
-                                    <td class="px-4 py-3">#<?= (int) $row['id'] ?></td>
-                                    <td class="px-4 py-3"><?= $escape(date('d/m/Y H:i', strtotime($row['date_created']))) ?></td>
-                                    <td class="px-4 py-3"><?= $escape($row['product_name']) ?></td>
-                                    <td class="px-4 py-3"><?= $escape($paymentMethods[$row['payment_method']] ?? $row['payment_method']) ?></td>
-                                    <td class="px-4 py-3"><?= $escape($statusLabels[(int) $row['status']] ?? 'Desconhecido') ?></td>
-                                    <td class="px-4 py-3"><?= number_format((int) $row['quantity'], 0, ',', '.') ?></td>
-                                    <td class="px-4 py-3">R$ <?= number_format((float) $row['total_amount'], 2, ',', '.') ?></td>
-                                </tr>
-                            <?php endwhile; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-
-            <?php if ($totalResults > 0): ?>
-                <div class="grid px-4 py-3 text-xs font-semibold tracking-wide text-gray-500 uppercase border-t dark:border-gray-700 bg-gray-50 sm:grid-cols-9 dark:text-gray-400 dark:bg-gray-800">
-                    <span class="flex items-center col-span-3"><?= $totalResults ?> pedido<?= $totalResults === 1 ? '' : 's' ?></span><span class="col-span-2"></span>
-                    <span class="flex col-span-4 mt-2 sm:mt-auto sm:justify-end"><nav aria-label="Paginação do relatório"><ul class="inline-flex items-center">
-                        <?php if ($page > 1): ?><li><a class="px-3 py-1 rounded-md" href="<?= $escape($paginationUrl($page - 1)) ?>">Anterior</a></li><?php endif; ?>
-                        <?php for ($number = max(1, $page - 2); $number <= min($totalPages, $page + 2); $number++): ?>
-                            <li><a class="px-3 py-1 rounded-md <?= $number === $page ? 'text-white bg-purple-600' : '' ?>" href="<?= $escape($paginationUrl($number)) ?>"><?= $number ?></a></li>
-                        <?php endfor; ?>
-                        <?php if ($page < $totalPages): ?><li><a class="px-3 py-1 rounded-md" href="<?= $escape($paginationUrl($page + 1)) ?>">Próxima</a></li><?php endif; ?>
-                    </ul></nav></span>
-                </div>
-            <?php endif; ?>
-        </div>
+        <section class="report-table-card">
+            <div class="report-table-heading"><strong>Pedidos do período</strong><span><?= number_format($totalResults, 0, ',', '.') ?> resultado<?= $totalResults === 1 ? '' : 's' ?></span></div>
+            <div class="w-full overflow-x-auto"><table class="w-full whitespace-no-wrap"><thead><tr class="text-xs font-semibold tracking-wide text-left text-gray-400 uppercase"><th class="px-4 py-3">ID</th><th class="px-4 py-3">Data e hora</th><th class="px-4 py-3">Campanha</th><th class="px-4 py-3">Gateway</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Cotas</th><th class="px-4 py-3">Total</th></tr></thead><tbody class="divide-y dark:divide-gray-700">
+                <?php if (!$ordersQuery || $ordersQuery->num_rows === 0): ?><tr><td colspan="7" class="report-empty text-center">Nenhum pedido corresponde aos filtros aplicados.</td></tr><?php else: ?><?php while ($row = $ordersQuery->fetch_assoc()): ?><tr class="text-gray-300"><td class="px-4 py-3">#<?= (int) $row['id'] ?></td><td class="px-4 py-3"><?= $escape(date('d/m/Y H:i', strtotime($row['date_created']))) ?></td><td class="px-4 py-3"><?= $escape($row['product_name']) ?></td><td class="px-4 py-3"><?= $escape($paymentMethods[$row['payment_method']] ?? ($row['payment_method'] ?: 'Não informado')) ?></td><td class="px-4 py-3"><span class="report-status report-status-<?= (int) $row['status'] ?>"><?= $escape($statusLabels[(int) $row['status']] ?? 'Desconhecido') ?></span></td><td class="px-4 py-3"><?= number_format((int) $row['quantity'], 0, ',', '.') ?></td><td class="px-4 py-3">R$ <?= number_format((float) $row['total_amount'], 2, ',', '.') ?></td></tr><?php endwhile; ?><?php endif; ?>
+            </tbody></table></div>
+            <?php if ($totalResults > 0): ?><div class="grid px-4 py-3 text-xs font-semibold tracking-wide text-gray-500 uppercase border-t dark:border-gray-700 sm:grid-cols-9"><span class="flex items-center col-span-3">Página <?= $page ?> de <?= $totalPages ?></span><span class="col-span-2"></span><span class="flex col-span-4 mt-2 sm:mt-auto sm:justify-end"><nav aria-label="Paginação do relatório"><ul class="inline-flex items-center"><?php if ($page > 1): ?><li><a class="px-3 py-1 rounded-md" href="<?= $escape($paginationUrl($page - 1)) ?>">Anterior</a></li><?php endif; ?><?php for ($number = max(1, $page - 2); $number <= min($totalPages, $page + 2); $number++): ?><li><a class="px-3 py-1 rounded-md <?= $number === $page ? 'text-white bg-purple-600' : '' ?>" href="<?= $escape($paginationUrl($number)) ?>"><?= $number ?></a></li><?php endfor; ?><?php if ($page < $totalPages): ?><li><a class="px-3 py-1 rounded-md" href="<?= $escape($paginationUrl($page + 1)) ?>">Próxima</a></li><?php endif; ?></ul></nav></span></div><?php endif; ?>
+        </section>
     </div>
 </main>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+<script>
+(function () {
+    function activateDateTimePicker(selector) {
+        if (typeof flatpickr !== 'function') return;
+        flatpickr(selector, {
+            enableTime: true,
+            time_24hr: true,
+            minuteIncrement: 1,
+            defaultHour: 0,
+            defaultMinute: 0,
+            allowInput: true,
+            dateFormat: 'Y-m-d H:i',
+            altInput: true,
+            altFormat: 'd/m/Y H:i',
+            locale: window.flatpickr && flatpickr.l10ns.pt ? flatpickr.l10ns.pt : 'default',
+            disableMobile: true
+        });
+    }
+    activateDateTimePicker('#report-start');
+    activateDateTimePicker('#report-end');
+})();
+</script>
