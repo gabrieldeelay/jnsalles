@@ -48,6 +48,7 @@ if ($action === 'simulation_preview') {
         'preview' => [
             'number' => $freeNumber,
             'phone' => jnsalles_draw_demo_phone(),
+            'eligible_entries' => random_int(1, 999999),
         ],
     ]);
 }

@@ -65,7 +65,7 @@ if ($eligibleQuery) {
             <div class="draw-stage">
                 <div class="draw-idle" id="draw-idle"><div class="draw-symbol">♛</div><h3>Pronto para o sorteio</h3><p>Sem nomes na fila de testes, o resultado oficial considera exclusivamente cotas vinculadas a pagamentos confirmados.</p></div>
                 <div class="draw-running" id="draw-running"><div class="draw-orbit"></div><h3>Sorteio em andamento</h3><p id="draw-running-copy">Selecionando uma cota entre todas as participações elegíveis.</p><span class="draw-rolling" id="draw-rolling">Preparando apuração segura…</span></div>
-                <div class="draw-result" id="draw-result"><p class="draw-winner-label" id="draw-winner-label">Ganhador oficial</p><h3 id="draw-winner-name"></h3><p class="draw-result-phone" id="draw-winner-phone"></p><div class="draw-result-meta"><span>Cota: <strong id="draw-winning-number"></strong></span><span>Campanha: <strong id="draw-campaign-name"></strong></span><span><span id="draw-eligible-label">Participações:</span> <strong id="draw-eligible-count"></strong></span></div><p class="draw-audit" id="draw-audit-hash"></p></div>
+                <div class="draw-result" id="draw-result"><p class="draw-winner-label" id="draw-winner-label">Ganhador</p><h3 id="draw-winner-name"></h3><p class="draw-result-phone" id="draw-winner-phone"></p><div class="draw-result-meta"><span>Cota: <strong id="draw-winning-number"></strong></span><span>Campanha: <strong id="draw-campaign-name"></strong></span><span><span id="draw-eligible-label">Participações:</span> <strong id="draw-eligible-count"></strong></span></div><p class="draw-audit" id="draw-audit-hash"></p></div>
                 <div class="draw-countdown"><span id="draw-countdown-label">Aguardando início</span><strong id="draw-countdown">—</strong></div>
             </div>
         </section>
@@ -183,7 +183,7 @@ if ($eligibleQuery) {
     function showOfficialResult(draw) {
         revealBase();
         result.classList.remove('simulation');
-        winnerLabel.textContent = 'Ganhador oficial';
+        winnerLabel.textContent = 'Ganhador';
         document.getElementById('draw-winner-name').textContent = draw.winner;
         document.getElementById('draw-winner-phone').textContent = draw.phone;
         document.getElementById('draw-winning-number').textContent = draw.number;
@@ -195,13 +195,13 @@ if ($eligibleQuery) {
     function showSimulationResult(name, preview) {
         revealBase();
         result.classList.add('simulation');
-        winnerLabel.textContent = 'Ganhador demonstrativo';
+        winnerLabel.textContent = 'Ganhador';
         document.getElementById('draw-winner-name').textContent = name;
         document.getElementById('draw-winner-phone').textContent = preview.phone;
         document.getElementById('draw-winning-number').textContent = preview.number;
         document.getElementById('draw-campaign-name').textContent = product.options[product.selectedIndex].text;
-        document.getElementById('draw-eligible-label').textContent = 'Estado:';
-        document.getElementById('draw-eligible-count').textContent = 'Cota disponível';
+        document.getElementById('draw-eligible-label').textContent = 'Participações:';
+        document.getElementById('draw-eligible-count').textContent = Number(preview.eligible_entries).toLocaleString('pt-BR');
         document.getElementById('draw-audit-hash').textContent = 'Apresentação com dados demonstrativos';
     }
     function resetAfterError() {
