@@ -589,8 +589,8 @@ if (empty($minor['cota'])) {
         padding: 6px 7px 6px 9px;
         border: 1px solid rgba(255, 255, 255, .18);
         border-radius: 10px;
-        background: linear-gradient(135deg, #198754 0%, #117343 100%);
-        box-shadow: 0 5px 14px rgba(17, 115, 67, .2);
+        background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+        box-shadow: 0 5px 14px rgba(180, 83, 9, .24);
         color: #fff;
         display: flex;
         align-items: center;
@@ -606,11 +606,11 @@ if (empty($minor['cota'])) {
         color: #fff;
         filter: brightness(1.04);
         transform: translateY(-1px);
-        box-shadow: 0 7px 18px rgba(17, 115, 67, .25);
+        box-shadow: 0 7px 18px rgba(180, 83, 9, .3);
     }
 
     .ranking-spotlight:focus-visible {
-        outline: 3px solid rgba(25, 135, 84, .25);
+        outline: 3px solid rgba(217, 119, 6, .28);
         outline-offset: 2px;
     }
 
@@ -1882,9 +1882,8 @@ if ($available > 0 && $status == '1') {
                                                      
                                                  <p class="text-center"><small class="text-muted">Atualizado às <?= date('d/m/Y \à\s H:i') ?></small></p>
                                                     <?php if ($rankingTimerVisible): ?>
-                                                        <div id="ranking-timer-box" class="text-center text-white rounded py-2 px-3 mb-3" style="background:#198754">
-                                                            <div id="ranking-timer-label" class="small fw-bolder text-uppercase">Contador do ranking</div>
-                                                            <div id="ranking-timer-value" class="fs-5 fw-bolder">--:--:--</div>
+                                                        <div class="text-center text-white fw-bolder rounded py-2 px-3 mb-3" style="background:#198754">
+                                                            Evento acontecendo!
                                                         </div>
                                                     <?php endif; ?>
                                                     <?php if ($enable_ranking_definido == 1 && false): ?>
@@ -1962,68 +1961,6 @@ if ($available > 0 && $status == '1') {
                                             </div>
                                         </div>
                                     </div>
-                                    <?php if ($rankingTimerVisible): ?>
-                                        <script>
-                                            (function () {
-                                                var startAt = new Date('<?= date('Y-m-d\\TH:i:s', strtotime($rankingTimerStart)) ?>-03:00').getTime();
-                                                var endAt = new Date('<?= date('Y-m-d\\TH:i:s', strtotime($rankingTimerEnd)) ?>-03:00').getTime();
-                                                var timerState = <?= json_encode($rankingTimerState) ?>;
-                                                var pausedAt = <?= $rankingTimerPausedAt !== '' ? "new Date('" . date('Y-m-d\\TH:i:s', strtotime($rankingTimerPausedAt)) . "-03:00').getTime()" : 'null' ?>;
-                                                var label = document.getElementById('ranking-timer-label');
-                                                var value = document.getElementById('ranking-timer-value');
-                                                var timerBox = document.getElementById('ranking-timer-box');
-
-                                                function twoDigits(number) {
-                                                    return String(number).padStart(2, '0');
-                                                }
-
-                                                function formatRemaining(milliseconds) {
-                                                    var totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
-                                                    var days = Math.floor(totalSeconds / 86400);
-                                                    var hours = Math.floor((totalSeconds % 86400) / 3600);
-                                                    var minutes = Math.floor((totalSeconds % 3600) / 60);
-                                                    var seconds = totalSeconds % 60;
-                                                    return (days > 0 ? days + 'd ' : '') + twoDigits(hours) + ':' + twoDigits(minutes) + ':' + twoDigits(seconds);
-                                                }
-
-                                                function updateRankingTimer() {
-                                                    var now = Date.now();
-                                                    var phaseLabel;
-                                                    var timerText;
-                                                    var remaining = 0;
-
-                                                    if (timerState === 'paused' && pausedAt !== null) {
-                                                        phaseLabel = 'Pausado';
-                                                        timerText = formatRemaining(Math.max(0, endAt - pausedAt));
-                                                        if (timerBox) timerBox.style.background = '#b45309';
-                                                    } else if (now < startAt) {
-                                                        phaseLabel = 'Começa em';
-                                                        timerText = formatRemaining(startAt - now);
-                                                        if (timerBox) timerBox.style.background = '#198754';
-                                                    } else if (now < endAt) {
-                                                        phaseLabel = 'Termina em';
-                                                        remaining = endAt - now;
-                                                        timerText = formatRemaining(remaining);
-                                                        if (timerBox) {
-                                                            if (remaining <= 10 * 60 * 1000) timerBox.style.background = '#b91c1c';
-                                                            else if (remaining <= 30 * 60 * 1000) timerBox.style.background = '#b45309';
-                                                            else timerBox.style.background = '#198754';
-                                                        }
-                                                    } else {
-                                                        phaseLabel = 'Encerrado';
-                                                        timerText = '00:00:00';
-                                                        if (timerBox) timerBox.style.background = '#6c757d';
-                                                    }
-
-                                                    if (label) label.textContent = phaseLabel;
-                                                    if (value) value.textContent = timerText;
-                                                }
-
-                                                updateRankingTimer();
-                                                window.setInterval(updateRankingTimer, 1000);
-                                            })();
-                                        </script>
-                                    <?php endif; ?>
                                     <div style="color:#fff;max-height:100%" class="modal fade" tabindex="-1" id="modal-cotas">
                                         <div class="modal-dialog cotas">
                                             <div style="background-color:#343a40" class="modal-content">
