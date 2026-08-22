@@ -589,8 +589,8 @@ if (empty($minor['cota'])) {
         padding: 6px 7px 6px 9px;
         border: 1px solid rgba(255, 255, 255, .18);
         border-radius: 10px;
-        background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-        box-shadow: 0 5px 14px rgba(180, 83, 9, .24);
+        background: linear-gradient(135deg, #198754 0%, #117343 100%);
+        box-shadow: 0 5px 14px rgba(17, 115, 67, .2);
         color: #fff;
         display: flex;
         align-items: center;
@@ -606,12 +606,26 @@ if (empty($minor['cota'])) {
         color: #fff;
         filter: brightness(1.04);
         transform: translateY(-1px);
-        box-shadow: 0 7px 18px rgba(180, 83, 9, .3);
+        box-shadow: 0 7px 18px rgba(17, 115, 67, .25);
     }
 
     .ranking-spotlight:focus-visible {
-        outline: 3px solid rgba(217, 119, 6, .28);
+        outline: 3px solid rgba(25, 135, 84, .25);
         outline-offset: 2px;
+    }
+
+    .ranking-spotlight.is-event {
+        background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+        box-shadow: 0 5px 14px rgba(180, 83, 9, .24);
+    }
+
+    .ranking-spotlight.is-event:hover,
+    .ranking-spotlight.is-event:focus-visible {
+        box-shadow: 0 7px 18px rgba(180, 83, 9, .3);
+    }
+
+    .ranking-spotlight.is-event:focus-visible {
+        outline-color: rgba(217, 119, 6, .28);
     }
 
     .ranking-spotlight__title {
@@ -1008,7 +1022,7 @@ if ($available > 0 && $enable_sale == 1 && $enable_discount == 0 && $status == '
 
 echo "\r\n";
 if ($status == '1') { ?>
-<button type="button" class="ranking-spotlight" data-bs-toggle="modal" data-bs-target="#modal-premios" aria-label="Abrir Top Compradores Diário">
+<button type="button" class="ranking-spotlight<?= $rankingTimerVisible ? ' is-event' : '' ?>" data-bs-toggle="modal" data-bs-target="#modal-premios" aria-label="Abrir Top Compradores Diário">
     <span class="ranking-spotlight__title">
         <span class="ranking-spotlight__icon" aria-hidden="true">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
