@@ -637,7 +637,7 @@ if (empty($minor['cota'])) {
         justify-content: center;
     }
 
-    .ranking-spotlight__timer {
+    .ranking-spotlight__event {
         min-height: 30px;
         padding: 4px 9px;
         border: 1px solid rgba(255, 255, 255, .2);
@@ -654,7 +654,7 @@ if (empty($minor['cota'])) {
         white-space: nowrap;
     }
 
-    .ranking-spotlight__timer-dot {
+    .ranking-spotlight__event-dot {
         width: 6px;
         height: 6px;
         flex: 0 0 6px;
@@ -663,7 +663,7 @@ if (empty($minor['cota'])) {
         box-shadow: 0 0 0 3px rgba(216, 255, 233, .13);
     }
 
-    .ranking-spotlight__timer strong {
+    .ranking-spotlight__event strong {
         color: #fff;
         font-size: .82rem;
         font-weight: 800;
@@ -700,12 +700,8 @@ if (empty($minor['cota'])) {
             flex-basis: 26px;
         }
 
-        .ranking-spotlight__timer {
+        .ranking-spotlight__event {
             padding-inline: 8px;
-        }
-
-        .ranking-spotlight__timer-label {
-            display: none;
         }
     }
 
@@ -1023,10 +1019,9 @@ if ($status == '1') { ?>
         <span>Top Compradores Diário</span>
     </span>
     <?php if ($rankingTimerVisible): ?>
-        <span class="ranking-spotlight__timer" aria-live="polite">
-            <span class="ranking-spotlight__timer-dot" aria-hidden="true"></span>
-            <span id="ranking-timer-summary-label" class="ranking-spotlight__timer-label">Contador</span>
-            <strong id="ranking-timer-summary">--:--:--</strong>
+        <span class="ranking-spotlight__event">
+            <span class="ranking-spotlight__event-dot" aria-hidden="true"></span>
+            <strong>Evento acontecendo!</strong>
         </span>
     <?php else: ?>
         <svg class="ranking-spotlight__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1887,8 +1882,9 @@ if ($available > 0 && $status == '1') {
                                                      
                                                  <p class="text-center"><small class="text-muted">Atualizado às <?= date('d/m/Y \à\s H:i') ?></small></p>
                                                     <?php if ($rankingTimerVisible): ?>
-                                                        <div class="text-center text-white fw-bolder rounded py-2 px-3 mb-3" style="background:#198754">
-                                                            Evento acontecendo!
+                                                        <div id="ranking-timer-box" class="text-center text-white rounded py-2 px-3 mb-3" style="background:#198754">
+                                                            <div id="ranking-timer-label" class="small fw-bolder text-uppercase">Contador do ranking</div>
+                                                            <div id="ranking-timer-value" class="fs-5 fw-bolder">--:--:--</div>
                                                         </div>
                                                     <?php endif; ?>
                                                     <?php if ($enable_ranking_definido == 1 && false): ?>
@@ -1973,9 +1969,9 @@ if ($available > 0 && $status == '1') {
                                                 var endAt = new Date('<?= date('Y-m-d\\TH:i:s', strtotime($rankingTimerEnd)) ?>-03:00').getTime();
                                                 var timerState = <?= json_encode($rankingTimerState) ?>;
                                                 var pausedAt = <?= $rankingTimerPausedAt !== '' ? "new Date('" . date('Y-m-d\\TH:i:s', strtotime($rankingTimerPausedAt)) . "-03:00').getTime()" : 'null' ?>;
-                                                var summaryLabel = document.getElementById('ranking-timer-summary-label');
-                                                var summary = document.getElementById('ranking-timer-summary');
-                                                var spotlight = document.querySelector('.ranking-spotlight');
+                                                var label = document.getElementById('ranking-timer-label');
+                                                var value = document.getElementById('ranking-timer-value');
+                                                var timerBox = document.getElementById('ranking-timer-box');
 
                                                 function twoDigits(number) {
                                                     return String(number).padStart(2, '0');
@@ -1990,38 +1986,41 @@ if ($available > 0 && $status == '1') {
                                                     return (days > 0 ? days + 'd ' : '') + twoDigits(hours) + ':' + twoDigits(minutes) + ':' + twoDigits(seconds);
                                                 }
 
-                                                function updateRankingSummary() {
+                                                function updateRankingTimer() {
                                                     var now = Date.now();
                                                     var phaseLabel;
                                                     var timerText;
                                                     var remaining = 0;
-                                                    if (spotlight) spotlight.classList.remove('is-warning', 'is-urgent', 'is-ended');
 
                                                     if (timerState === 'paused' && pausedAt !== null) {
                                                         phaseLabel = 'Pausado';
                                                         timerText = formatRemaining(Math.max(0, endAt - pausedAt));
-                                                        if (spotlight) spotlight.classList.add('is-warning');
+                                                        if (timerBox) timerBox.style.background = '#b45309';
                                                     } else if (now < startAt) {
                                                         phaseLabel = 'Começa em';
                                                         timerText = formatRemaining(startAt - now);
+                                                        if (timerBox) timerBox.style.background = '#198754';
                                                     } else if (now < endAt) {
                                                         phaseLabel = 'Termina em';
                                                         remaining = endAt - now;
                                                         timerText = formatRemaining(remaining);
-                                                        if (remaining <= 10 * 60 * 1000 && spotlight) spotlight.classList.add('is-urgent');
-                                                        else if (remaining <= 30 * 60 * 1000 && spotlight) spotlight.classList.add('is-warning');
+                                                        if (timerBox) {
+                                                            if (remaining <= 10 * 60 * 1000) timerBox.style.background = '#b91c1c';
+                                                            else if (remaining <= 30 * 60 * 1000) timerBox.style.background = '#b45309';
+                                                            else timerBox.style.background = '#198754';
+                                                        }
                                                     } else {
                                                         phaseLabel = 'Encerrado';
                                                         timerText = '00:00:00';
-                                                        if (spotlight) spotlight.classList.add('is-ended');
+                                                        if (timerBox) timerBox.style.background = '#6c757d';
                                                     }
 
-                                                    if (summaryLabel) summaryLabel.textContent = phaseLabel;
-                                                    if (summary) summary.textContent = timerText;
+                                                    if (label) label.textContent = phaseLabel;
+                                                    if (value) value.textContent = timerText;
                                                 }
 
-                                                updateRankingSummary();
-                                                window.setInterval(updateRankingSummary, 1000);
+                                                updateRankingTimer();
+                                                window.setInterval(updateRankingTimer, 1000);
                                             })();
                                         </script>
                                     <?php endif; ?>
