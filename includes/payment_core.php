@@ -335,6 +335,28 @@ function payment_safe_provider_error($response, $fallback = 'O gateway recusou a
     return $fallback;
 }
 
+function payment_order_supports_txid()
+{
+    global $conn;
+    static $supportsTxid = null;
+    if ($supportsTxid !== null) {
+        return $supportsTxid;
+    }
+
+    try {
+        $column = $conn->query("SHOW COLUMNS FROM `order_list` LIKE 'txid'");
+        $supportsTxid = $column && $column->num_rows > 0;
+        if ($column instanceof mysqli_result) {
+            $column->free();
+        }
+    } catch (Throwable $error) {
+        $supportsTxid = false;
+        error_log('[payments] txid column detection failed reason=' . $error->getMessage());
+    }
+
+    return $supportsTxid;
+}
+
 function payment_store_pix($orderId, $method, $pixCode, $reference, $expiration, $txid = '')
 {
     global $conn;
@@ -345,16 +367,7 @@ function payment_store_pix($orderId, $method, $pixCode, $reference, $expiration,
     $txid = (string) $txid;
 
     try {
-        static $supportsTxid = null;
-        if ($supportsTxid === null) {
-            $column = $conn->query("SHOW COLUMNS FROM `order_list` LIKE 'txid'");
-            $supportsTxid = $column && $column->num_rows > 0;
-            if ($column instanceof mysqli_result) {
-                $column->free();
-            }
-        }
-
-        if ($supportsTxid) {
+        if (payment_order_supports_txid()) {
             $statement = $conn->prepare('UPDATE order_list SET payment_method = ?, pix_code = ?, pix_qrcode = ?, id_mp = ?, txid = ?, order_expiration = ? WHERE id = ?');
             if (!$statement) {
                 throw new RuntimeException('Não foi possível preparar o salvamento completo do PIX.');
@@ -1448,12 +1461,21 @@ function payment_check_order($orderId)
 {
     global $conn;
     $orderId = (int) $orderId;
-    $statement = $conn->prepare('SELECT status, payment_method, id_mp, txid FROM order_list WHERE id = ? LIMIT 1');
-    $statement->bind_param('i', $orderId);
-    $statement->execute();
-    $result = $statement->get_result();
-    $order = $result ? $result->fetch_assoc() : null;
-    $statement->close();
+    try {
+        $txidSelect = payment_order_supports_txid() ? 'txid' : "'' AS txid";
+        $statement = $conn->prepare('SELECT status, payment_method, id_mp, ' . $txidSelect . ' FROM order_list WHERE id = ? LIMIT 1');
+        if (!$statement) {
+            throw new RuntimeException('Não foi possível preparar a consulta do pedido.');
+        }
+        $statement->bind_param('i', $orderId);
+        $statement->execute();
+        $result = $statement->get_result();
+        $order = $result ? $result->fetch_assoc() : null;
+        $statement->close();
+    } catch (Throwable $error) {
+        error_log('[payments] order status lookup failed order=' . $orderId . ' reason=' . $error->getMessage());
+        return ['ok' => false, 'status' => 1, 'message' => 'Não foi possível consultar o pedido.'];
+    }
     if (!$order) {
         return ['ok' => false, 'status' => 'failed', 'message' => 'Pedido não encontrado.'];
     }
