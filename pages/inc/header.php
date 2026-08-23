@@ -131,6 +131,9 @@ if (isset($parts['query'])) {
 <script>
   window.addEventListener('scroll', function () {
     const navbar = document.querySelector('.navbar');
+    if (!navbar) {
+      return;
+    }
     if (window.scrollY > 0) {
       navbar.classList.add('scrolled');
     } else {

@@ -282,6 +282,50 @@ function payment_uuid_v4()
 
 function payment_http($method, $url, array $headers = [], $body = null, $certificate = null, $timeout = 25)
 {
+    if (!function_exists('curl_init')) {
+        if ($certificate) {
+            return ['ok' => false, 'status' => 0, 'json' => [], 'headers' => [], 'error' => 'A extensão cURL é necessária para este provedor.'];
+        }
+
+        $payload = $body === null
+            ? null
+            : (is_string($body) ? $body : json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        $options = [
+            'http' => [
+                'method' => strtoupper((string) $method),
+                'header' => implode("\r\n", $headers),
+                'ignore_errors' => true,
+                'timeout' => max(3, min(60, (int) $timeout)),
+            ],
+            'ssl' => [
+                'verify_peer' => true,
+                'verify_peer_name' => true,
+            ],
+        ];
+        if ($payload !== null) {
+            $options['http']['content'] = $payload;
+        }
+
+        $raw = @file_get_contents($url, false, stream_context_create($options));
+        $responseHeaders = [];
+        $status = 0;
+        foreach (($http_response_header ?? []) as $index => $headerLine) {
+            if ($index === 0 && preg_match('/\s(\d{3})(?:\s|$)/', $headerLine, $match)) {
+                $status = (int) $match[1];
+                continue;
+            }
+            $parts = explode(':', $headerLine, 2);
+            if (count($parts) === 2) {
+                $responseHeaders[strtolower(trim($parts[0]))] = trim($parts[1]);
+            }
+        }
+        $lastError = error_get_last();
+        $error = $raw === false ? (string) ($lastError['message'] ?? 'Falha de comunicação HTTP.') : '';
+        $json = is_string($raw) ? json_decode($raw, true) : null;
+        $ok = $error === '' && $status >= 200 && $status < 300;
+        return ['ok' => $ok, 'status' => $status, 'json' => is_array($json) ? $json : [], 'headers' => $responseHeaders, 'error' => $error];
+    }
+
     $curl = curl_init($url);
     $responseHeaders = [];
     $options = [
@@ -318,6 +362,7 @@ function payment_http($method, $url, array $headers = [], $body = null, $certifi
     $raw = curl_exec($curl);
     $error = curl_error($curl);
     $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    curl_close($curl);
 
     $json = is_string($raw) ? json_decode($raw, true) : null;
     $ok = $error === '' && $status >= 200 && $status < 300;

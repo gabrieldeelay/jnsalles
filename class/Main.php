@@ -1859,10 +1859,19 @@ class Main extends DBConnection
     public function place_order()
     {
 
-        $lockFile = $_SERVER["DOCUMENT_ROOT"] . "/pedido.lock";
-        $lock = fopen($lockFile, "w");
+        $lockRoot = rtrim((string) sys_get_temp_dir(), DIRECTORY_SEPARATOR);
+        $lockKey = hash('sha256', (string) ($_SERVER['DOCUMENT_ROOT'] ?? __DIR__));
+        $lockFile = $lockRoot . DIRECTORY_SEPARATOR . 'jnsalles-order-' . $lockKey . '.lock';
+        $lock = @fopen($lockFile, "c");
 
-        if (flock($lock, LOCK_EX)) {
+        if (!is_resource($lock)) {
+            return json_encode([
+                'status' => 'failed',
+                'error' => 'Não foi possível iniciar a reserva do pedido. Tente novamente em alguns instantes.',
+            ], JSON_UNESCAPED_UNICODE);
+        }
+
+        if (@flock($lock, LOCK_EX)) {
 
             $customer_id = $this->settings->userdata("id");
             $customer_fname = $this->settings->userdata("firstname");
@@ -2723,6 +2732,12 @@ class Main extends DBConnection
             );
             flock($lock, LOCK_UN);
             fclose($lock);
+        } else {
+            fclose($lock);
+            return json_encode([
+                'status' => 'failed',
+                'error' => 'O sistema está finalizando outro pedido. Aguarde alguns segundos e tente novamente.',
+            ], JSON_UNESCAPED_UNICODE);
         }
         return json_encode($resp);
     }
@@ -6125,6 +6140,7 @@ switch ($action) {
         echo $Main->view_numbers();
         break;
     case "place_order_process":
+        header('X-JNSalles-Checkout-Version: 20260823-2');
         try {
             echo $Main->place_order();
         } catch (Throwable $error) {
