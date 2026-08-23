@@ -6125,7 +6125,23 @@ switch ($action) {
         echo $Main->view_numbers();
         break;
     case "place_order_process":
-        echo $Main->place_order();
+        try {
+            echo $Main->place_order();
+        } catch (Throwable $error) {
+            $diagnostic = 'PED-' . (int) $error->getLine();
+            error_log(
+                '[checkout] unhandled failure code=' . $diagnostic
+                . ' file=' . basename((string) $error->getFile())
+                . ' reason=' . $error->getMessage()
+            );
+            http_response_code(500);
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode([
+                'status' => 'failed',
+                'error' => 'O servidor não conseguiu finalizar o pedido. Código técnico: ' . $diagnostic,
+                'diagnostic' => $diagnostic,
+            ]);
+        }
         break;
     case "correct_duplicates":
         echo $Main->correct_duplicates();
