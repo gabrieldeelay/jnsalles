@@ -2278,7 +2278,7 @@ class Main extends DBConnection
             }
 
 
-            $pixel_sell = $_SESSION['ads'] ? 1 : 0;
+            $pixel_sell = !empty($_SESSION['ads']) ? 1 : 0;
 
             $total_amount = floatval($total_amount) + floatval($valorUpsell);
 
@@ -2413,66 +2413,55 @@ class Main extends DBConnection
                             '\''
                     );
                 } else {
-                    $orders = $this->conn->query(
-                        "SELECT order_list.order_numbers, product_list.cotas_premiadas, product_list.status_auto_cota,product_list.cotas_premiadas_roleta, product_list.status_auto_cota_roleta,product_list.cotas_premiadas_box, product_list.status_auto_cota_box, product_list.paid_numbers, product_list.tipo_auto_cota,product_list.tipo_auto_cota_roleta,product_list.tipo_auto_cota_box, product_list.qty_numbers
-                        FROM order_list
-                        INNER JOIN product_list ON product_list.id = order_list.product_id
-                        WHERE order_list.product_id = '$product_id' AND order_list.status <> 3"
+                    $reservedSettings = $this->conn->query(
+                        "SELECT cotas_premiadas, status_auto_cota, tipo_auto_cota,
+                                cotas_premiadas_roleta, status_auto_cota_roleta, tipo_auto_cota_roleta,
+                                cotas_premiadas_box, status_auto_cota_box, tipo_auto_cota_box
+                           FROM product_list
+                          WHERE id = " . (int) $product_id . " LIMIT 1"
                     );
+                    $reserved = $reservedSettings && $reservedSettings->num_rows
+                        ? $reservedSettings->fetch_assoc()
+                        : [];
 
-                    $cotas_vendidas = [];
-                    $cotas_premiadas = "";
-                    $cotas_premiadas_roleta = "";
-                    $cotas_premiadas_box = "";
-
-                    $all_lucky_numbers = [];
-                    $row = $orders->fetch_assoc();
-
-                    $total_numbers = $row["qty_numbers"];
-                    $total_paid_numbers = $row["paid_numbers"];
-                    $status_auto_cota = $row["status_auto_cota"];
-                    $tipo_auto_cota = $row["tipo_auto_cota"];
-                    $status_auto_cota_roleta = $row["status_auto_cota_roleta"];
-                    $tipo_auto_cota_roleta = $row["tipo_auto_cota_roleta"];
-                    $status_auto_cota_box = $row["status_auto_cota_box"];
-                    $tipo_auto_cota_box = $row["tipo_auto_cota_box"];
-
-
-                    while ($row) {
-                        $cotas_vendidas[] = $row["order_numbers"];
-                        if (empty($cotas_premiadas) && !empty($row["cotas_premiadas"]) && $status_auto_cota == 1 && !empty($row["tipo_auto_cota"])) {
-                            $cotas_premiadas = $row["tipo_auto_cota"];
+                    $sold_numbers_set = [];
+                    $rememberNumbers = static function ($csv) use (&$sold_numbers_set) {
+                        if (!is_string($csv) || $csv === '') {
+                            return;
                         }
-                        if (empty($cotas_premiadas_roleta) && !empty($row["cotas_premiadas_roleta"]) && $status_auto_cota_roleta == 1 && !empty($row["tipo_auto_cota_roleta"])) {
-                            $cotas_premiadas_roleta = $row["tipo_auto_cota_roleta"];
+                        foreach (explode(',', $csv) as $number) {
+                            $number = trim($number);
+                            if ($number !== '') {
+                                $sold_numbers_set[$number] = true;
+                            }
                         }
-                        if (empty($cotas_premiadas_box) && !empty($row["cotas_premiadas_box"]) && $status_auto_cota_box == 1 && !empty($row["tipo_auto_cota_box"])) {
-                            $cotas_premiadas_box = $row["tipo_auto_cota_box"];
-                        }
-                        $row = $orders->fetch_assoc();
+                    };
+
+                    if (!empty($reserved['cotas_premiadas']) && (int) ($reserved['status_auto_cota'] ?? 0) === 1) {
+                        $rememberNumbers($reserved['tipo_auto_cota'] ?? '');
+                    }
+                    if (!empty($reserved['cotas_premiadas_roleta']) && (int) ($reserved['status_auto_cota_roleta'] ?? 0) === 1) {
+                        $rememberNumbers($reserved['tipo_auto_cota_roleta'] ?? '');
+                    }
+                    if (!empty($reserved['cotas_premiadas_box']) && (int) ($reserved['status_auto_cota_box'] ?? 0) === 1) {
+                        $rememberNumbers($reserved['tipo_auto_cota_box'] ?? '');
                     }
 
-                    if (!empty($cotas_premiadas)) {
-                        $cotas_vendidas[] = $cotas_premiadas;
+                    $orders = $this->conn->query(
+                        "SELECT order_numbers
+                           FROM order_list
+                          WHERE product_id = " . (int) $product_id . " AND status <> 3",
+                        MYSQLI_USE_RESULT
+                    );
+                    if (!$orders) {
+                        throw new RuntimeException('Não foi possível consultar as cotas já reservadas.');
                     }
-                    if (!empty($cotas_premiadas_roleta)) {
-                        $cotas_vendidas[] = $cotas_premiadas_roleta;
+                    while ($orderRow = $orders->fetch_assoc()) {
+                        $rememberNumbers($orderRow['order_numbers'] ?? '');
                     }
-                    if (!empty($cotas_premiadas_box)) {
-                        $cotas_vendidas[] = $cotas_premiadas_box;
-                    }
+                    $orders->free();
 
-                    $all_lucky_numbers = [];
-                    foreach ($cotas_vendidas as $cota) {
-                        $numbers = explode(',', $cota); // Explodir os números
-                        foreach ($numbers as $number) {
-                            $all_lucky_numbers[] = trim($number); // Adicionar ao array final
-                        }
-                    }
-                    // Filtrar os números (se necessário)
-                    $all_lucky_numbers = array_filter($all_lucky_numbers);
-
-                    if ($qty_numbers < $total_numbers_generated + count($all_lucky_numbers) - 1) {
+                    if (($qty_numbers + 1) < $total_numbers_generated + count($sold_numbers_set)) {
                         $resp["status"] = "failed";
                         $resp["error"] = "[DP01] - Erro ao criar pedido, selecione uma quantidade menor.";
                         $this->conn->query("DELETE FROM `order_list` WHERE code = '$code'");
@@ -2482,8 +2471,6 @@ class Main extends DBConnection
                         return $resp;
                     }
 
-                    // Ensure $all_lucky_numbers contains integers
-                    $sold_numbers_set = array_flip($all_lucky_numbers);
                     $numeris = [];
                     $globos = strlen((string) ($qty_numbers));
 
