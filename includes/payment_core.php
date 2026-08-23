@@ -340,14 +340,44 @@ function payment_store_pix($orderId, $method, $pixCode, $reference, $expiration,
     global $conn;
     $orderId = (int) $orderId;
     $expiration = (int) $expiration;
-    $statement = $conn->prepare('UPDATE order_list SET payment_method = ?, pix_code = ?, pix_qrcode = ?, id_mp = ?, txid = ?, order_expiration = ? WHERE id = ?');
     $emptyQr = '';
     $reference = (string) $reference;
     $txid = (string) $txid;
-    $statement->bind_param('sssssii', $method, $pixCode, $emptyQr, $reference, $txid, $expiration, $orderId);
-    $saved = $statement->execute();
-    $statement->close();
-    return $saved;
+
+    try {
+        static $supportsTxid = null;
+        if ($supportsTxid === null) {
+            $column = $conn->query("SHOW COLUMNS FROM `order_list` LIKE 'txid'");
+            $supportsTxid = $column && $column->num_rows > 0;
+            if ($column instanceof mysqli_result) {
+                $column->free();
+            }
+        }
+
+        if ($supportsTxid) {
+            $statement = $conn->prepare('UPDATE order_list SET payment_method = ?, pix_code = ?, pix_qrcode = ?, id_mp = ?, txid = ?, order_expiration = ? WHERE id = ?');
+            if (!$statement) {
+                throw new RuntimeException('Não foi possível preparar o salvamento completo do PIX.');
+            }
+            $statement->bind_param('sssssii', $method, $pixCode, $emptyQr, $reference, $txid, $expiration, $orderId);
+        } else {
+            // Bancos instalados antes da integração VenoPag não possuem txid.
+            // A referência principal continua salva em id_mp e permite consultar
+            // e confirmar o pagamento normalmente.
+            $statement = $conn->prepare('UPDATE order_list SET payment_method = ?, pix_code = ?, pix_qrcode = ?, id_mp = ?, order_expiration = ? WHERE id = ?');
+            if (!$statement) {
+                throw new RuntimeException('Não foi possível preparar o salvamento compatível do PIX.');
+            }
+            $statement->bind_param('ssssii', $method, $pixCode, $emptyQr, $reference, $expiration, $orderId);
+        }
+
+        $saved = $statement->execute();
+        $statement->close();
+        return $saved;
+    } catch (Throwable $error) {
+        error_log('[payments] pix persistence failed order=' . $orderId . ' method=' . preg_replace('/[^a-z0-9_-]/i', '', (string) $method) . ' reason=' . $error->getMessage());
+        return false;
+    }
 }
 
 function payment_customer_email($email)
