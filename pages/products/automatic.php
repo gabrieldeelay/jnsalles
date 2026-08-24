@@ -2157,6 +2157,10 @@ if ($available > 0 && $status == '1') {
                                 })
 
                                 function formatCurrency(total) {
+                                    total = Number(total);
+                                    if (!Number.isFinite(total)) {
+                                        total = 0;
+                                    }
                                     var decimalSeparator = ',';
                                     var thousandsSeparator = '.';
                                     var formattedTotal = total.toFixed(2); // Define 2 casas decimais
