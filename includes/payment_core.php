@@ -458,10 +458,11 @@ function payment_expiration_datetime($minutes)
 
 function payment_create_pix($orderId, $amount, $name, $email, $cpf, $expiration, $phone = '')
 {
-    $provider = payment_provider_for_amount($amount);
-    if (!$provider) {
-        return ['ok' => false, 'message' => 'Ative exatamente um gateway de pagamento no painel administrativo.'];
+    $attempt = payment_register_order_gateway($orderId, $amount);
+    if (empty($attempt['ok'])) {
+        return $attempt;
     }
+    $provider = $attempt['provider'];
 
     $amount = payment_amount($amount, $provider);
     $expiration = max(5, min(1440, (int) $expiration));
@@ -470,6 +471,39 @@ function payment_create_pix($orderId, $amount, $name, $email, $cpf, $expiration,
         error_log('[payments] charge creation failed provider=' . $provider . ' order=' . (int) $orderId);
     }
     return $result;
+}
+
+function payment_register_order_gateway($orderId, $amount)
+{
+    global $conn;
+
+    $provider = payment_provider_for_amount($amount);
+    $definitions = payment_provider_definitions();
+    if (!$provider || empty($definitions[$provider]['method'])) {
+        return ['ok' => false, 'message' => 'Ative um gateway de pagamento válido no painel administrativo.'];
+    }
+
+    $method = (string) $definitions[$provider]['method'];
+    $orderId = (int) $orderId;
+    try {
+        $statement = $conn->prepare(
+            "UPDATE order_list SET payment_method = ? WHERE id = ? AND status = 1"
+        );
+        if (!$statement) {
+            throw new RuntimeException('Não foi possível preparar o vínculo do gateway.');
+        }
+        $statement->bind_param('si', $method, $orderId);
+        $saved = $statement->execute();
+        $statement->close();
+        if (!$saved) {
+            throw new RuntimeException('Não foi possível vincular o gateway ao pedido.');
+        }
+    } catch (Throwable $error) {
+        error_log('[payments] gateway attempt persistence failed order=' . $orderId . ' reason=' . $error->getMessage());
+        return ['ok' => false, 'message' => 'Não foi possível preparar o pagamento. Tente novamente.'];
+    }
+
+    return ['ok' => true, 'provider' => $provider, 'method' => $method];
 }
 
 function payment_create_mercadopago($orderId, $amount, $name, $email, $cpf, $expiration, $phone)
@@ -1694,6 +1728,7 @@ function payment_expire_pending_orders($productId = null, $limit = 10)
     $sql = 'SELECT id, product_id, payment_method FROM order_list '
         . 'WHERE status = 1 AND order_expiration > 0 '
         . "AND ((payment_method = 'VenoPag' AND TIMESTAMPADD(MINUTE, order_expiration + 60, date_created) <= NOW()) "
+        . "OR ((payment_method IS NULL OR payment_method = '') AND DATE_ADD(date_created, INTERVAL order_expiration MINUTE) <= NOW()) "
         . "OR (payment_method <> 'VenoPag' AND DATE_ADD(date_created, INTERVAL order_expiration MINUTE) <= NOW()))";
     if ($productId !== null && $productId > 0) {
         $sql .= ' AND product_id = ' . $productId;

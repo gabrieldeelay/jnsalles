@@ -1929,7 +1929,14 @@ class Main extends DBConnection
 
             if ($multiple == 1) {
                 $multiple_order = $this->conn->prepare(
-                    "SELECT id FROM `order_list` WHERE status = 1 AND customer_id = ?"
+                    "SELECT id FROM `order_list`
+                     WHERE status = 1 AND customer_id = ?
+                       AND (
+                           COALESCE(payment_method, '') <> ''
+                           OR COALESCE(pix_code, '') <> ''
+                           OR date_created >= DATE_SUB(NOW(), INTERVAL 2 MINUTE)
+                       )
+                     LIMIT 1"
                 );
                 $multiple_order->bind_param("i", $customer_id);
                 $multiple_order->execute();
@@ -2548,20 +2555,54 @@ class Main extends DBConnection
 
 
                 if ($total_amount > 0) {
-                    $payment = payment_create_pix(
-                        $oid,
-                        $total_amount,
-                        $customer_name,
-                        $customer_email,
-                        $customer_cpf,
-                        $order_expiration,
-                        $customer_phone
-                    );
+                    $gatewayAttempt = payment_register_order_gateway($oid, $total_amount);
+                    if (empty($gatewayAttempt['ok'])) {
+                        $payment = $gatewayAttempt;
+                    } else {
+                        // As cotas já estão reservadas no banco. A chamada externa não
+                        // precisa manter todos os outros checkouts presos nesta trava.
+                        if (is_resource($lock)) {
+                            flock($lock, LOCK_UN);
+                            fclose($lock);
+                            $lock = null;
+                        }
+                        try {
+                            $payment = payment_create_pix(
+                                $oid,
+                                $total_amount,
+                                $customer_name,
+                                $customer_email,
+                                $customer_cpf,
+                                $order_expiration,
+                                $customer_phone
+                            );
+                        } catch (Throwable $paymentError) {
+                            error_log(
+                                '[payments] checkout gateway exception order=' . (int) $oid
+                                . ' provider=' . ($gatewayAttempt['provider'] ?? 'unknown')
+                                . ' reason=' . $paymentError->getMessage()
+                            );
+                            $payment = [
+                                'ok' => false,
+                                'message' => 'Não foi possível gerar o PIX. Tente novamente em instantes.',
+                            ];
+                        }
+                    }
                     if (empty($payment['ok'])) {
-                        $this->conn->query("UPDATE order_list SET status = 3 WHERE id = " . (int) $oid . " AND status = 1");
+                        $failedAt = date('Y-m-d H:i:s');
+                        $failedOrder = $this->conn->prepare(
+                            'UPDATE order_list SET status = 3, date_updated = ? WHERE id = ? AND status = 1'
+                        );
+                        if ($failedOrder) {
+                            $failedOrder->bind_param('si', $failedAt, $oid);
+                            $failedOrder->execute();
+                            $failedOrder->close();
+                        }
                         $this->correct_stock($product_id);
-                        flock($lock, LOCK_UN);
-                        fclose($lock);
+                        if (is_resource($lock)) {
+                            flock($lock, LOCK_UN);
+                            fclose($lock);
+                        }
                         return json_encode([
                             "status" => "failed",
                             "error" => $payment['message'] ?? "Não foi possível gerar o PIX. Tente novamente.",
@@ -2717,8 +2758,10 @@ class Main extends DBConnection
                     "] - Confirmação de pedido",
                 $oid
             );
-            flock($lock, LOCK_UN);
-            fclose($lock);
+            if (is_resource($lock)) {
+                flock($lock, LOCK_UN);
+                fclose($lock);
+            }
         } else {
             fclose($lock);
             return json_encode([
