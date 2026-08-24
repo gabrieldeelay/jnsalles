@@ -2126,7 +2126,7 @@ if ($available > 0 && $status == '1') {
                                                 qtdUpsell: qtdUpsell
                                             },
                                             dataType: 'json',
-                                            timeout: 60000,
+                                            timeout: 90000,
                                             error: (xhr, status) => {
                                                 console.error(xhr)
                                                 $("#overlay").stop(true, true).hide();

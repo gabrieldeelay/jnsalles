@@ -985,9 +985,9 @@ function payment_create_venopag($orderId, $amount, $name, $email, $cpf, $expirat
     if ($document !== '') {
         $payload['document'] = $document;
     }
-    // Duas tentativas curtas cabem com folga no limite do navegador. Assim o
-    // cliente sempre recebe sucesso ou erro, em vez de ficar preso no loading.
-    $response = payment_venopag_request('POST', '/api/cashin', $payload, 15);
+    // A VenoPag pode levar mais de 30 segundos para devolver o PIX. Aguarde a
+    // resposta completa para não abandonar uma cobrança que já foi criada.
+    $response = payment_venopag_request('POST', '/api/cashin', $payload, 45);
     if (empty($response['ok']) && (int) ($response['app_error_code'] ?? 0) === 502) {
         // A VenoPag usa o código 502 para uma falha técnica do processador
         // externo. Nesse caso a cobrança não foi criada, então fazemos uma
@@ -995,7 +995,7 @@ function payment_create_venopag($orderId, $amount, $name, $email, $cpf, $expirat
         // nunca passam por este bloco.
         error_log('[payments] venopag transient failure retrying order=' . (int) $orderId);
         usleep(300000);
-        $response = payment_venopag_request('POST', '/api/cashin', $payload, 15);
+        $response = payment_venopag_request('POST', '/api/cashin', $payload, 20);
     }
     $data = $response['json'] ?? [];
     if (empty($response['ok']) || ($data['status'] ?? '') !== 'pending' || empty($data['copyPaste']) || empty($data['request_number'])) {
