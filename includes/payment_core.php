@@ -952,13 +952,22 @@ function payment_create_venopag($orderId, $amount, $name, $email, $cpf, $expirat
         $payload['document'] = $document;
     }
     $response = payment_venopag_request('POST', '/api/cashin', $payload);
+    if (empty($response['ok']) && (int) ($response['app_error_code'] ?? 0) === 502) {
+        // A VenoPag usa o código 502 para uma falha técnica do processador
+        // externo. Nesse caso a cobrança não foi criada, então fazemos uma
+        // única nova tentativa curta. Erros de validação, conta ou credencial
+        // nunca passam por este bloco.
+        error_log('[payments] venopag transient failure retrying order=' . (int) $orderId);
+        usleep(400000);
+        $response = payment_venopag_request('POST', '/api/cashin', $payload);
+    }
     $data = $response['json'] ?? [];
     if (empty($response['ok']) || ($data['status'] ?? '') !== 'pending' || empty($data['copyPaste']) || empty($data['request_number'])) {
         $code = (int) ($response['app_error_code'] ?? 0);
         $message = $response['message'] ?? 'Não foi possível gerar o PIX na VenoPag.';
         if ($message === 'Falha ao gerar PIX') {
             if (in_array($code, [502, 503], true)) {
-                $message = 'A VenoPag está temporariamente indisponível. Nenhuma nova tentativa foi feita para evitar cobrança duplicada.';
+                $message = 'A VenoPag está temporariamente indisponível. Tente novamente em instantes.';
             } elseif ($code === 403) {
                 $message = 'A conta VenoPag não está habilitada para cash-in. Verifique o cadastro, KYC e a permissão cashin.';
             } elseif ($code === 401) {
