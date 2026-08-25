@@ -1794,7 +1794,9 @@ function payment_cleanup_empty_failed_attempts($productId = null, $limit = 100)
     $idList = implode(',', $ids);
     $conn->begin_transaction();
     try {
-        $conn->query('DELETE FROM order_items WHERE order_id IN (' . $idList . ')');
+        if (!$conn->query('DELETE FROM order_items WHERE order_id IN (' . $idList . ')')) {
+            throw new RuntimeException($conn->error);
+        }
         if (!$conn->query(
             "DELETE FROM order_list WHERE id IN ($idList) AND status IN (1, 3) "
             . "AND COALESCE(payment_method, '') = '' AND COALESCE(pix_code, '') = '' AND COALESCE(id_mp, '') = ''"
