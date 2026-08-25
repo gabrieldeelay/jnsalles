@@ -1871,10 +1871,9 @@ class Main extends DBConnection
             ], JSON_UNESCAPED_UNICODE);
         }
 
-        // Nunca deixe requisições simultâneas esperando dentro do PHP-FPM.
-        // Se outro pedido já estiver reservando cotas, responda imediatamente
-        // e preserve os demais processos para o site continuar acessível.
-        if (@flock($lock, LOCK_EX | LOCK_NB)) {
+        // Validações e cálculos de preço podem acontecer em paralelo. A trava
+        // será adquirida somente no instante de reservar estoque e cotas.
+        if (is_resource($lock)) {
 
             $customer_id = $this->settings->userdata("id");
             $customer_fname = $this->settings->userdata("firstname");
@@ -2102,6 +2101,40 @@ class Main extends DBConnection
                     return json_encode($resp);
                     exit();
                 }
+            }
+
+            if (!@flock($lock, LOCK_EX | LOCK_NB)) {
+                fclose($lock);
+                return json_encode([
+                    'status' => 'busy',
+                    'retryable' => true,
+                    'retry_after_ms' => random_int(350, 850),
+                    'error' => 'Seu pedido entrou na fila de reserva.',
+                ], JSON_UNESCAPED_UNICODE);
+            }
+
+            // Outra compra pode ter alterado o estoque enquanto esta requisição
+            // validava os dados. Releia os contadores já dentro da trava.
+            $freshStock = $this->conn->prepare(
+                'SELECT status, qty_numbers, pending_numbers, paid_numbers FROM product_list WHERE id = ? LIMIT 1'
+            );
+            $freshStock->bind_param('i', $product_id);
+            $freshStock->execute();
+            $freshStockResult = $freshStock->get_result();
+            $freshStockRow = $freshStockResult ? $freshStockResult->fetch_assoc() : null;
+            $freshStock->close();
+            if (!$freshStockRow || (int) $freshStockRow['status'] > 1) {
+                flock($lock, LOCK_UN);
+                fclose($lock);
+                return json_encode(['status' => 'failed', 'error' => 'Campanha pausada ou finalizada.'], JSON_UNESCAPED_UNICODE);
+            }
+            $pending_n = (int) $freshStockRow['pending_numbers'];
+            $paid_n = (int) $freshStockRow['paid_numbers'];
+            $qty_numbers = (int) $freshStockRow['qty_numbers'];
+            if (($pending_n + $paid_n + (int) $quantity) > ($qty_numbers + 1)) {
+                flock($lock, LOCK_UN);
+                fclose($lock);
+                return json_encode(['status' => 'failed', 'error' => 'Não existem cotas livres suficientes.'], JSON_UNESCAPED_UNICODE);
             }
 
             $total_pending_numbers = $pending_n + $quantity;
@@ -2745,14 +2778,6 @@ class Main extends DBConnection
                 flock($lock, LOCK_UN);
                 fclose($lock);
             }
-        } else {
-            fclose($lock);
-            return json_encode([
-                'status' => 'busy',
-                'retryable' => true,
-                'retry_after_ms' => random_int(350, 850),
-                'error' => 'Seu pedido entrou na fila de reserva.',
-            ], JSON_UNESCAPED_UNICODE);
         }
         return json_encode($resp);
     }
