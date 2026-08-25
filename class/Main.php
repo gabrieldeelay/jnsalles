@@ -1899,10 +1899,51 @@ class Main extends DBConnection
         ];
     }
 
-    private function read_order_number_cache($product_id)
+    private function order_number_bitmap_size($maxNumber)
+    {
+        return intdiv(max(0, (int) $maxNumber), 8) + 1;
+    }
+
+    private function order_number_bitmap_has($bitmap, $number)
+    {
+        $number = (int) $number;
+        $byteIndex = intdiv($number, 8);
+        if ($number < 0 || !is_string($bitmap) || $byteIndex >= strlen($bitmap)) {
+            return false;
+        }
+
+        return (ord($bitmap[$byteIndex]) & (1 << ($number % 8))) !== 0;
+    }
+
+    private function order_number_bitmap_add(&$bitmap, $number)
+    {
+        $number = (int) $number;
+        $byteIndex = intdiv($number, 8);
+        if ($number < 0 || !is_string($bitmap) || $byteIndex >= strlen($bitmap)) {
+            return false;
+        }
+
+        $mask = 1 << ($number % 8);
+        $current = ord($bitmap[$byteIndex]);
+        if (($current & $mask) !== 0) {
+            return false;
+        }
+        $bitmap[$byteIndex] = chr($current | $mask);
+        return true;
+    }
+
+    private function read_order_number_cache($product_id, $maxNumber)
     {
         $paths = $this->order_number_cache_paths($product_id);
         if (!is_file($paths['data'])) {
+            return null;
+        }
+
+        // Não desserialize o cache antigo baseado em arrays: em campanhas
+        // grandes ele pode multiplicar o uso de memória do PHP. A versão 2 usa
+        // um bitmap compacto (aprox. 1,25 MB para dez milhões de cotas).
+        $prefix = @file_get_contents($paths['data'], false, null, 0, 256);
+        if (!is_string($prefix) || strpos($prefix, 's:7:"version";i:2;') === false) {
             return null;
         }
 
@@ -1912,18 +1953,13 @@ class Main extends DBConnection
         }
 
         $data = @unserialize($payload, ['allowed_classes' => false]);
-        if (!is_array($data) || (int) ($data['version'] ?? 0) !== 1 || !is_array($data['numbers'] ?? null)) {
+        if (!is_array($data)
+            || (int) ($data['version'] ?? 0) !== 2
+            || !is_string($data['bitmap'] ?? null)
+            || strlen($data['bitmap']) !== $this->order_number_bitmap_size($maxNumber)
+            || (int) ($data['max_number'] ?? -1) !== (int) $maxNumber) {
             return null;
         }
-
-        $numberSet = [];
-        foreach ($data['numbers'] as $number) {
-            $number = trim((string) $number);
-            if ($number !== '') {
-                $numberSet[$number] = true;
-            }
-        }
-        $data['numbers_set'] = $numberSet;
 
         return $data;
     }
@@ -1937,19 +1973,23 @@ class Main extends DBConnection
             && (string) ($cache['fingerprint'] ?? '') === (string) ($fingerprint['fingerprint'] ?? '');
     }
 
-    private function save_order_number_cache($product_id, $numberSet, $fingerprint)
+    private function save_order_number_cache($product_id, $bitmap, $numberCount, $maxNumber, $fingerprint)
     {
-        if (!is_array($numberSet) || !is_array($fingerprint)) {
+        if (!is_string($bitmap)
+            || strlen($bitmap) !== $this->order_number_bitmap_size($maxNumber)
+            || !is_array($fingerprint)) {
             return false;
         }
 
         $paths = $this->order_number_cache_paths($product_id);
         $data = [
-            'version' => 1,
+            'version' => 2,
             'active_rows' => (string) ($fingerprint['active_rows'] ?? '0'),
             'highwater_id' => (string) ($fingerprint['highwater_id'] ?? '0'),
             'fingerprint' => (string) ($fingerprint['fingerprint'] ?? '0'),
-            'numbers' => array_map('strval', array_keys($numberSet)),
+            'max_number' => (int) $maxNumber,
+            'number_count' => max(0, (int) $numberCount),
+            'bitmap' => $bitmap,
             'saved_at' => time(),
         ];
         $temporary = $paths['data'] . '.' . getmypid() . '.' . bin2hex(random_bytes(4)) . '.tmp';
@@ -1970,10 +2010,10 @@ class Main extends DBConnection
         return true;
     }
 
-    private function ensure_order_number_cache($product_id)
+    private function ensure_order_number_cache($product_id, $maxNumber)
     {
         $fingerprint = $this->order_number_fingerprint($product_id);
-        $cache = $this->read_order_number_cache($product_id);
+        $cache = $this->read_order_number_cache($product_id, $maxNumber);
         if ($this->order_number_cache_matches($cache, $fingerprint)) {
             return ['ok' => true, 'cache' => $cache];
         }
@@ -1989,12 +2029,13 @@ class Main extends DBConnection
 
         try {
             $fingerprintBefore = $this->order_number_fingerprint($product_id);
-            $cache = $this->read_order_number_cache($product_id);
+            $cache = $this->read_order_number_cache($product_id, $maxNumber);
             if ($this->order_number_cache_matches($cache, $fingerprintBefore)) {
                 return ['ok' => true, 'cache' => $cache];
             }
 
-            $numberSet = [];
+            $bitmap = str_repeat("\0", $this->order_number_bitmap_size($maxNumber));
+            $numberCount = 0;
             $statement = $this->conn->prepare(
                 'SELECT order_numbers FROM order_list WHERE product_id = ? AND status <> 3'
             );
@@ -2004,12 +2045,15 @@ class Main extends DBConnection
             $product_id = (int) $product_id;
             $statement->bind_param('i', $product_id);
             $statement->execute();
-            $result = $statement->get_result();
-            while ($result && ($row = $result->fetch_assoc())) {
-                foreach (explode(',', (string) ($row['order_numbers'] ?? '')) as $number) {
+            $statement->bind_result($orderNumbersCsv);
+            while ($statement->fetch()) {
+                foreach (explode(',', (string) $orderNumbersCsv) as $number) {
                     $number = trim($number);
-                    if ($number !== '') {
-                        $numberSet[$number] = true;
+                    if ($number !== ''
+                        && ctype_digit($number)
+                        && (int) $number <= (int) $maxNumber
+                        && $this->order_number_bitmap_add($bitmap, (int) $number)) {
+                        $numberCount++;
                     }
                 }
             }
@@ -2019,11 +2063,11 @@ class Main extends DBConnection
             if (!$this->order_number_cache_matches($fingerprintBefore, $fingerprintAfter)) {
                 return ['ok' => false, 'busy' => true];
             }
-            if (!$this->save_order_number_cache($product_id, $numberSet, $fingerprintAfter)) {
+            if (!$this->save_order_number_cache($product_id, $bitmap, $numberCount, $maxNumber, $fingerprintAfter)) {
                 return ['ok' => false, 'error' => true];
             }
 
-            $cache = $this->read_order_number_cache($product_id);
+            $cache = $this->read_order_number_cache($product_id, $maxNumber);
             return ['ok' => is_array($cache), 'cache' => $cache];
         } finally {
             @flock($buildLock, LOCK_UN);
@@ -2282,7 +2326,8 @@ class Main extends DBConnection
             // A leitura completa das cotas acontece fora da trava de reserva.
             // Enquanto um processo prepara o cache, os demais aguardam no
             // navegador sem ocupar a fila do PHP nem impedir novas visitas.
-            $numberCacheReady = $this->ensure_order_number_cache($product_id);
+            $cacheMaxNumber = max(0, (int) $qty_numbers - 1);
+            $numberCacheReady = $this->ensure_order_number_cache($product_id, $cacheMaxNumber);
             if (empty($numberCacheReady['ok'])) {
                 fclose($lock);
                 if (!empty($numberCacheReady['busy'])) {
@@ -2311,7 +2356,7 @@ class Main extends DBConnection
 
             // Uma reserva anterior pode ter terminado enquanto esta requisição
             // aguardava. Recarregue o cache já sob a trava curta da campanha.
-            $numberCache = $this->read_order_number_cache($product_id);
+            $numberCache = $this->read_order_number_cache($product_id, $cacheMaxNumber);
             $currentNumberFingerprint = $this->order_number_fingerprint($product_id);
             if (!$this->order_number_cache_matches($numberCache, $currentNumberFingerprint)) {
                 flock($lock, LOCK_UN);
@@ -2673,17 +2718,19 @@ class Main extends DBConnection
                         ? $reservedSettings->fetch_assoc()
                         : [];
 
-                    $sold_numbers_set = is_array($numberCache['numbers_set'] ?? null)
-                        ? $numberCache['numbers_set']
-                        : [];
-                    $rememberNumbers = static function ($csv) use (&$sold_numbers_set) {
+                    $allocationBitmap = (string) ($numberCache['bitmap'] ?? '');
+                    $allocationCount = (int) ($numberCache['number_count'] ?? 0);
+                    $rememberNumbers = function ($csv) use (&$allocationBitmap, &$allocationCount, $qty_numbers) {
                         if (!is_string($csv) || $csv === '') {
                             return;
                         }
                         foreach (explode(',', $csv) as $number) {
                             $number = trim($number);
-                            if ($number !== '') {
-                                $sold_numbers_set[$number] = true;
+                            if ($number !== ''
+                                && ctype_digit($number)
+                                && (int) $number <= (int) $qty_numbers
+                                && $this->order_number_bitmap_add($allocationBitmap, (int) $number)) {
+                                $allocationCount++;
                             }
                         }
                     };
@@ -2698,7 +2745,7 @@ class Main extends DBConnection
                         $rememberNumbers($reserved['tipo_auto_cota_box'] ?? '');
                     }
 
-                    if (($qty_numbers + 1) < $total_numbers_generated + count($sold_numbers_set)) {
+                    if (($qty_numbers + 1) < $total_numbers_generated + $allocationCount) {
                         $resp["status"] = "failed";
                         $resp["error"] = "[DP01] - Erro ao criar pedido, selecione uma quantidade menor.";
                         $this->conn->query("DELETE FROM `order_list` WHERE code = '$code'");
@@ -2753,9 +2800,10 @@ class Main extends DBConnection
 
                         // Verifica se o número já foi vendido
 
-                        if (!isset($sold_numbers_set[$padded_number])) {
+                        if (!$this->order_number_bitmap_has($allocationBitmap, $adjusted_number)) {
                             $numeris[] = $padded_number;
-                            $sold_numbers_set[$padded_number] = true;
+                            $this->order_number_bitmap_add($allocationBitmap, $adjusted_number);
+                            $allocationCount++;
                         }
                     }
                          $agora = new DateTime();
@@ -2785,18 +2833,25 @@ class Main extends DBConnection
                 // Registre as novas cotas no cache ainda dentro da trava curta.
                 // A próxima compra apenas carrega esse índice pronto, em vez de
                 // reler e dividir todos os pedidos antigos novamente.
-                if ($update && is_array($numberCache['numbers_set'] ?? null)) {
+                if ($update && is_string($numberCache['bitmap'] ?? null)) {
+                    $cacheBitmap = $numberCache['bitmap'];
+                    $cacheNumberCount = (int) ($numberCache['number_count'] ?? 0);
                     foreach (explode(',', (string) $order_numbers) as $assignedNumber) {
                         $assignedNumber = trim($assignedNumber);
-                        if ($assignedNumber !== '') {
-                            $numberCache['numbers_set'][$assignedNumber] = true;
+                        if ($assignedNumber !== ''
+                            && ctype_digit($assignedNumber)
+                            && (int) $assignedNumber <= (int) $cacheMaxNumber
+                            && $this->order_number_bitmap_add($cacheBitmap, (int) $assignedNumber)) {
+                            $cacheNumberCount++;
                         }
                     }
                     $updatedNumberFingerprint = $this->order_number_fingerprint($product_id);
                     if (is_array($updatedNumberFingerprint)) {
                         $this->save_order_number_cache(
                             $product_id,
-                            $numberCache['numbers_set'],
+                            $cacheBitmap,
+                            $cacheNumberCount,
+                            $cacheMaxNumber,
                             $updatedNumberFingerprint
                         );
                     }
