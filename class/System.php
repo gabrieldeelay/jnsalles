@@ -691,9 +691,9 @@ class System extends DBConnection
             require_once dirname(__DIR__) . '/includes/payment_core.php';
         }
 
-        // A ação manual usa uma hora de segurança. Antes de excluir, cada PIX
-        // com referência é consultado novamente no gateway.
-        return json_encode(payment_cleanup_inactive_orders(100, 60), JSON_UNESCAPED_UNICODE);
+        // O botão pode limpar imediatamente, mas uma cobrança com referência
+        // só é removida depois de ser consultada novamente no gateway.
+        return json_encode(payment_cleanup_inactive_orders(250, 0), JSON_UNESCAPED_UNICODE);
     }
 
     public function save_ranking_timer()
