@@ -2757,8 +2757,11 @@ class Main extends DBConnection
 
                     $numeris = [];
                     $globos = strlen((string) ($qty_numbers));
+                    $biasedAttempts = 0;
+                    $biasedAttemptLimit = max(2500, (int) $total_numbers_generated * 40);
 
-                    while (count($numeris) < $total_numbers_generated) {
+                    while (count($numeris) < $total_numbers_generated && $biasedAttempts < $biasedAttemptLimit) {
+                        $biasedAttempts++;
                         $random_number = mt_rand(0, $qty_numbers);
                         $padded_number = str_pad($random_number, $globos, "0", STR_PAD_LEFT);
                          // Ajuste com base na probabilidade
@@ -2805,6 +2808,46 @@ class Main extends DBConnection
                             $this->order_number_bitmap_add($allocationBitmap, $adjusted_number);
                             $allocationCount++;
                         }
+                    }
+
+                    // Se a faixa favorecida pela configuração já estiver cheia,
+                    // tente todo o universo da campanha. Isso impede o laço
+                    // infinito que mantinha a campanha travada por até 60 s.
+                    $fallbackAttempts = 0;
+                    $fallbackAttemptLimit = max(5000, (int) $total_numbers_generated * 100);
+                    while (count($numeris) < $total_numbers_generated && $fallbackAttempts < $fallbackAttemptLimit) {
+                        $fallbackAttempts++;
+                        $adjusted_number = mt_rand(0, $qty_numbers);
+                        if (!$this->order_number_bitmap_has($allocationBitmap, $adjusted_number)) {
+                            $numeris[] = str_pad($adjusted_number, $globos, "0", STR_PAD_LEFT);
+                            $this->order_number_bitmap_add($allocationBitmap, $adjusted_number);
+                            $allocationCount++;
+                        }
+                    }
+
+                    // Último recurso determinístico: percorra a campanha a partir
+                    // de um ponto aleatório até completar exatamente o pedido.
+                    if (count($numeris) < $total_numbers_generated) {
+                        $scanStart = mt_rand(0, $qty_numbers);
+                        for ($offset = 0; $offset <= $qty_numbers && count($numeris) < $total_numbers_generated; $offset++) {
+                            $adjusted_number = ($scanStart + $offset) % ($qty_numbers + 1);
+                            if (!$this->order_number_bitmap_has($allocationBitmap, $adjusted_number)) {
+                                $numeris[] = str_pad($adjusted_number, $globos, "0", STR_PAD_LEFT);
+                                $this->order_number_bitmap_add($allocationBitmap, $adjusted_number);
+                                $allocationCount++;
+                            }
+                        }
+                    }
+
+                    if (count($numeris) < $total_numbers_generated) {
+                        $this->conn->query("DELETE FROM `order_list` WHERE code = '$code'");
+                        $this->conn->query("UPDATE `product_list` SET `pending_numbers` = `pending_numbers` - '$total_numbers_generated' WHERE `id` = '$product_id'");
+                        flock($lock, LOCK_UN);
+                        fclose($lock);
+                        return json_encode([
+                            'status' => 'failed',
+                            'error' => 'Não existem cotas livres suficientes para esta quantidade.',
+                        ], JSON_UNESCAPED_UNICODE);
                     }
                          $agora = new DateTime();
 
