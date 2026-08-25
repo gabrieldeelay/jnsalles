@@ -1144,7 +1144,7 @@ if ($product_id) {
     }
 
     document.getElementById('cleanup-inactive-orders')?.addEventListener('click', async function() {
-        if (!window.confirm('O sistema verificará os gateways e removerá apenas pedidos cancelados ou expirados há pelo menos 1 hora. Pedidos pagos serão preservados. Continuar?')) {
+        if (!window.confirm('O sistema verificará os gateways e removerá apenas pedidos cancelados ou expirados. Pedidos pagos serão preservados. Continuar?')) {
             return;
         }
 
@@ -1171,7 +1171,7 @@ if ($product_id) {
                 + ' expirado(s), ' + Number(result.recovered || 0)
                 + ' pagamento(s) recuperado(s) e ' + Number(result.skipped || 0)
                 + ' preservado(s) para nova conferência.';
-            window.setTimeout(function() { window.location.reload(); }, 2200);
+            window.location.reload();
         } catch (error) {
             feedback.className = 'orders-cleanup-feedback error';
             feedback.textContent = error.message || 'Não foi possível concluir a limpeza.';

@@ -456,6 +456,19 @@ function payment_expiration_datetime($minutes)
         ->format('Y-m-d\\TH:i:s.vP');
 }
 
+function payment_gateway_parallel_limit($provider)
+{
+    $configured = getenv('PAYMENT_GATEWAY_PARALLEL_LIMIT');
+    if ($configured === false || trim((string) $configured) === '') {
+        $configured = payment_setting('payment_gateway_parallel_limit', '15');
+    }
+
+    // Quinze chamadas cobrem o pico simultâneo esperado sem transformar a
+    // API externa em um gargalo ilimitado. O limite pode ser ajustado no
+    // servidor entre 5 e 30 sem alterar o código.
+    return max(5, min(30, (int) $configured));
+}
+
 function payment_create_pix($orderId, $amount, $name, $email, $cpf, $expiration, $phone = '')
 {
     $attempt = payment_register_order_gateway($orderId, $amount);
@@ -466,10 +479,13 @@ function payment_create_pix($orderId, $amount, $name, $email, $cpf, $expiration,
 
     $amount = payment_amount($amount, $provider);
     $expiration = max(5, min(1440, (int) $expiration));
-    // No máximo cinco chamadas externas ficam abertas ao mesmo tempo. Os
-    // demais pedidos permanecem na fila e tentam novamente pela página do PIX,
-    // sem ocupar todos os processos PHP do site.
-    $providerSlot = payment_gateway_slot_acquire($provider . '-create', 5);
+    // Permite o pico previsto de pagamentos em paralelo, mas conserva um
+    // limite de segurança configurável para que uma rajada maior não ocupe
+    // indefinidamente todos os processos PHP do site.
+    $providerSlot = payment_gateway_slot_acquire(
+        $provider . '-create',
+        payment_gateway_parallel_limit($provider)
+    );
     if (!is_resource($providerSlot)) {
         return [
             'ok' => false,

@@ -27,6 +27,11 @@ if (!is_callable('payment_schedule_daily_cleanup')) {
     exit(1);
 }
 
+if (payment_gateway_parallel_limit('venopag') < 15) {
+    fwrite(STDERR, "Capacidade simultânea do gateway abaixo de 15.\n");
+    exit(1);
+}
+
 if (!payment_customer_document_is_valid('52998224725')) {
     fwrite(STDERR, "Validação de CPF falhou.\n");
     exit(1);
