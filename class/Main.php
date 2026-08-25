@@ -2804,6 +2804,7 @@ class Main extends DBConnection
 
 
 
+                $deferredPaymentGeneration = false;
                 if ($total_amount > 0) {
                     $gatewayAttempt = payment_register_order_gateway($oid, $total_amount);
                     if (empty($gatewayAttempt['ok'])) {
@@ -2822,6 +2823,7 @@ class Main extends DBConnection
                             'queued' => true,
                             'provider' => $gatewayAttempt['provider'],
                         ];
+                        $deferredPaymentGeneration = true;
                     }
                     if (empty($payment['ok'])) {
                         $failedAt = date('Y-m-d H:i:s');
@@ -2868,7 +2870,7 @@ class Main extends DBConnection
                     }
                 }
 
-                if ($this->settings->info("enable_dwapi") == 1) {
+                if (!$deferredPaymentGeneration && $this->settings->info("enable_dwapi") == 1) {
                     $queryPhone = $this->conn->query(
                         'SELECT phone FROM customer_list WHERE id = \'' .
                             $customer_id .
@@ -2953,7 +2955,7 @@ class Main extends DBConnection
                 $resp["redirect"] = "/compra/" . $order_token . "";
             }
 
-            if ($this->settings->info("enable_pixel") == 1) {
+            if (empty($deferredPaymentGeneration) && $this->settings->info("enable_pixel") == 1) {
                 $dados = [
                     "first_name" => $customer_fname,
                     "last_name" => $customer_lname,
@@ -2986,13 +2988,18 @@ class Main extends DBConnection
                 }
             }
 
-            order_email(
-                $this->settings->info("email_order"),
-                "[" .
-                    $this->settings->info("name") .
-                    "] - Confirmação de pedido",
-                $oid
-            );
+            // Pedidos com PIX em geração não podem ficar presos em serviços
+            // externos de e-mail/WhatsApp/pixel. O e-mail de pagamento aprovado
+            // continua sendo enviado pelo fluxo de confirmação do gateway.
+            if (empty($deferredPaymentGeneration)) {
+                order_email(
+                    $this->settings->info("email_order"),
+                    "[" .
+                        $this->settings->info("name") .
+                        "] - Confirmação de pedido",
+                    $oid
+                );
+            }
             if (is_resource($lock)) {
                 flock($lock, LOCK_UN);
                 fclose($lock);
@@ -3146,7 +3153,8 @@ class Main extends DBConnection
             CURLOPT_ENCODING => '',
             CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
             CURLOPT_TCP_FASTOPEN => 1,
-            CURLOPT_TIMEOUT => 0,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT => 8,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => 'POST',

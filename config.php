@@ -824,6 +824,8 @@ function send_event_pixel($event, $dados)
 			CURLOPT_POST => true,
 			CURLOPT_POSTFIELDS => json_encode(['data' => $data]),
 			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_CONNECTTIMEOUT => 2,
+			CURLOPT_TIMEOUT => 5,
 			CURLOPT_HTTPHEADER => ['Content-Type: application/json']
 		];
 		$curl = curl_init();
@@ -1190,6 +1192,8 @@ function order_email($message, $title, $order_id)
 						'ssl' => ['verify_peer' => false, 'verify_peer_name' => false, 'allow_self_signed' => true]
 					];
 					$mail->SMTPAuth = true;
+					$mail->Timeout = 8;
+					$mail->Timelimit = 8;
 					$mail->Host = $_settings->info('smtp_host');
 					$mail->Username = $_settings->info('smtp_user');
 					$mail->Password = $_settings->info('smtp_pass');
