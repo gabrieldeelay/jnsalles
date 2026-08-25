@@ -1297,5 +1297,6 @@ if (!defined('CONTACT_TYPE')) {
 }
 ob_end_flush();
 require_once __DIR__ . '/includes/payment_core.php';
+payment_schedule_daily_cleanup();
 
 ?>

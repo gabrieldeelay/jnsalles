@@ -2061,3 +2061,84 @@ function payment_cleanup_inactive_orders($limit = 100, $minimumAgeMinutes = 60)
         ];
     }
 }
+
+/**
+ * Runs the verified cleanup once per calendar day without delaying the page
+ * response. On hosts without cron/terminal access, the first request after
+ * midnight starts the job and all other requests continue normally.
+ */
+function payment_schedule_daily_cleanup()
+{
+    global $conn;
+
+    if (PHP_SAPI === 'cli' || !($conn instanceof mysqli)) {
+        return false;
+    }
+
+    $today = date('Y-m-d');
+    try {
+        $lastRun = $conn->prepare("SELECT meta_value FROM system_info WHERE meta_field = 'payment_cleanup_last_run' LIMIT 1");
+        if (!$lastRun) {
+            return false;
+        }
+        $lastRun->execute();
+        $result = $lastRun->get_result();
+        $row = $result ? $result->fetch_assoc() : null;
+        $lastRun->close();
+        if (($row['meta_value'] ?? '') === $today) {
+            return false;
+        }
+    } catch (Throwable $error) {
+        error_log('[payments] daily cleanup schedule check failed reason=' . $error->getMessage());
+        return false;
+    }
+
+    $lockRoot = rtrim((string) sys_get_temp_dir(), DIRECTORY_SEPARATOR);
+    $siteKey = hash('sha256', (string) ($_SERVER['DOCUMENT_ROOT'] ?? __DIR__));
+    $lockPath = $lockRoot . DIRECTORY_SEPARATOR . 'jnsalles-payment-cleanup-' . $siteKey . '-' . $today . '.lock';
+    $lock = @fopen($lockPath, 'c');
+    if (!is_resource($lock) || !@flock($lock, LOCK_EX | LOCK_NB)) {
+        if (is_resource($lock)) {
+            fclose($lock);
+        }
+        return false;
+    }
+
+    register_shutdown_function(static function () use ($lock, $today) {
+        global $conn;
+
+        try {
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_write_close();
+            }
+            if (function_exists('fastcgi_finish_request')) {
+                fastcgi_finish_request();
+            }
+
+            $cleanup = payment_cleanup_inactive_orders(100, 60);
+            if (!empty($cleanup['ok']) && $conn instanceof mysqli) {
+                $marker = $conn->prepare(
+                    "INSERT INTO system_info (meta_field, meta_value) VALUES ('payment_cleanup_last_run', ?) "
+                    . 'ON DUPLICATE KEY UPDATE meta_value = VALUES(meta_value)'
+                );
+                if ($marker) {
+                    $marker->bind_param('s', $today);
+                    $marker->execute();
+                    $marker->close();
+                }
+                error_log(
+                    '[payments] daily cleanup completed deleted=' . (int) ($cleanup['deleted'] ?? 0)
+                    . ' recovered=' . (int) ($cleanup['recovered'] ?? 0)
+                    . ' skipped=' . (int) ($cleanup['skipped'] ?? 0)
+                );
+            }
+        } catch (Throwable $error) {
+            error_log('[payments] daily cleanup failed reason=' . $error->getMessage());
+        } finally {
+            @flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    });
+
+    return true;
+}
