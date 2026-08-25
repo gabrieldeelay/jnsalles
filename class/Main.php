@@ -1856,12 +1856,188 @@ class Main extends DBConnection
         //  return json_encode($resp);
     }
 
+    private function order_number_cache_paths($product_id)
+    {
+        $cacheRoot = rtrim((string) sys_get_temp_dir(), DIRECTORY_SEPARATOR);
+        $siteKey = hash('sha256', (string) ($_SERVER['DOCUMENT_ROOT'] ?? __DIR__));
+        $base = $cacheRoot . DIRECTORY_SEPARATOR . 'jnsalles-numbers-' . $siteKey . '-product-' . (int) $product_id;
+
+        return [
+            'data' => $base . '.cache',
+            'build_lock' => $base . '.build.lock',
+        ];
+    }
+
+    private function order_number_fingerprint($product_id)
+    {
+        $statement = $this->conn->prepare(
+            "SELECT COUNT(*) AS active_rows,
+                    COALESCE(MAX(id), 0) AS highwater_id,
+                    COALESCE(SUM(CAST(CRC32(CONCAT(id, '|', status, '|', COALESCE(order_numbers, ''))) AS UNSIGNED)), 0) AS fingerprint
+               FROM order_list
+              WHERE product_id = ? AND status <> 3"
+        );
+        if (!$statement) {
+            return null;
+        }
+
+        $product_id = (int) $product_id;
+        $statement->bind_param('i', $product_id);
+        $statement->execute();
+        $result = $statement->get_result();
+        $row = $result ? $result->fetch_assoc() : null;
+        $statement->close();
+
+        if (!$row) {
+            return null;
+        }
+
+        return [
+            'active_rows' => (string) ($row['active_rows'] ?? '0'),
+            'highwater_id' => (string) ($row['highwater_id'] ?? '0'),
+            'fingerprint' => (string) ($row['fingerprint'] ?? '0'),
+        ];
+    }
+
+    private function read_order_number_cache($product_id)
+    {
+        $paths = $this->order_number_cache_paths($product_id);
+        if (!is_file($paths['data'])) {
+            return null;
+        }
+
+        $payload = @file_get_contents($paths['data']);
+        if (!is_string($payload) || $payload === '') {
+            return null;
+        }
+
+        $data = @unserialize($payload, ['allowed_classes' => false]);
+        if (!is_array($data) || (int) ($data['version'] ?? 0) !== 1 || !is_array($data['numbers'] ?? null)) {
+            return null;
+        }
+
+        $numberSet = [];
+        foreach ($data['numbers'] as $number) {
+            $number = trim((string) $number);
+            if ($number !== '') {
+                $numberSet[$number] = true;
+            }
+        }
+        $data['numbers_set'] = $numberSet;
+
+        return $data;
+    }
+
+    private function order_number_cache_matches($cache, $fingerprint)
+    {
+        return is_array($cache)
+            && is_array($fingerprint)
+            && (string) ($cache['active_rows'] ?? '') === (string) ($fingerprint['active_rows'] ?? '')
+            && (string) ($cache['highwater_id'] ?? '') === (string) ($fingerprint['highwater_id'] ?? '')
+            && (string) ($cache['fingerprint'] ?? '') === (string) ($fingerprint['fingerprint'] ?? '');
+    }
+
+    private function save_order_number_cache($product_id, $numberSet, $fingerprint)
+    {
+        if (!is_array($numberSet) || !is_array($fingerprint)) {
+            return false;
+        }
+
+        $paths = $this->order_number_cache_paths($product_id);
+        $data = [
+            'version' => 1,
+            'active_rows' => (string) ($fingerprint['active_rows'] ?? '0'),
+            'highwater_id' => (string) ($fingerprint['highwater_id'] ?? '0'),
+            'fingerprint' => (string) ($fingerprint['fingerprint'] ?? '0'),
+            'numbers' => array_map('strval', array_keys($numberSet)),
+            'saved_at' => time(),
+        ];
+        $temporary = $paths['data'] . '.' . getmypid() . '.' . bin2hex(random_bytes(4)) . '.tmp';
+        $written = @file_put_contents($temporary, serialize($data), LOCK_EX);
+        if ($written === false) {
+            @unlink($temporary);
+            return false;
+        }
+
+        if (!@rename($temporary, $paths['data'])) {
+            @unlink($paths['data']);
+            if (!@rename($temporary, $paths['data'])) {
+                @unlink($temporary);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function ensure_order_number_cache($product_id)
+    {
+        $fingerprint = $this->order_number_fingerprint($product_id);
+        $cache = $this->read_order_number_cache($product_id);
+        if ($this->order_number_cache_matches($cache, $fingerprint)) {
+            return ['ok' => true, 'cache' => $cache];
+        }
+
+        $paths = $this->order_number_cache_paths($product_id);
+        $buildLock = @fopen($paths['build_lock'], 'c');
+        if (!is_resource($buildLock) || !@flock($buildLock, LOCK_EX | LOCK_NB)) {
+            if (is_resource($buildLock)) {
+                fclose($buildLock);
+            }
+            return ['ok' => false, 'busy' => true];
+        }
+
+        try {
+            $fingerprintBefore = $this->order_number_fingerprint($product_id);
+            $cache = $this->read_order_number_cache($product_id);
+            if ($this->order_number_cache_matches($cache, $fingerprintBefore)) {
+                return ['ok' => true, 'cache' => $cache];
+            }
+
+            $numberSet = [];
+            $statement = $this->conn->prepare(
+                'SELECT order_numbers FROM order_list WHERE product_id = ? AND status <> 3'
+            );
+            if (!$statement) {
+                return ['ok' => false, 'error' => true];
+            }
+            $product_id = (int) $product_id;
+            $statement->bind_param('i', $product_id);
+            $statement->execute();
+            $result = $statement->get_result();
+            while ($result && ($row = $result->fetch_assoc())) {
+                foreach (explode(',', (string) ($row['order_numbers'] ?? '')) as $number) {
+                    $number = trim($number);
+                    if ($number !== '') {
+                        $numberSet[$number] = true;
+                    }
+                }
+            }
+            $statement->close();
+
+            $fingerprintAfter = $this->order_number_fingerprint($product_id);
+            if (!$this->order_number_cache_matches($fingerprintBefore, $fingerprintAfter)) {
+                return ['ok' => false, 'busy' => true];
+            }
+            if (!$this->save_order_number_cache($product_id, $numberSet, $fingerprintAfter)) {
+                return ['ok' => false, 'error' => true];
+            }
+
+            $cache = $this->read_order_number_cache($product_id);
+            return ['ok' => is_array($cache), 'cache' => $cache];
+        } finally {
+            @flock($buildLock, LOCK_UN);
+            fclose($buildLock);
+        }
+    }
+
     public function place_order()
     {
 
         $lockRoot = rtrim((string) sys_get_temp_dir(), DIRECTORY_SEPARATOR);
         $lockKey = hash('sha256', (string) ($_SERVER['DOCUMENT_ROOT'] ?? __DIR__));
-        $lockFile = $lockRoot . DIRECTORY_SEPARATOR . 'jnsalles-order-' . $lockKey . '.lock';
+        $requestedProductId = isset($_POST['product_id']) ? (int) $_POST['product_id'] : 0;
+        $lockFile = $lockRoot . DIRECTORY_SEPARATOR . 'jnsalles-order-' . $lockKey . '-product-' . $requestedProductId . '.lock';
         $lock = @fopen($lockFile, "c");
 
         if (!is_resource($lock)) {
@@ -2103,6 +2279,26 @@ class Main extends DBConnection
                 }
             }
 
+            // A leitura completa das cotas acontece fora da trava de reserva.
+            // Enquanto um processo prepara o cache, os demais aguardam no
+            // navegador sem ocupar a fila do PHP nem impedir novas visitas.
+            $numberCacheReady = $this->ensure_order_number_cache($product_id);
+            if (empty($numberCacheReady['ok'])) {
+                fclose($lock);
+                if (!empty($numberCacheReady['busy'])) {
+                    return json_encode([
+                        'status' => 'busy',
+                        'retryable' => true,
+                        'retry_after_ms' => random_int(350, 850),
+                        'error' => 'Estamos preparando as cotas disponíveis para o seu pedido.',
+                    ], JSON_UNESCAPED_UNICODE);
+                }
+                return json_encode([
+                    'status' => 'failed',
+                    'error' => 'Não foi possível consultar as cotas disponíveis. Tente novamente.',
+                ], JSON_UNESCAPED_UNICODE);
+            }
+
             if (!@flock($lock, LOCK_EX | LOCK_NB)) {
                 fclose($lock);
                 return json_encode([
@@ -2110,6 +2306,21 @@ class Main extends DBConnection
                     'retryable' => true,
                     'retry_after_ms' => random_int(350, 850),
                     'error' => 'Seu pedido entrou na fila de reserva.',
+                ], JSON_UNESCAPED_UNICODE);
+            }
+
+            // Uma reserva anterior pode ter terminado enquanto esta requisição
+            // aguardava. Recarregue o cache já sob a trava curta da campanha.
+            $numberCache = $this->read_order_number_cache($product_id);
+            $currentNumberFingerprint = $this->order_number_fingerprint($product_id);
+            if (!$this->order_number_cache_matches($numberCache, $currentNumberFingerprint)) {
+                flock($lock, LOCK_UN);
+                fclose($lock);
+                return json_encode([
+                    'status' => 'busy',
+                    'retryable' => true,
+                    'retry_after_ms' => random_int(350, 850),
+                    'error' => 'Atualizando as cotas disponíveis para o seu pedido.',
                 ], JSON_UNESCAPED_UNICODE);
             }
 
@@ -2462,7 +2673,9 @@ class Main extends DBConnection
                         ? $reservedSettings->fetch_assoc()
                         : [];
 
-                    $sold_numbers_set = [];
+                    $sold_numbers_set = is_array($numberCache['numbers_set'] ?? null)
+                        ? $numberCache['numbers_set']
+                        : [];
                     $rememberNumbers = static function ($csv) use (&$sold_numbers_set) {
                         if (!is_string($csv) || $csv === '') {
                             return;
@@ -2484,20 +2697,6 @@ class Main extends DBConnection
                     if (!empty($reserved['cotas_premiadas_box']) && (int) ($reserved['status_auto_cota_box'] ?? 0) === 1) {
                         $rememberNumbers($reserved['tipo_auto_cota_box'] ?? '');
                     }
-
-                    $orders = $this->conn->query(
-                        "SELECT order_numbers
-                           FROM order_list
-                          WHERE product_id = " . (int) $product_id . " AND status <> 3",
-                        MYSQLI_USE_RESULT
-                    );
-                    if (!$orders) {
-                        throw new RuntimeException('Não foi possível consultar as cotas já reservadas.');
-                    }
-                    while ($orderRow = $orders->fetch_assoc()) {
-                        $rememberNumbers($orderRow['order_numbers'] ?? '');
-                    }
-                    $orders->free();
 
                     if (($qty_numbers + 1) < $total_numbers_generated + count($sold_numbers_set)) {
                         $resp["status"] = "failed";
@@ -2581,6 +2780,26 @@ class Main extends DBConnection
                             $code .
                             '\''
                     );
+                }
+
+                // Registre as novas cotas no cache ainda dentro da trava curta.
+                // A próxima compra apenas carrega esse índice pronto, em vez de
+                // reler e dividir todos os pedidos antigos novamente.
+                if ($update && is_array($numberCache['numbers_set'] ?? null)) {
+                    foreach (explode(',', (string) $order_numbers) as $assignedNumber) {
+                        $assignedNumber = trim($assignedNumber);
+                        if ($assignedNumber !== '') {
+                            $numberCache['numbers_set'][$assignedNumber] = true;
+                        }
+                    }
+                    $updatedNumberFingerprint = $this->order_number_fingerprint($product_id);
+                    if (is_array($updatedNumberFingerprint)) {
+                        $this->save_order_number_cache(
+                            $product_id,
+                            $numberCache['numbers_set'],
+                            $updatedNumberFingerprint
+                        );
+                    }
                 }
 
 
