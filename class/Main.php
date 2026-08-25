@@ -1894,15 +1894,6 @@ class Main extends DBConnection
             $ref = $_POST["ref"];
             $order_token = md5($pref . $code);
 
-            $expirationCleanup = payment_expire_pending_orders((int) $product_id, 2);
-            if (empty($expirationCleanup['ok'])) {
-                error_log('[payments] expired order cleanup failed product=' . (int) $product_id);
-            }
-            $failedCleanup = payment_cleanup_empty_failed_attempts((int) $product_id, 100);
-            if (empty($failedCleanup['ok'])) {
-                error_log('[payments] failed attempt cleanup failed product=' . (int) $product_id);
-            }
-
             if (payment_requires_customer_document() && !payment_customer_document_is_valid($customer_cpf)) {
                 error_log('[payments] order blocked customer=' . (int) $customer_id . ' provider=venopag reason=invalid_customer_document');
                 $resp["status"] = "pay2m";
