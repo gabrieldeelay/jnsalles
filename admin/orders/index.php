@@ -446,7 +446,7 @@ if ($product_id) {
         margin-top: 4px
     }
 
-    .orders-shell{display:block!important;width:100%;max-width:1280px;padding:30px 24px 56px}.orders-heading{display:flex;align-items:center;gap:12px;margin:0 0 22px!important;color:#f8fafc!important;font-size:28px!important;font-weight:800!important;letter-spacing:-.03em}.orders-heading #create_new button{min-height:40px;border-radius:10px!important}.orders-filter{margin-bottom:14px!important;padding:16px;border:1px solid #2d3748;border-radius:14px;background:linear-gradient(145deg,rgba(30,41,59,.72),rgba(17,24,39,.96))}.orders-filter input,.orders-filter select{min-height:42px!important;margin-top:0!important;border:1px solid #3f4d63!important;border-radius:9px!important;background:#111827!important;color:#f8fafc!important;box-shadow:none!important}.orders-filter input:focus,.orders-filter select:focus{border-color:#8b5cf6!important;box-shadow:0 0 0 3px rgba(139,92,246,.14)!important}.orders-table-card{overflow:hidden;border:1px solid #2d3748!important;border-radius:14px!important;background:#151b27!important;box-shadow:0 16px 38px rgba(0,0,0,.14)!important}.orders-empty{height:150px;padding:28px!important;color:#94a3b8!important;font-size:14px;font-weight:600;vertical-align:middle!important}.orders-empty:before{display:block;margin:0 auto 9px;content:'⌕';color:#8b5cf6;font-size:32px;line-height:1}.orders-pagination{min-height:50px}@media(max-width:700px){.orders-shell{padding:22px 14px 44px}.orders-heading{align-items:flex-start;flex-direction:column;font-size:24px!important}.orders-heading #create_new,.orders-heading #create_new button{width:100%}.orders-filter{padding:13px}}
+    .orders-shell{display:block!important;width:100%;max-width:1280px;padding:30px 24px 56px}.orders-heading{display:flex;align-items:center;gap:12px;margin:0 0 12px!important;color:#f8fafc!important;font-size:28px!important;font-weight:800!important;letter-spacing:-.03em}.orders-heading #create_new button{min-height:40px;border-radius:10px!important}.orders-cleanup{min-height:40px;padding:0 14px;border:1px solid #475569;border-radius:10px;background:#172033;color:#dbeafe;font-size:13px;font-weight:750;transition:.18s}.orders-cleanup:hover{border-color:#60a5fa;background:#1e293b;color:#fff}.orders-cleanup:disabled{cursor:wait;opacity:.58}.orders-cleanup-feedback{display:none;margin:0 0 14px;padding:11px 13px;border:1px solid #334155;border-radius:10px;background:#111827;color:#cbd5e1;font-size:13px}.orders-cleanup-feedback.success{display:block;border-color:rgba(16,185,129,.46);background:rgba(6,78,59,.3);color:#a7f3d0}.orders-cleanup-feedback.error{display:block;border-color:rgba(248,113,113,.46);background:rgba(127,29,29,.25);color:#fecaca}.orders-filter{margin-bottom:14px!important;padding:16px;border:1px solid #2d3748;border-radius:14px;background:linear-gradient(145deg,rgba(30,41,59,.72),rgba(17,24,39,.96))}.orders-filter input,.orders-filter select{min-height:42px!important;margin-top:0!important;border:1px solid #3f4d63!important;border-radius:9px!important;background:#111827!important;color:#f8fafc!important;box-shadow:none!important}.orders-filter input:focus,.orders-filter select:focus{border-color:#8b5cf6!important;box-shadow:0 0 0 3px rgba(139,92,246,.14)!important}.orders-table-card{overflow:hidden;border:1px solid #2d3748!important;border-radius:14px!important;background:#151b27!important;box-shadow:0 16px 38px rgba(0,0,0,.14)!important}.orders-empty{height:150px;padding:28px!important;color:#94a3b8!important;font-size:14px;font-weight:600;vertical-align:middle!important}.orders-empty:before{display:block;margin:0 auto 9px;content:'⌕';color:#8b5cf6;font-size:32px;line-height:1}.orders-pagination{min-height:50px}@media(max-width:700px){.orders-shell{padding:22px 14px 44px}.orders-heading{align-items:stretch;flex-direction:column;font-size:24px!important}.orders-heading #create_new,.orders-heading #create_new button,.orders-cleanup{width:100%}.orders-filter{padding:13px}}
 </style>
 <main class="h-full pb-16 overflow-y-auto">
     <div class="container grid px-6 mx-auto orders-shell">
@@ -458,7 +458,11 @@ if ($product_id) {
                     Cadastrar novo
                 </button>
             </a>
+            <button type="button" id="cleanup-inactive-orders" class="orders-cleanup" title="Confere os gateways e remove somente pedidos cancelados ou expirados.">
+                Limpar cancelados e expirados
+            </button>
         </h2>
+        <div id="orders-cleanup-feedback" class="orders-cleanup-feedback" role="status" aria-live="polite"></div>
         <form action="?page=orders&" id="filter-form" class="orders-filter" method="GET">
             <div class="flex filtro-busca">
                 <input type="hidden" name="page" value="orders">
@@ -1138,4 +1142,42 @@ if ($product_id) {
             }
         })
     }
+
+    document.getElementById('cleanup-inactive-orders')?.addEventListener('click', async function() {
+        if (!window.confirm('O sistema verificará os gateways e removerá apenas pedidos cancelados ou expirados há pelo menos 1 hora. Pedidos pagos serão preservados. Continuar?')) {
+            return;
+        }
+
+        const button = this;
+        const feedback = document.getElementById('orders-cleanup-feedback');
+        button.disabled = true;
+        button.textContent = 'Conferindo pagamentos...';
+        feedback.className = 'orders-cleanup-feedback';
+        feedback.textContent = '';
+
+        try {
+            const response = await fetch(_base_url_ + 'class/System.php?action=cleanup_inactive_orders', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            });
+            const result = await response.json();
+            if (!response.ok || !result.ok) {
+                throw new Error(result.message || 'Não foi possível concluir a limpeza.');
+            }
+            feedback.className = 'orders-cleanup-feedback success';
+            feedback.textContent = 'Limpeza concluída: ' + Number(result.deleted || 0)
+                + ' removido(s), ' + Number(result.expired || 0)
+                + ' expirado(s), ' + Number(result.recovered || 0)
+                + ' pagamento(s) recuperado(s) e ' + Number(result.skipped || 0)
+                + ' preservado(s) para nova conferência.';
+            window.setTimeout(function() { window.location.reload(); }, 2200);
+        } catch (error) {
+            feedback.className = 'orders-cleanup-feedback error';
+            feedback.textContent = error.message || 'Não foi possível concluir a limpeza.';
+        } finally {
+            button.disabled = false;
+            button.textContent = 'Limpar cancelados e expirados';
+        }
+    });
 </script>

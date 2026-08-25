@@ -1354,16 +1354,16 @@ function payment_mark_order_paid($provider, array $verified)
             return ['ok' => true, 'already_processed' => true, 'message' => 'Pagamento já processado.'];
         }
         $previousStatus = (int) $order['status'];
-        $recoveringVenoPag = $provider === 'venopag' && $previousStatus === 3;
-        if ($previousStatus !== 1 && !$recoveringVenoPag) {
+        $recoveringCanceledOrder = $previousStatus === 3;
+        if ($previousStatus !== 1 && !$recoveringCanceledOrder) {
             throw new RuntimeException('O pedido não está pendente.', 409);
         }
 
-        // A VenoPag pode confirmar o PIX poucos segundos depois do prazo local.
-        // Restaure um pedido expirado somente apos a consulta autenticada e sem
-        // permitir que duas compras ativas fiquem com a mesma cota.
+        // Um gateway pode confirmar o PIX poucos segundos depois do prazo
+        // local. Restaure qualquer pedido expirado somente após a consulta
+        // autenticada e sem duplicar cotas que já voltaram para a campanha.
         $restoredNumbers = (string) ($order['order_numbers'] ?? '');
-        if ($recoveringVenoPag) {
+        if ($recoveringCanceledOrder) {
             $used = [];
             $usedStatement = $conn->prepare('SELECT order_numbers FROM order_list WHERE product_id = ? AND id <> ? AND status <> 3 FOR UPDATE');
             $productIdForLock = (int) $order['product_id'];
@@ -1615,14 +1615,18 @@ function payment_check_order($orderId)
     if ((int) $order['status'] === 2) {
         return ['ok' => true, 'status' => 2];
     }
+    $methodMap = ['MercadoPago' => 'mercadopago', 'Gerencianet' => 'gerencianet', 'Paggue' => 'paggue', 'OpenPix' => 'openpix', 'Pay2m' => 'pay2m', 'VenoPag' => 'venopag'];
+    $provider = $methodMap[$order['payment_method']] ?? null;
     $currentStatus = (int) $order['status'];
-    $recoverableVenoPag = $currentStatus === 3 && (string) $order['payment_method'] === 'VenoPag';
-    if ($currentStatus !== 1 && !$recoverableVenoPag) {
+    $hasProviderReference = $provider === 'openpix'
+        || ($provider === 'gerencianet'
+            ? trim((string) ($order['txid'] ?? '')) !== ''
+            : trim((string) ($order['id_mp'] ?? '')) !== '');
+    $recoverableCanceledOrder = $currentStatus === 3 && $provider && $hasProviderReference;
+    if ($currentStatus !== 1 && !$recoverableCanceledOrder) {
         return ['ok' => true, 'status' => (int) $order['status']];
     }
 
-    $methodMap = ['MercadoPago' => 'mercadopago', 'Gerencianet' => 'gerencianet', 'Paggue' => 'paggue', 'OpenPix' => 'openpix', 'Pay2m' => 'pay2m', 'VenoPag' => 'venopag'];
-    $provider = $methodMap[$order['payment_method']] ?? null;
     if (!$provider) {
         return ['ok' => false, 'status' => 1, 'message' => 'Gateway do pedido inválido.'];
     }
@@ -1896,4 +1900,164 @@ function payment_expire_pending_orders($productId = null, $limit = 10)
     }
 
     return ['ok' => true, 'expired' => $expired];
+}
+
+/**
+ * Reconciles expired PIX payments and permanently removes only orders that
+ * are still canceled after the provider check. Paid orders are never selected.
+ */
+function payment_cleanup_inactive_orders($limit = 100, $minimumAgeMinutes = 60)
+{
+    global $conn;
+
+    $limit = max(1, min(250, (int) $limit));
+    $minimumAgeMinutes = max(0, min(10080, (int) $minimumAgeMinutes));
+    $expiration = payment_expire_pending_orders(null, min(50, $limit));
+    if (empty($expiration['ok'])) {
+        return [
+            'ok' => false,
+            'expired' => 0,
+            'deleted' => 0,
+            'recovered' => 0,
+            'skipped' => 0,
+            'message' => $expiration['message'] ?? 'Não foi possível conferir os pedidos vencidos.',
+        ];
+    }
+
+    $sql = 'SELECT id, product_id, payment_method, id_mp, '
+        . (payment_order_supports_txid() ? 'txid' : "'' AS txid")
+        . ' FROM order_list WHERE status = 3 '
+        . "AND COALESCE(NULLIF(date_updated, '0000-00-00 00:00:00'), date_created) <= DATE_SUB(NOW(), INTERVAL "
+        . $minimumAgeMinutes . ' MINUTE) ORDER BY id ASC LIMIT ' . $limit;
+    $result = $conn->query($sql);
+    if (!$result) {
+        return [
+            'ok' => false,
+            'expired' => (int) ($expiration['expired'] ?? 0),
+            'deleted' => 0,
+            'recovered' => 0,
+            'skipped' => 0,
+            'message' => 'Não foi possível localizar os pedidos cancelados.',
+        ];
+    }
+
+    $gatewayMethods = ['MercadoPago', 'Gerencianet', 'Paggue', 'OpenPix', 'Pay2m', 'VenoPag'];
+    $eligibleIds = [];
+    $recovered = 0;
+    $skipped = 0;
+    $deadline = microtime(true) + 50;
+    while ($order = $result->fetch_assoc()) {
+        if (microtime(true) >= $deadline) {
+            $skipped++;
+            continue;
+        }
+
+        $method = (string) ($order['payment_method'] ?? '');
+        $hasReference = $method === 'OpenPix'
+            || ($method === 'Gerencianet'
+                ? trim((string) ($order['txid'] ?? '')) !== ''
+                : trim((string) ($order['id_mp'] ?? '')) !== '');
+        if (in_array($method, $gatewayMethods, true) && $hasReference) {
+            $check = payment_check_order((int) $order['id']);
+            if (empty($check['ok'])) {
+                $skipped++;
+                continue;
+            }
+            if ((int) ($check['status'] ?? 0) === 2) {
+                $recovered++;
+                continue;
+            }
+            if ($method === 'VenoPag') {
+                $providerStatus = strtolower(trim((string) ($check['provider_status'] ?? '')));
+                if (!in_array($providerStatus, ['expired', 'canceled', 'cancelled'], true)) {
+                    $skipped++;
+                    continue;
+                }
+            }
+        }
+        $eligibleIds[] = (int) $order['id'];
+    }
+    $result->free();
+
+    if (!$eligibleIds) {
+        return [
+            'ok' => true,
+            'expired' => (int) ($expiration['expired'] ?? 0),
+            'deleted' => 0,
+            'recovered' => $recovered,
+            'skipped' => $skipped,
+        ];
+    }
+
+    $idList = implode(',', array_values(array_unique($eligibleIds)));
+    $conn->begin_transaction();
+    try {
+        $locked = $conn->query(
+            'SELECT id, product_id FROM order_list WHERE status = 3 AND id IN (' . $idList . ') FOR UPDATE'
+        );
+        if (!$locked) {
+            throw new RuntimeException($conn->error);
+        }
+        $lockedIds = [];
+        $products = [];
+        while ($row = $locked->fetch_assoc()) {
+            $lockedIds[] = (int) $row['id'];
+            $products[(int) $row['product_id']] = true;
+        }
+        $locked->free();
+
+        if (!$lockedIds) {
+            $conn->commit();
+            return [
+                'ok' => true,
+                'expired' => (int) ($expiration['expired'] ?? 0),
+                'deleted' => 0,
+                'recovered' => $recovered,
+                'skipped' => $skipped,
+            ];
+        }
+
+        $lockedIdList = implode(',', $lockedIds);
+        if (!$conn->query('DELETE FROM order_items WHERE order_id IN (' . $lockedIdList . ')')) {
+            throw new RuntimeException($conn->error);
+        }
+        if (!$conn->query('DELETE FROM order_list WHERE status = 3 AND id IN (' . $lockedIdList . ')')) {
+            throw new RuntimeException($conn->error);
+        }
+        $deleted = (int) $conn->affected_rows;
+
+        foreach (array_keys($products) as $productId) {
+            $stock = $conn->prepare(
+                'UPDATE product_list SET pending_numbers = ('
+                . 'SELECT COALESCE(SUM(quantity), 0) FROM order_list WHERE product_id = ? AND status = 1'
+                . ') WHERE id = ?'
+            );
+            if (!$stock) {
+                throw new RuntimeException($conn->error);
+            }
+            $stock->bind_param('ii', $productId, $productId);
+            $stock->execute();
+            $stock->close();
+        }
+        $conn->commit();
+
+        return [
+            'ok' => true,
+            'expired' => (int) ($expiration['expired'] ?? 0),
+            'deleted' => $deleted,
+            'recovered' => $recovered,
+            'skipped' => $skipped,
+        ];
+    } catch (Throwable $error) {
+        $conn->rollback();
+        error_log('[payments] inactive orders cleanup failed reason=' . $error->getMessage());
+        return [
+            'ok' => false,
+            'expired' => (int) ($expiration['expired'] ?? 0),
+            'deleted' => 0,
+            'recovered' => $recovered,
+            'skipped' => $skipped,
+            'message' => 'Não foi possível concluir a limpeza dos pedidos.',
+        ];
+    }
 }

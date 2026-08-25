@@ -17,6 +17,11 @@ foreach ($expected as $provider) {
     }
 }
 
+if (!is_callable('payment_cleanup_inactive_orders')) {
+    fwrite(STDERR, "Rotina segura de limpeza de pedidos ausente.\n");
+    exit(1);
+}
+
 if (!payment_customer_document_is_valid('52998224725')) {
     fwrite(STDERR, "Validação de CPF falhou.\n");
     exit(1);

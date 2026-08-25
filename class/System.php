@@ -680,6 +680,22 @@ class System extends DBConnection
         return json_encode(payment_reconcile_canceled_venopag_orders($limit));
     }
 
+    public function cleanup_inactive_orders()
+    {
+        if (empty($_SESSION['userdata']['firstname']) || (int) ($_SESSION['userdata']['type'] ?? 0) !== 1) {
+            http_response_code(403);
+            return json_encode(['ok' => false, 'message' => 'Não autorizado.'], JSON_UNESCAPED_UNICODE);
+        }
+
+        if (!function_exists('payment_cleanup_inactive_orders')) {
+            require_once dirname(__DIR__) . '/includes/payment_core.php';
+        }
+
+        // A ação manual usa uma hora de segurança. Antes de excluir, cada PIX
+        // com referência é consultado novamente no gateway.
+        return json_encode(payment_cleanup_inactive_orders(100, 60), JSON_UNESCAPED_UNICODE);
+    }
+
     public function save_ranking_timer()
     {
         if (empty($_SESSION['userdata']['firstname']) || (int) ($_SESSION['userdata']['type'] ?? 0) !== 1) {
@@ -979,6 +995,10 @@ switch ($action) {
     case 'reconcile_venopag_canceled':
         header('Content-Type: application/json; charset=UTF-8');
         echo $sysset->reconcile_venopag_canceled();
+        break;
+    case 'cleanup_inactive_orders':
+        header('Content-Type: application/json; charset=UTF-8');
+        echo $sysset->cleanup_inactive_orders();
         break;
     case 'save_ranking_timer':
         header('Content-Type: application/json; charset=UTF-8');
