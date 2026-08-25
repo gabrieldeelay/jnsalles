@@ -1871,7 +1871,10 @@ class Main extends DBConnection
             ], JSON_UNESCAPED_UNICODE);
         }
 
-        if (@flock($lock, LOCK_EX)) {
+        // Nunca deixe requisições simultâneas esperando dentro do PHP-FPM.
+        // Se outro pedido já estiver reservando cotas, responda imediatamente
+        // e preserve os demais processos para o site continuar acessível.
+        if (@flock($lock, LOCK_EX | LOCK_NB)) {
 
             $customer_id = $this->settings->userdata("id");
             $customer_fname = $this->settings->userdata("firstname");
@@ -1894,6 +1897,10 @@ class Main extends DBConnection
             $expirationCleanup = payment_expire_pending_orders((int) $product_id, 2);
             if (empty($expirationCleanup['ok'])) {
                 error_log('[payments] expired order cleanup failed product=' . (int) $product_id);
+            }
+            $failedCleanup = payment_cleanup_empty_failed_attempts((int) $product_id, 100);
+            if (empty($failedCleanup['ok'])) {
+                error_log('[payments] failed attempt cleanup failed product=' . (int) $product_id);
             }
 
             if (payment_requires_customer_document() && !payment_customer_document_is_valid($customer_cpf)) {

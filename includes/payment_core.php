@@ -1763,6 +1763,62 @@ function payment_reconcile_canceled_venopag_orders($limit = 25)
     return ['ok' => true, 'checked' => $checked, 'recovered' => $recovered, 'statuses' => $statuses, 'errors' => $errors];
 }
 
+function payment_cleanup_empty_failed_attempts($productId = null, $limit = 100)
+{
+    global $conn;
+    $limit = max(1, min(250, (int) $limit));
+    $productId = $productId === null ? null : (int) $productId;
+    $sql = "SELECT id, product_id FROM order_list WHERE status IN (1, 3) "
+        . "AND COALESCE(payment_method, '') = '' AND COALESCE(pix_code, '') = '' "
+        . "AND COALESCE(id_mp, '') = '' AND date_created < DATE_SUB(NOW(), INTERVAL 30 MINUTE)";
+    if ($productId !== null && $productId > 0) {
+        $sql .= ' AND product_id = ' . $productId;
+    }
+    $sql .= ' ORDER BY id ASC LIMIT ' . $limit;
+    $result = $conn->query($sql);
+    if (!$result) {
+        return ['ok' => false, 'deleted' => 0];
+    }
+
+    $ids = [];
+    $products = [];
+    while ($row = $result->fetch_assoc()) {
+        $ids[] = (int) $row['id'];
+        $products[(int) $row['product_id']] = true;
+    }
+    $result->free();
+    if (!$ids) {
+        return ['ok' => true, 'deleted' => 0];
+    }
+
+    $idList = implode(',', $ids);
+    $conn->begin_transaction();
+    try {
+        $conn->query('DELETE FROM order_items WHERE order_id IN (' . $idList . ')');
+        if (!$conn->query(
+            "DELETE FROM order_list WHERE id IN ($idList) AND status IN (1, 3) "
+            . "AND COALESCE(payment_method, '') = '' AND COALESCE(pix_code, '') = '' AND COALESCE(id_mp, '') = ''"
+        )) {
+            throw new RuntimeException($conn->error);
+        }
+        $deleted = $conn->affected_rows;
+        foreach (array_keys($products) as $affectedProductId) {
+            $conn->query(
+                'UPDATE product_list SET pending_numbers = ('
+                . 'SELECT COALESCE(SUM(quantity), 0) FROM order_list '
+                . 'WHERE product_id = ' . (int) $affectedProductId . ' AND status = 1'
+                . ') WHERE id = ' . (int) $affectedProductId
+            );
+        }
+        $conn->commit();
+        return ['ok' => true, 'deleted' => $deleted];
+    } catch (Throwable $error) {
+        $conn->rollback();
+        error_log('[payments] empty failed attempts cleanup failed reason=' . $error->getMessage());
+        return ['ok' => false, 'deleted' => 0];
+    }
+}
+
 function payment_expire_pending_orders($productId = null, $limit = 10)
 {
     global $conn;
