@@ -44,4 +44,17 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}-03:00$/', $expirat
     exit(1);
 }
 
+$checkoutSource = file_get_contents(dirname(__DIR__) . '/class/Main.php');
+$gatewaySelectionPosition = strpos($checkoutSource, '$orderPaymentProvider = payment_provider_for_amount($total_amount)');
+$orderInsertPosition = strpos($checkoutSource, 'INSERT INTO `order_list` (`code`, `customer_id`, `product_name`, `quantity`, `status`, `total_amount`, `order_token`, `order_numbers`, `product_id`, `payment_method`');
+$lateGatewayPosition = strpos($checkoutSource, 'payment_register_order_gateway($oid, $total_amount)');
+if ($gatewaySelectionPosition === false
+    || $orderInsertPosition === false
+    || $lateGatewayPosition === false
+    || $gatewaySelectionPosition >= $orderInsertPosition
+    || $orderInsertPosition >= $lateGatewayPosition) {
+    fwrite(STDERR, "O gateway não está sendo persistido junto com o pedido.\n");
+    exit(1);
+}
+
 echo "Núcleo de pagamentos validado para 6 gateways.\n";

@@ -2587,10 +2587,28 @@ class Main extends DBConnection
                 }
             }
 
-
+            // Grave o gateway junto com o pedido. Antes, uma falha durante a
+            // alocação das cotas podia deixar payment_method vazio e o painel
+            // exibia "Não informado" para um pedido que deveria usar PIX.
+            $orderPaymentProvider = null;
+            $orderPaymentMethod = 'Manual';
+            if ($total_amount > 0) {
+                $paymentDefinitions = payment_provider_definitions();
+                $orderPaymentProvider = payment_provider_for_amount($total_amount);
+                if (!$orderPaymentProvider || empty($paymentDefinitions[$orderPaymentProvider]['method'])) {
+                    $this->correct_stock($product_id);
+                    flock($lock, LOCK_UN);
+                    fclose($lock);
+                    return json_encode([
+                        'status' => 'failed',
+                        'error' => 'Ative um gateway de pagamento válido no painel administrativo.',
+                    ], JSON_UNESCAPED_UNICODE);
+                }
+                $orderPaymentMethod = (string) $paymentDefinitions[$orderPaymentProvider]['method'];
+            }
 
             $insert = $this->conn->query(
-                'INSERT INTO `order_list` (`code`, `customer_id`, `product_name`, `quantity`, `status`, `total_amount`, `order_token`, `order_numbers`, `product_id`, `order_expiration`, `discount_amount`,`roleta`,`box`, `date_created`, `pixel_sell`) VALUES (\'' .
+                'INSERT INTO `order_list` (`code`, `customer_id`, `product_name`, `quantity`, `status`, `total_amount`, `order_token`, `order_numbers`, `product_id`, `payment_method`, `order_expiration`, `discount_amount`,`roleta`,`box`, `date_created`, `pixel_sell`) VALUES (\'' .
                     $code .
                     '\', \'' .
                     $customer_id .
@@ -2608,6 +2626,8 @@ class Main extends DBConnection
                     $order_numbers .
                     '\', \'' .
                     $product_id .
+                    '\', \'' .
+                    $this->conn->real_escape_string($orderPaymentMethod) .
                     '\', \'' .
                     $order_expiration .
                     '\', \'' .
