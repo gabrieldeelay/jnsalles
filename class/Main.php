@@ -2566,34 +2566,19 @@ class Main extends DBConnection
                     if (empty($gatewayAttempt['ok'])) {
                         $payment = $gatewayAttempt;
                     } else {
-                        // As cotas já estão reservadas no banco. A chamada externa não
-                        // precisa manter todos os outros checkouts presos nesta trava.
+                        // As cotas e o gateway já estão registrados. Libere a trava e
+                        // envie o comprador imediatamente para a página do pedido. O
+                        // PIX será gerado por uma fila controlada nessa página.
                         if (is_resource($lock)) {
                             flock($lock, LOCK_UN);
                             fclose($lock);
                             $lock = null;
                         }
-                        try {
-                            $payment = payment_create_pix(
-                                $oid,
-                                $total_amount,
-                                $customer_name,
-                                $customer_email,
-                                $customer_cpf,
-                                $order_expiration,
-                                $customer_phone
-                            );
-                        } catch (Throwable $paymentError) {
-                            error_log(
-                                '[payments] checkout gateway exception order=' . (int) $oid
-                                . ' provider=' . ($gatewayAttempt['provider'] ?? 'unknown')
-                                . ' reason=' . $paymentError->getMessage()
-                            );
-                            $payment = [
-                                'ok' => false,
-                                'message' => 'Não foi possível gerar o PIX. Tente novamente em instantes.',
-                            ];
-                        }
+                        $payment = [
+                            'ok' => true,
+                            'queued' => true,
+                            'provider' => $gatewayAttempt['provider'],
+                        ];
                     }
                     if (empty($payment['ok'])) {
                         $failedAt = date('Y-m-d H:i:s');
@@ -2772,8 +2757,10 @@ class Main extends DBConnection
         } else {
             fclose($lock);
             return json_encode([
-                'status' => 'failed',
-                'error' => 'O sistema está finalizando outro pedido. Aguarde alguns segundos e tente novamente.',
+                'status' => 'busy',
+                'retryable' => true,
+                'retry_after_ms' => random_int(350, 850),
+                'error' => 'Seu pedido entrou na fila de reserva.',
             ], JSON_UNESCAPED_UNICODE);
         }
         return json_encode($resp);
@@ -3313,6 +3300,93 @@ class Main extends DBConnection
 
         return json_encode($resp);
     }
+
+    public function generate_order_pix()
+    {
+        $customerId = (int) $this->settings->userdata('id');
+        if ($customerId <= 0) {
+            return json_encode(['status' => 'failed', 'msg' => 'Não autorizado.'], JSON_UNESCAPED_UNICODE);
+        }
+
+        $orderToken = trim((string) ($_POST['order_token'] ?? ''));
+        if ($orderToken === '') {
+            return json_encode(['status' => 'failed', 'msg' => 'Pedido inválido.'], JSON_UNESCAPED_UNICODE);
+        }
+
+        $statement = $this->conn->prepare(
+            'SELECT o.id, o.status, o.total_amount, o.order_expiration, o.pix_code, '
+            . 'c.firstname, c.lastname, c.email, c.cpf, c.phone '
+            . 'FROM order_list o INNER JOIN customer_list c ON c.id = o.customer_id '
+            . 'WHERE o.order_token = ? AND o.customer_id = ? LIMIT 1'
+        );
+        $statement->bind_param('si', $orderToken, $customerId);
+        $statement->execute();
+        $result = $statement->get_result();
+        $order = $result ? $result->fetch_assoc() : null;
+        $statement->close();
+        if (!$order) {
+            return json_encode(['status' => 'failed', 'msg' => 'Pedido não encontrado.'], JSON_UNESCAPED_UNICODE);
+        }
+        if ((int) $order['status'] === 2) {
+            return json_encode(['status' => 'paid'], JSON_UNESCAPED_UNICODE);
+        }
+        if ((int) $order['status'] !== 1) {
+            return json_encode(['status' => 'failed', 'msg' => 'Este pedido não está disponível para pagamento.'], JSON_UNESCAPED_UNICODE);
+        }
+        if (trim((string) $order['pix_code']) !== '') {
+            return json_encode(['status' => 'success'], JSON_UNESCAPED_UNICODE);
+        }
+
+        $orderLock = payment_gateway_slot_acquire('order-pix-' . (int) $order['id'], 1);
+        if (!is_resource($orderLock)) {
+            return json_encode(['status' => 'queued', 'retry_after_ms' => 1200], JSON_UNESCAPED_UNICODE);
+        }
+
+        try {
+            $fresh = $this->conn->prepare('SELECT status, pix_code FROM order_list WHERE id = ? LIMIT 1');
+            $orderId = (int) $order['id'];
+            $fresh->bind_param('i', $orderId);
+            $fresh->execute();
+            $freshResult = $fresh->get_result();
+            $freshOrder = $freshResult ? $freshResult->fetch_assoc() : null;
+            $fresh->close();
+            if (!$freshOrder || (int) $freshOrder['status'] !== 1) {
+                return json_encode(['status' => 'failed', 'msg' => 'O pedido não está mais aguardando pagamento.'], JSON_UNESCAPED_UNICODE);
+            }
+            if (trim((string) $freshOrder['pix_code']) !== '') {
+                return json_encode(['status' => 'success'], JSON_UNESCAPED_UNICODE);
+            }
+
+            $payment = payment_create_pix(
+                $orderId,
+                (float) $order['total_amount'],
+                trim((string) $order['firstname'] . ' ' . (string) $order['lastname']),
+                (string) $order['email'],
+                (string) $order['cpf'],
+                (int) $order['order_expiration'],
+                (string) $order['phone']
+            );
+            if (!empty($payment['queued'])) {
+                return json_encode([
+                    'status' => 'queued',
+                    'retry_after_ms' => random_int(1000, 2200),
+                ], JSON_UNESCAPED_UNICODE);
+            }
+            if (empty($payment['ok'])) {
+                return json_encode([
+                    'status' => 'failed',
+                    'msg' => $payment['message'] ?? 'Não foi possível gerar o PIX. Tente novamente.',
+                ], JSON_UNESCAPED_UNICODE);
+            }
+            return json_encode(['status' => 'success'], JSON_UNESCAPED_UNICODE);
+        } catch (Throwable $error) {
+            error_log('[payments] queued pix generation failed order=' . (int) $order['id'] . ' reason=' . $error->getMessage());
+            return json_encode(['status' => 'failed', 'msg' => 'Não foi possível gerar o PIX agora. Tente novamente.'], JSON_UNESCAPED_UNICODE);
+        } finally {
+            payment_gateway_slot_release($orderLock);
+        }
+    }
+
     public function check_payment_status()
     {
         if (!$this->settings->userdata("firstname")) {
@@ -6222,6 +6296,9 @@ switch ($action) {
         break;
     case "check_order":
         echo $Main->check_payment_status();
+        break;
+    case "generate_order_pix":
+        echo $Main->generate_order_pix();
         break;
     case "check_payment_status":
         echo $Main->check_payment_status();

@@ -348,6 +348,11 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
                 </div>
                 <div class="app-card card rounded-bottom rounded-0 rounded-bottom b-1 border-dark mb-2">
                     <div class="card-body">
+                        <div id="pix-generation-state" class="alert alert-info text-center mb-2 <?= trim((string) $pix_code) !== '' ? 'd-none' : '' ?>" role="status" aria-live="polite">
+                            <div class="spinner-border spinner-border-sm me-2" aria-hidden="true"></div>
+                            <strong>Pedido reservado.</strong> Estamos gerando o seu PIX; mantenha esta página aberta.
+                        </div>
+                        <div id="pix-payment-content" class="<?= trim((string) $pix_code) === '' ? 'd-none' : '' ?>">
                         <div class="row justify-content-center mb-2">
                             <div class="col-12 text-start">
                                 <div class="mb-1"><span class="badge bg-success badge-xs">1</span><span class="font-xxs"> Copie o código PIX abaixo.</span></div>
@@ -386,6 +391,7 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
                             </button>
                             <div id="payment-confirmation-feedback" class="alert alert-info p-2 mb-2 font-xss d-none" role="status" aria-live="polite"></div>
                             <p class="alert alert-warning p-2 font-xss" style="text-align: justify; margin-bottom:0.5rem !important">Este pagamento só pode ser realizado dentro do tempo, após este período, caso o pagamento não for confirmado os números voltam a ficar disponíveis.</p>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -1286,7 +1292,76 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
             }
         }, 1000);
 
-        <?php if ($status == 1) { ?>
+        var pixIsReady = <?= trim((string) $pix_code) !== '' ? 'true' : 'false' ?>;
+        var pixGenerationRequest = null;
+        var pixGenerationFailures = 0;
+
+        function schedulePixGeneration(delay) {
+            window.setTimeout(generateQueuedPix, Math.max(500, Number(delay || 1200)));
+        }
+
+        function generateQueuedPix() {
+            if (pixIsReady || pixGenerationRequest) {
+                return;
+            }
+            pixGenerationRequest = $.ajax({
+                type: 'POST',
+                url: _base_url_ + 'class/Main.php?action=generate_order_pix',
+                dataType: 'json',
+                timeout: 70000,
+                data: { order_token: '<?= $order_token ?>' },
+                success: function(resp) {
+                    if (resp.status === 'success' || resp.status === 'paid') {
+                        pixIsReady = true;
+                        window.location.reload();
+                        return;
+                    }
+                    if (resp.status === 'queued') {
+                        $('#pix-generation-state').html(
+                            '<div class="spinner-border spinner-border-sm me-2" aria-hidden="true"></div>' +
+                            '<strong>Pedido reservado.</strong> Seu PIX está na fila e será exibido automaticamente.'
+                        );
+                        schedulePixGeneration(resp.retry_after_ms || 1400);
+                        return;
+                    }
+                    pixGenerationFailures++;
+                    var message = resp.msg || 'O gateway ainda não respondeu.';
+                    if (pixGenerationFailures < 3) {
+                        $('#pix-generation-state').html('<strong>' + message + '</strong> Tentaremos novamente automaticamente.');
+                        schedulePixGeneration(4000);
+                    } else {
+                        $('#pix-generation-state').html(
+                            '<strong>' + message + '</strong><br>' +
+                            '<button type="button" id="retry-pix-generation" class="btn btn-sm btn-primary mt-2">Tentar gerar novamente</button>'
+                        );
+                    }
+                },
+                error: function() {
+                    $('#pix-generation-state').html(
+                        '<strong>Seu pedido está reservado.</strong> A conexão oscilou e tentaremos gerar o PIX novamente.'
+                    );
+                    schedulePixGeneration(2500);
+                },
+                complete: function() {
+                    pixGenerationRequest = null;
+                }
+            });
+        }
+
+        $(document).on('click', '#retry-pix-generation', function() {
+            pixGenerationFailures = 0;
+            $('#pix-generation-state').html(
+                '<div class="spinner-border spinner-border-sm me-2" aria-hidden="true"></div>' +
+                '<strong>Gerando seu PIX...</strong>'
+            );
+            generateQueuedPix();
+        });
+
+        if (!pixIsReady) {
+            generateQueuedPix();
+        }
+
+        <?php if ($status == 1 && trim((string) $pix_code) !== '') { ?>
             var paymentStatusInterval = null;
             var paymentStatusRequest = null;
             var paymentWasInformed = false;

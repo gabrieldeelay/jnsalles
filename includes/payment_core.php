@@ -466,7 +466,23 @@ function payment_create_pix($orderId, $amount, $name, $email, $cpf, $expiration,
 
     $amount = payment_amount($amount, $provider);
     $expiration = max(5, min(1440, (int) $expiration));
-    $result = call_user_func('payment_create_' . $provider, (int) $orderId, $amount, $name, $email, $cpf, $expiration, $phone);
+    // No máximo cinco chamadas externas ficam abertas ao mesmo tempo. Os
+    // demais pedidos permanecem na fila e tentam novamente pela página do PIX,
+    // sem ocupar todos os processos PHP do site.
+    $providerSlot = payment_gateway_slot_acquire($provider . '-create', 5);
+    if (!is_resource($providerSlot)) {
+        return [
+            'ok' => false,
+            'queued' => true,
+            'provider' => $provider,
+            'message' => 'Seu pedido está na fila para gerar o PIX.',
+        ];
+    }
+    try {
+        $result = call_user_func('payment_create_' . $provider, (int) $orderId, $amount, $name, $email, $cpf, $expiration, $phone);
+    } finally {
+        payment_gateway_slot_release($providerSlot);
+    }
     if (empty($result['ok'])) {
         error_log('[payments] charge creation failed provider=' . $provider . ' order=' . (int) $orderId);
     }
@@ -1014,29 +1030,15 @@ function payment_create_venopag($orderId, $amount, $name, $email, $cpf, $expirat
     if ($document !== '') {
         $payload['document'] = $document;
     }
-    // Uma resposta lenta do provedor não pode ocupar todos os processos PHP e
-    // derrubar a campanha. Duas criações simultâneas mantêm o site responsivo.
-    $gatewaySlot = payment_gateway_slot_acquire('venopag-cashin', 2);
-    if (!is_resource($gatewaySlot)) {
-        return [
-            'ok' => false,
-            'message' => 'Muitos pagamentos estão sendo gerados neste momento. Aguarde alguns segundos e tente novamente.',
-        ];
-    }
-
-    try {
-        // A VenoPag pode levar mais de 30 segundos para devolver o PIX. Aguarde
-        // a resposta completa para não abandonar uma cobrança já criada.
-        $response = payment_venopag_request('POST', '/api/cashin', $payload, 45);
-        if (empty($response['ok']) && (int) ($response['app_error_code'] ?? 0) === 502) {
-            // O código 502 informa que a cobrança não foi criada; somente nesse
-            // caso é seguro fazer uma nova tentativa curta.
-            error_log('[payments] venopag transient failure retrying order=' . (int) $orderId);
-            usleep(300000);
-            $response = payment_venopag_request('POST', '/api/cashin', $payload, 20);
-        }
-    } finally {
-        payment_gateway_slot_release($gatewaySlot);
+    // A VenoPag pode levar mais de 30 segundos para devolver o PIX. Aguarde a
+    // resposta completa para não abandonar uma cobrança já criada.
+    $response = payment_venopag_request('POST', '/api/cashin', $payload, 45);
+    if (empty($response['ok']) && (int) ($response['app_error_code'] ?? 0) === 502) {
+        // O código 502 informa que a cobrança não foi criada; somente nesse
+        // caso é seguro fazer uma nova tentativa curta.
+        error_log('[payments] venopag transient failure retrying order=' . (int) $orderId);
+        usleep(300000);
+        $response = payment_venopag_request('POST', '/api/cashin', $payload, 20);
     }
     $data = $response['json'] ?? [];
     if (empty($response['ok']) || ($data['status'] ?? '') !== 'pending' || empty($data['copyPaste']) || empty($data['request_number'])) {

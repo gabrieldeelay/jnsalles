@@ -2108,7 +2108,8 @@ if ($available > 0 && $status == '1') {
                                         calculatePrice(value);
                                     })
 
-                                    function place_order($ref) {
+                                    function place_order($ref, queueAttempt) {
+                                        queueAttempt = Number(queueAttempt || 0);
                                         $("#overlay").fadeIn(300);
                                         let valorUpsell = 0
                                         let qtdUpsell = 0
@@ -2138,6 +2139,15 @@ if ($available > 0 && $status == '1') {
                                                 console.log(resp)
                                                 if (resp.status == 'success') {
                                                     location.replace(resp.redirect)
+                                                } else if (resp.status == 'busy' && resp.retryable) {
+                                                    if (queueAttempt >= 120) {
+                                                        $("#overlay").stop(true, true).hide();
+                                                        alert('O movimento está muito alto. Aguarde alguns instantes e tente novamente.');
+                                                        return;
+                                                    }
+                                                    window.setTimeout(function() {
+                                                        place_order($ref, queueAttempt + 1);
+                                                    }, Number(resp.retry_after_ms || 600));
                                                 } else if (resp.status == 'pay2m') {
                                                     $("#overlay").stop(true, true).hide();
                                                     alert(resp.error || 'Atualize seu cadastro para continuar.');
@@ -2148,7 +2158,7 @@ if ($available > 0 && $status == '1') {
                                                 }
                                             },
                                             complete: function(xhr) {
-                                                if (!xhr.responseJSON || xhr.responseJSON.status !== 'success') {
+                                                if (!xhr.responseJSON || !['success', 'busy'].includes(xhr.responseJSON.status)) {
                                                     $("#overlay").stop(true, true).hide();
                                                 }
                                             }
