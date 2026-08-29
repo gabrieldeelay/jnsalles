@@ -12,6 +12,10 @@ $google_gtm_id = $_settings->info('google_gtm_id');
 $facebook_access_token = $_settings->info('facebook_access_token');
 $facebook_pixel_id = $_settings->info('facebook_pixel_id');
 $affiliate = $_settings->userdata('is_affiliate');
+$styleVersion = @filemtime(__DIR__ . '/../../assets/css/style.css');
+if (!$styleVersion) {
+   $styleVersion = '1';
+}
 $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 $parts = parse_url($url);
 $path_name = $parts['path'];
@@ -44,7 +48,7 @@ if (isset($parts['query'])) {
    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
    <meta name="theme-color" content="#000000">
    
-   <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/style.css?<?= rand(111111, 999999) ?>.<?= rand(111, 999) ?>">
+   <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/style.css?v=<?= rawurlencode((string) $styleVersion) ?>">
    <script src="<?php echo BASE_URL; ?>includes/jquery/jquery.min.js"></script>
    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
    <script>
