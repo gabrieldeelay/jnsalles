@@ -59,49 +59,6 @@ if ($enable_cpf == 1) {
     $search_type = 'search_orders_by_phone';
 }
 
-$major = [];
-$minor = [];
-$stmt = $conn->prepare('SELECT o.order_numbers, o.date_created, c.firstname, c.lastname, c.phone
-                        FROM order_list o
-                        INNER JOIN customer_list c ON o.customer_id = c.id
-                        WHERE o.product_id = ? AND o.status = 2');
-if ($stmt) {
-    $productIdForRanking = (int) $id;
-    $stmt->bind_param('i', $productIdForRanking);
-    if ($stmt->execute()) {
-        $result = $stmt->get_result();
-        while ($row = $result->fetch_assoc()) {
-            $confirmedNumbers = array_filter(array_map('trim', explode(',', (string) $row['order_numbers'])), 'strlen');
-            foreach ($confirmedNumbers as $confirmedNumber) {
-                $candidate = [
-                    'cota' => $confirmedNumber,
-                    'winner' => trim($row['firstname'] . ' ' . $row['lastname']),
-                    'date_created' => date('d/m/Y H:i:s', strtotime($row['date_created'])),
-                    'phone' => $row['phone'],
-                ];
-                if (empty($major['cota']) || (int) $confirmedNumber > (int) $major['cota']) {
-                    $major = $candidate;
-                }
-                if (empty($minor['cota']) || (int) $confirmedNumber < (int) $minor['cota']) {
-                    $minor = $candidate;
-                }
-            }
-        }
-    } else {
-        error_log('[campaign] confirmed number query failed for product=' . (int) $id);
-    }
-    $stmt->close();
-} else {
-    error_log('[campaign] confirmed number query could not be prepared for product=' . (int) $id);
-}
-
-if (empty($major['cota'])) {
-    $major['cota'] = 'Seja o primeiro a comprar';
-}
-if (empty($minor['cota'])) {
-    $minor['cota'] = 'Seja o primeiro a comprar';
-}
-
 ?>
 
 <style>
