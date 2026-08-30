@@ -103,13 +103,13 @@ function leowp_format_luck_numbers($client_lucky_numbers, $raffle_total_numbers,
 
     if ($client_lucky_numbers) {
         foreach ($client_lucky_numbers as $client_lucky_number) {
-            if (!empty($client_lucky_number)) {
-                $size = strlen($client_lucky_number);
+            if (trim((string) $client_lucky_number) !== '') {
                 if ($type_of_draw == 3 || $type_of_draw == 4) {
                     $bicho_name = $bichos[$client_lucky_number];
                     echo '<span style="border-radius: 5px !important; display: inline-block; padding: 5px; border-radius:2px; margin: 4px;"  class=" ' . $class . ' me-0 alert-success">' . $bicho_name . '</span>';
                 } else {
-                    $output = ($type_of_draw == 3 || $type_of_draw == 4) ? $bichos[$client_lucky_number] : $client_lucky_number;
+                    $output = jnsalles_format_ticket($client_lucky_number, $raffle_total_numbers);
+                    $size = strlen($output);
                     if ($opt == true) {
                         echo '<span style="border-radius: 5px !important; display: inline-block; padding: 5px; border-radius:2px; margin: 4px;" class=" ' . $class . ' me-0 wd-' . $size . '">' . $output . '</span>';
                     } else {
@@ -624,7 +624,7 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
 
                     if (!empty($numeros_premiados) || !empty($numeros_premiados_roleta) || !empty($numeros_premiados_box)) {
                         $quantidade_premiados = count($numeros_premiados);
-                        $numeros_encontrados = implode(', ', $numeros_premiados);
+                        $numeros_encontrados = implode(', ', jnsalles_format_ticket_list($numeros_premiados, $row['qty_numbers']));
                         $numeros_encontrados = rtrim($numeros_encontrados, ', ');
                         $valorGanhador = [];
                         $valorGanhadorb = [];
@@ -884,7 +884,7 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
                         }
                     } else {
                         $quantidade_premiados = count($numeros_premiados);
-                        $numeros_encontrados = implode(', ', $numeros_premiados);
+                        $numeros_encontrados = implode(', ', jnsalles_format_ticket_list($numeros_premiados, $row['qty_numbers']));
                         $numeros_encontrados = rtrim($numeros_encontrados, ', ');
                         $roletaOpen = false;
 
@@ -1181,7 +1181,7 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
                                 echo '            <p class="alert alert-warning p-2 mt-2 font-xss" style="text-align: justify; margin-bottom:0.5rem !important">As cotas serão geradas após o pagamento.</p>
        ';
                             } else {
-                                echo leowp_format_luck_numbers($sliced_numbers, $limit, $class = 'alert-success ', $opt = true, $type_of_draw);
+                                echo leowp_format_luck_numbers($sliced_numbers, $row['qty_numbers'], $class = 'alert-success ', $opt = true, $type_of_draw);
 
                             ?>
                         </div>

@@ -60,7 +60,7 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
             <?php
             $gt = 0;
             $order_items = $conn->query("
-                SELECT oi.*, p.name AS product, p.price, p.image_path, p.type_of_draw, ol.order_numbers, ol.quantity AS order_quantity, ol.discount_amount
+                SELECT oi.*, p.name AS product, p.price, p.image_path, p.type_of_draw, p.qty_numbers, ol.order_numbers, ol.quantity AS order_quantity, ol.discount_amount
                 FROM `order_items` oi
                 INNER JOIN product_list p ON oi.product_id = p.id
                 INNER JOIN order_list ol ON oi.order_id = ol.id
@@ -112,10 +112,10 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
                     <textarea class="block w-full mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-textarea focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray" rows="3" placeholder="Descrição da campanha" disabled><?php
                         $type_of_draw = $row['type_of_draw'];
                         if ($type_of_draw > 2) {
-                            $order_numbers = drope_format_luck_numbers($row['order_numbers'], $row['quantity'], false, true, $type_of_draw);
+                            $order_numbers = drope_format_luck_numbers($row['order_numbers'], $row['qty_numbers'], false, true, $type_of_draw);
                             echo str_replace('<span class="comma-hide">', '', $order_numbers);
                         } else {
-                            $order_numbers = drope_format_luck_numbers($row['order_numbers'], $row['quantity'], false, true, $type_of_draw);
+                            $order_numbers = drope_format_luck_numbers($row['order_numbers'], $row['qty_numbers'], false, true, $type_of_draw);
                             echo str_replace('<span class="comma-hide">', '', $order_numbers);
                         }
                         ?>

@@ -174,7 +174,7 @@ if ($qry->num_rows > 0) {
 
 	<?php
 
-	$sql = 'SELECT name AS product_name, draw_number, draw_winner, image_path, slug, date_of_draw FROM product_list WHERE draw_number <> \'\' ORDER BY date_of_draw DESC LIMIT 5';
+	$sql = 'SELECT name AS product_name, qty_numbers, draw_number, draw_winner, image_path, slug, date_of_draw FROM product_list WHERE draw_number <> \'\' ORDER BY date_of_draw DESC LIMIT 5';
 	$products = $conn->query($sql);
 
 	if (0 < $products->num_rows) {
@@ -250,7 +250,7 @@ if ($qry->num_rows > 0) {
 											<p class="mb-0"><b><?php echo $winner['name']; ?></b></p>
 											<div class="ganhadorItem_ganhadorDescricao__Z4kO2">
                                             	<p class="mb-0">Prêmio:<b><?php echo $winner['product']; ?></b></p>
-                                            	<p class="mb-0">Número da sorte <b><?php echo $winner['number']; ?></b></p>
+                                            <p class="mb-0">Número da sorte <b><?php echo jnsalles_format_ticket($winner['number'], $row['qty_numbers']); ?></b></p>
                                             	<p class="mb-0">Data da premiação <b><?php echo $winner['date']; ?></b></p>
                                             	<p class="mb-0">Telefone <b><?php echo $winner['phone']; ?></b></p>
                                            </div>

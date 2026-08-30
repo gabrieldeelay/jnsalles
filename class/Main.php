@@ -5807,7 +5807,8 @@ class Main extends DBConnection
             c.firstname, 
             c.lastname, 
             c.phone, 
-            o.date_updated 
+            o.date_updated,
+            (SELECT qty_numbers FROM product_list WHERE id = o.product_id) AS qty_numbers
         FROM 
             order_list AS o
         INNER JOIN 
@@ -5825,7 +5826,7 @@ class Main extends DBConnection
 
                 // Construa os dados para maior e menor cota
                 $resp[$key] = [
-                    "cota" => $key == "major" ? $major_cota : $minor_cota,
+                    "cota" => jnsalles_format_ticket($cota, $row['qty_numbers']),
                     "name" => $row["firstname"] . " " . $row["lastname"],
                     "phone" => $row["phone"],
                     "date" => date("d/m/Y", strtotime($row["date_created"])) . " às " . date("H:i", strtotime($row["date_created"])),
@@ -5925,7 +5926,8 @@ class Main extends DBConnection
                 c.firstname, 
                 c.lastname, 
                 c.phone, 
-                o.date_updated 
+                o.date_updated,
+                (SELECT qty_numbers FROM product_list WHERE id = o.product_id) AS qty_numbers
             FROM 
                 order_list AS o
             INNER JOIN 
@@ -5942,7 +5944,7 @@ class Main extends DBConnection
                 $row = $result->fetch_assoc();
 
                 $resp[$key] = [
-                    "cota" => $key == "major" ? $major_cota : $minor_cota,
+                    "cota" => jnsalles_format_ticket($cota, $row['qty_numbers']),
                     "name" => $row["firstname"] . " " . $row["lastname"],
                     "phone" => $row["phone"],
                     "date" => date("d/m/Y", strtotime($row["date_created"])) . " às " . date("H:i", strtotime($row["date_created"])),
@@ -5973,7 +5975,7 @@ class Main extends DBConnection
         if ($id <= 0) {
             return '<p class="text-center text-muted my-3">Campanha inválida.</p>';
         }
-        $prod = $conn->query("SELECT roleta, box FROM product_list WHERE id = $id ");
+        $prod = $conn->query("SELECT roleta, box, qty_numbers FROM product_list WHERE id = $id ");
         $produto = $prod->fetch_assoc();
 
         $cotas_premiadas = (string) ($_POST['cotas_premiadas'] ?? '');
@@ -6052,14 +6054,15 @@ if ($min_cotas_purchased > 0) {
                 $minor = $tipo == 'Menor' ? true : false;
                 $major = $tipo == 'Maior' ? true : false;
                 if ($cota != '' && !$minor && !$major) {
-                    $length = strlen($cota);
+                    $displayCota = jnsalles_format_ticket($cota, $produto['qty_numbers']);
+                    $length = strlen($displayCota);
                     echo '<div class=" sc-3f9a15f1-7 reservada p-1" style="background: linear-gradient(90deg, #000, #414141) !important; border: 1px solid #414141; border-radius: 10px; margin-bottom: 6px; ">';
  
                     echo '   <div style="justify-content:space-between ;display:flex; align-items:center ; ">';
                     echo '        <div style="display:flex; align-items:center ;   justify-content: space-between; width: 100%; padding: 0 4px 0 0;">';
                     echo '            <span  class="wd-' . $length . ' new_gradient_anime --md ' . $tipo . ' btn btn-sm btn-light text-dark" style="min-width:100px !important; border-radius: 6px; font-family: Montserrat, "Public Sans", sans-serif; margin-right:4px; font-size:14px"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" viewBox="0 0 256 256" class="w-3 lg:w-4 h-3 lg:h-4">
                 <path d="M232,108a12,12,0,0,0,12-12V64a20,20,0,0,0-20-20H32A20,20,0,0,0,12,64V96a12,12,0,0,0,12,12,20,20,0,0,1,0,40,12,12,0,0,0-12,12v32a20,20,0,0,0,20,20H224a20,20,0,0,0,20-20V160a12,12,0,0,0-12-12,20,20,0,0,1,0-40ZM36,170.34a44,44,0,0,0,0-84.68V68H88V188H36Zm184,0V188H112V68H220V85.66a44,44,0,0,0,0,84.68Z"></path>
-            </svg>&nbsp;' . $cota . '</span>';
+            </svg>&nbsp;' . $displayCota . '</span>';
                     echo '          <span class="prize" style=" font-weight:500; margin-right:8px;color:white ">' . $prize . '</span>';
                     echo '         <span style="text-wrap:nowrap; font-size:14px;font-weight:600; color:white">' . $customer_name . ' 🏆</span>';
                     echo '       </div>';
@@ -6081,12 +6084,13 @@ if ($min_cotas_purchased > 0) {
                 $minor = $tipo == 'Menor' ? true : false;
                 $major = $tipo == 'Maior' ? true : false;
                 if ($cota != '' && !$minor && !$major) {
-                    $length = strlen($cota);
+                    $displayCota = jnsalles_format_ticket($cota, $produto['qty_numbers']);
+                    $length = strlen($displayCota);
                     echo '<div class=" sc-3f9a15f1-7 bg-dark disponivel p-1" style="background-color: #ffffff !important; border: 1px solid #cdd0d5; border-radius: 10px;margin-bottom: 6px;">';
 
                     echo '   <div style="justify-content:space-between ;display:flex; align-items:center ; ">';
                     echo '        <div style="display:flex; align-items:center  ;   justify-content: space-between; width: 100%; padding: 0 4px 0 0;">';
-                    echo '      <span class="wd-' . $length . ' new_gradient_anime --md ' . $tipo . ' btn btn-sm btn-light text-dark" style="min-width:100px !important; background-color: #6c757d !important; color: #ffffff !important; border-radius: 6px; font-family: Montserrat, "Public Sans", sans-serif; margin-right:4px; font-size:14px;">' . $cota . '</span>';
+                    echo '      <span class="wd-' . $length . ' new_gradient_anime --md ' . $tipo . ' btn btn-sm btn-light text-dark" style="min-width:100px !important; background-color: #6c757d !important; color: #ffffff !important; border-radius: 6px; font-family: Montserrat, "Public Sans", sans-serif; margin-right:4px; font-size:14px;">' . $displayCota . '</span>';
                     echo '          <span class="prize" style="font-family: Montserrat, \'Public Sans\', sans-serif; margin-right:8px; color:#000000 !important;">' . $prize . '</span>';
                     echo '         <div style="text-wrap:nowrap; font-size:14px;font-weight:600; color:#fff"><span style="color: #1ebc1e;">● </span><span style="color: #414141;">Disponível</span></div>';
                     echo '       </div>';
@@ -6564,8 +6568,9 @@ if ($min_cotas_purchased > 0) {
         $dompdf = new Dompdf();
 
         // Consulta para buscar os dados do pedido específico
-        $qry = "SELECT o.*, c.firstname, c.lastname, c.phone FROM order_list o
+        $qry = "SELECT o.*, c.firstname, c.lastname, c.phone, p.qty_numbers FROM order_list o
     INNER JOIN customer_list c ON o.customer_id = c.id
+    INNER JOIN product_list p ON o.product_id = p.id
     WHERE o.id = '$id'";
         $result = $this->conn->query($qry);
         $row = $result->fetch_assoc();
@@ -6587,7 +6592,7 @@ if ($min_cotas_purchased > 0) {
             $html .= '<span>' . ($row['status'] == 2 ? 'Pago' : 'Pendente') . '</span>';
 
 
-            $order_numbers_without_spaces = preg_replace('/\s+/', '', $row['order_numbers']);
+            $order_numbers_without_spaces = implode(',', jnsalles_format_ticket_list($row['order_numbers'], $row['qty_numbers']));
 
             $html .= '<div style="width: 100%; word-wrap: break-word; word-break: break-all; overflow-wrap: break-word; overflow: hidden; margin-top: 36px; display: flex; padding: 12px; text-align: left;">' . $order_numbers_without_spaces . '</div>';
 
@@ -6610,11 +6615,14 @@ if ($min_cotas_purchased > 0) {
 
     public function view_numbers()
     {
-        $id = $_POST['id'];
-        $qry = "SELECT order_numbers FROM order_list WHERE id = '$id'";
+        $id = (int) ($_POST['id'] ?? 0);
+        $qry = "SELECT o.order_numbers, p.qty_numbers FROM order_list o INNER JOIN product_list p ON p.id = o.product_id WHERE o.id = $id";
         $result = $this->conn->query($qry);
-        $row = $result->fetch_assoc();
-        $order_numbers = $row['order_numbers'];
+        $row = $result ? $result->fetch_assoc() : null;
+        if (!$row) {
+            return json_encode(['status' => 'failed', 'msg' => 'Pedido não encontrado.']);
+        }
+        $order_numbers = implode(',', jnsalles_format_ticket_list($row['order_numbers'], $row['qty_numbers']));
         $resp["status"] = "success";
         $resp["order_numbers"] = $order_numbers;
         return json_encode($resp);

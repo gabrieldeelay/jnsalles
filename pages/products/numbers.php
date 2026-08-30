@@ -190,7 +190,7 @@ if (!empty($draw_number)) {
         echo 'º - ';
         echo $winner['name'];
         echo '&nbsp;<i class="bi bi-check-circle text-white-50"></i></h5>' . "\r\n" . '                     <div class="text-white-50"><small>Ganhador(a) Número da sorte: ';
-        echo $winner['number'];
+        echo jnsalles_format_ticket($winner['number'], $qty_numbers);
         echo '</small></div>' . "\r\n" . '                  </div>' . "\r\n" . '               </div>' . "\r\n" . '            </div>' . "\r\n" . '         </div>' . "\r\n" . '      ';
     }
 
@@ -1003,7 +1003,7 @@ echo '", qty: qty},' .
     "\r\n" .
     '    var valor = divNumero.text();' .
     "\r\n" .
-    '    var cota = divNumero.data(\'cota\');' .
+    '    var cota = divNumero.attr(\'data-cota\');' .
     "\r\n" .
     '    var sessao = sessionStorage.getItem(\'valores\');' .
     "\r\n" .
@@ -1021,7 +1021,7 @@ echo '", qty: qty},' .
     "\r\n" .
     '     var clonedDiv = $(this).clone();' .
     "\r\n" .
-    '     clonedDiv.find(\'.numero-template\').text(cota);' .
+    '     clonedDiv.find(\'.numero-template\').text(valor);' .
     "\r\n" .
     '     clonedDiv.appendTo(\'.cotas-checkout\');' .
     "\r\n" .
@@ -1039,13 +1039,13 @@ echo '", qty: qty},' .
     "\r\n" .
     '  divNumero.addClass(\'bg-cota\').removeClass(\'numero-template-selected\');' .
     "\r\n" .
-    '  $(\'.cotas-checkout\').find(\'.numero-template:contains(\' + cota + \')\').parent().remove();' .
+    '  $(\'.cotas-checkout .numero-template\').filter(function() { return $(this).attr(\'data-cota\') === cota; }).parent().remove();' .
     "\r\n" .
     '  $(".removeNumero").click();' .
     "\r\n\r\n" .
     '  $(\'.cota\').filter(function() {' .
     "\r\n" .
-    '   return $(this).find(\'.numero-template\').text() === cota;' .
+    '   return $(this).find(\'.numero-template\').attr(\'data-cota\') === cota;' .
     "\r\n" .
     '}).find(\'.numero-template\').addClass(\'bg-cota\').removeClass(\'numero-template-selected\');' .
     "\r\n" .
@@ -1059,7 +1059,7 @@ echo '", qty: qty},' .
     "\r\n\r\n" .
     '   $(\'.cotas-checkout\').on(\'click\', \'.cota\', function() {' .
     "\r\n" .
-    '    var valor = $(this).find(\'.numero-template\').text();' .
+    '    var valor = $(this).find(\'.numero-template\').attr(\'data-cota\');' .
     "\r\n" .
     '    var sessao = sessionStorage.getItem(\'valores\');' .
     "\r\n" .
@@ -1073,7 +1073,7 @@ echo '", qty: qty},' .
     "\r\n" .
     '     $(\'.cota\').filter(function() {' .
     "\r\n" .
-    '      return $(this).find(\'.numero-template\').text() === valor;' .
+    '      return $(this).find(\'.numero-template\').attr(\'data-cota\') === valor;' .
     "\r\n" .
     '   }).find(\'.numero-template\').addClass(\'bg-cota\').removeClass(\'numero-template-selected\');' .
     "\r\n" .
@@ -1175,7 +1175,7 @@ echo '" },' .
     "\r\n" .
     '    var divCota = $(\'<div>\').addClass(\'col cota\');' .
     "\r\n" .
-    '    var divNumero = $(\'<div>\').addClass(\'numero-template \' + classe).attr(\'data-cota\', numero).attr(\'data-nome\', nome).text(numero);'
+    '    var divNumero = $(\'<div>\').addClass(\'numero-template \' + classe).attr(\'data-cota\', numero).attr(\'data-nome\', nome).text(String(numero).replace(/^0+(?=\\d)/, "").padStart(' . jnsalles_ticket_width($qty_numbers) . ', "0"));'
     .
     "\r\n\r\n" .
     '    divNumero.appendTo(divCota);' .

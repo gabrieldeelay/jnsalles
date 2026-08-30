@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/includes/ticket_numbers.php';
+
 
 function exibir_cabecalho($conn)
 {
@@ -117,13 +119,13 @@ function drope_format_luck_numbers($client_lucky_numbers, $raffle_total_numbers,
 		$bichos = ['00' => 'Avestruz M1', '01' => 'Avestruz M2', '02' => 'Águia M1', '03' => 'Águia M2', '04' => 'Burro M1', '05' => 'Burro M2', '06' => 'Borboleta M1', '07' => 'Borboleta M2', '08' => 'Cachorro M1', '09' => 'Cachorro M2', 10 => 'Cabra M1', 11 => 'Cabra M2', 12 => 'Carneiro M1', 13 => 'Carneiro M2', 14 => 'Camelo M1', 15 => 'Camelo M2', 16 => 'Cobra M1', 17 => 'Cobra M2', 18 => 'Coelho M1', 19 => 'Coelho M2', 20 => 'Cavalo M1', 21 => 'Cavalo M2', 22 => 'Elefante M1', 23 => 'Elefante M2', 24 => 'Galo M1', 25 => 'Galo M2', 26 => 'Gato M1', 27 => 'Gato M2', 28 => 'Jacaré M1', 29 => 'Jacaré M2', 30 => 'Leão M1', 31 => 'Leão M2', 32 => 'Macaco M1', 33 => 'Macaco M2', 34 => 'Porco M1', 35 => 'Porco M2', 36 => 'Pavão M1', 37 => 'Pavão M2', 38 => 'Peru M1', 39 => 'Peru M2', 40 => 'Touro M1', 41 => 'Touro M2', 42 => 'Tigre M1', 43 => 'Tigre M2', 44 => 'Urso M1', 45 => 'Urso M2', 46 => 'Veado M1', 47 => 'Veado M2', 48 => 'Vaca M1', 49 => 'Vaca M2'];
 	}
 
-	if ($client_lucky_numbers) {
+	if ((string) $client_lucky_numbers !== '') {
 		$client_lucky_numbers = explode(',', $client_lucky_numbers);
 		$result = '';
 		sort($client_lucky_numbers);
 
 		foreach ($client_lucky_numbers as $client_lucky_number) {
-			if (!empty($client_lucky_number)) {
+			if (trim((string) $client_lucky_number) !== '') {
 				if (($type_of_draw == 3) || $type_of_draw == 4) {
 					$bicho_name = $bichos[$client_lucky_number];
 
@@ -135,7 +137,7 @@ function drope_format_luck_numbers($client_lucky_numbers, $raffle_total_numbers,
 					}
 				}
 				else {
-					$output = (($type_of_draw == 3) || $type_of_draw == 4 ? $bichos[$client_lucky_number] : $client_lucky_number);
+					$output = jnsalles_format_ticket($client_lucky_number, $raffle_total_numbers);
 
 					if ((bool) $opt) {
 						$result .= '' . $output . ', ';
@@ -166,13 +168,13 @@ function drope_format_luck_numbers_dashboard($client_lucky_numbers, $raffle_tota
 		$bichos = ['00' => 'Avestruz M1', '01' => 'Avestruz M2', '02' => 'Águia M1', '03' => 'Águia M2', '04' => 'Burro M1', '05' => 'Burro M2', '06' => 'Borboleta M1', '07' => 'Borboleta M2', '08' => 'Cachorro M1', '09' => 'Cachorro M2', 10 => 'Cabra M1', 11 => 'Cabra M2', 12 => 'Carneiro M1', 13 => 'Carneiro M2', 14 => 'Camelo M1', 15 => 'Camelo M2', 16 => 'Cobra M1', 17 => 'Cobra M2', 18 => 'Coelho M1', 19 => 'Coelho M2', 20 => 'Cavalo M1', 21 => 'Cavalo M2', 22 => 'Elefante M1', 23 => 'Elefante M2', 24 => 'Galo M1', 25 => 'Galo M2', 26 => 'Gato M1', 27 => 'Gato M2', 28 => 'Jacaré M1', 29 => 'Jacaré M2', 30 => 'Leão M1', 31 => 'Leão M2', 32 => 'Macaco M1', 33 => 'Macaco M2', 34 => 'Porco M1', 35 => 'Porco M2', 36 => 'Pavão M1', 37 => 'Pavão M2', 38 => 'Peru M1', 39 => 'Peru M2', 40 => 'Touro M1', 41 => 'Touro M2', 42 => 'Tigre M1', 43 => 'Tigre M2', 44 => 'Urso M1', 45 => 'Urso M2', 46 => 'Veado M1', 47 => 'Veado M2', 48 => 'Vaca M1', 49 => 'Vaca M2'];
 	}
 
-	if ($client_lucky_numbers) {
+	if ((string) $client_lucky_numbers !== '') {
 		$client_lucky_numbers = explode(',', $client_lucky_numbers);
 		$result = '';
 		sort($client_lucky_numbers);
 
 		foreach ($client_lucky_numbers as $client_lucky_number) {
-			if (!empty($client_lucky_number)) {
+			if (trim((string) $client_lucky_number) !== '') {
 				if (($type_of_draw == 3) || $type_of_draw == 4) {
 					$bicho_name = $bichos[$client_lucky_number];
 
@@ -184,7 +186,7 @@ function drope_format_luck_numbers_dashboard($client_lucky_numbers, $raffle_tota
 					}
 				}
 				else {
-					$output = (($type_of_draw == 3) || $type_of_draw == 4 ? $bichos[$client_lucky_number] : $client_lucky_number);
+					$output = jnsalles_format_ticket($client_lucky_number, $raffle_total_numbers);
 
 					if ((bool) $opt) {
 						$result .= '<a class="alert-success" style="border-radius: 5px !important; display: inline-block; padding: 5px; border-radius:2px; margin: 4px;">' . $output . '</a>';
@@ -203,12 +205,12 @@ function drope_format_luck_numbers_dashboard($client_lucky_numbers, $raffle_tota
 	return $result;
 }
 
-function drope_send_whatsapp($order, $code, $status, $customer, $phone, $raffle, $numbers, $quantity, $total, $whatsapp_status, $type_of_draw)
+function drope_send_whatsapp($order, $code, $status, $customer, $phone, $raffle, $numbers, $quantity, $total, $whatsapp_status, $type_of_draw, $raffle_total_numbers = 0)
 {
 	global $_settings;
 	$siteName = $_settings->info('name');
 	$siteUrl = BASE_URL;
-	$numbers = drope_format_luck_numbers_dashboard($numbers, $quantity, $class = false, $opt = false, $type_of_draw);
+	$numbers = drope_format_luck_numbers_dashboard($numbers, $raffle_total_numbers, $class = false, $opt = false, $type_of_draw);
 	$btn = '';
 
 	if ($status == 1) {
@@ -1147,14 +1149,14 @@ function order_email($message, $title, $order_id)
 	$enable_email = $_settings->info('enable_email');
 
 	if ($enable_email == 1) {
-		$customer = $_settings->conn->query('SELECT o.product_name, o.product_id, o.status, o.order_numbers, o.total_amount, c.* FROM order_list o INNER JOIN customer_list c ON c.id = o.customer_id WHERE o.id = ' . $order_id);
+		$customer = $_settings->conn->query('SELECT o.product_name, o.product_id, o.status, o.order_numbers, o.total_amount, c.*, p.qty_numbers FROM order_list o INNER JOIN customer_list c ON c.id = o.customer_id INNER JOIN product_list p ON p.id = o.product_id WHERE o.id = ' . $order_id);
 
 		if (0 < $customer->num_rows) {
 			$row = $customer->fetch_assoc();
 			$customer_name = $row['firstname'] . ' ' . $row['lastname'];
 			$customer_email = $row['email'];
 			$product_name = $row['product_name'];
-			$order_numbers = $row['order_numbers'];
+			$order_numbers = implode(',', jnsalles_format_ticket_list($row['order_numbers'], $row['qty_numbers']));
 			$order_total = $row['total_amount'];
 			$product_id = $row['product_id'];
 			$status = $row['status'];

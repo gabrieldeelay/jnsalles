@@ -2,7 +2,7 @@
 
 
 echo '<div class="container app-main">' . "\r\n" . '   <div class="app-title mb-2">' . "\r\n" . '      <h1>🏆 Ganhadores</h1>' . "\r\n" . '      <div class="app-title-desc">sortudos</div>' . "\r\n" . '   </div>' . "\r\n" . '   ';
-	$sql = 'SELECT name AS product_name, draw_number, draw_winner, image_path, slug, date_of_draw FROM product_list WHERE draw_number <> \'\' ORDER BY date_of_draw DESC LIMIT 5';
+	$sql = 'SELECT name AS product_name, qty_numbers, draw_number, draw_winner, image_path, slug, date_of_draw FROM product_list WHERE draw_number <> \'\' ORDER BY date_of_draw DESC LIMIT 5';
 	$products = $conn->query($sql);
 echo '   <div class="app-content">' . "\r\n" . '      ';
 
@@ -64,7 +64,7 @@ echo '   <div class="app-content">' . "\r\n" . '      ';
 											<p class="mb-0"><b><?php echo $winner['name']; ?></b></p>
 											<div class="ganhadorItem_ganhadorDescricao__Z4kO2">
                                             	<p class="mb-0">Prêmio:<b><?php echo $winner['product']; ?></b></p>
-                                            	<p class="mb-0">Número da sorte <b><?php echo $winner['number']; ?></b></p>
+                                            <p class="mb-0">Número da sorte <b><?php echo jnsalles_format_ticket($winner['number'], $row['qty_numbers']); ?></b></p>
                                             	<p class="mb-0">Data da premiação <b><?php echo $winner['date']; ?></b></p>
                                             	<p class="mb-0">Telefone <b><?php echo $winner['phone']; ?></b></p>
                                             </div>
