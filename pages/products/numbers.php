@@ -190,7 +190,7 @@ if (!empty($draw_number)) {
         echo 'º - ';
         echo $winner['name'];
         echo '&nbsp;<i class="bi bi-check-circle text-white-50"></i></h5>' . "\r\n" . '                     <div class="text-white-50"><small>Ganhador(a) Número da sorte: ';
-        echo jnsalles_format_ticket($winner['number'], $qty_numbers);
+        echo htmlspecialchars((string) $winner['number'], ENT_QUOTES, 'UTF-8');
         echo '</small></div>' . "\r\n" . '                  </div>' . "\r\n" . '               </div>' . "\r\n" . '            </div>' . "\r\n" . '         </div>' . "\r\n" . '      ';
     }
 

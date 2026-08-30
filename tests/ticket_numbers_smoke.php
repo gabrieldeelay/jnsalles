@@ -118,4 +118,21 @@ $_POST['id'] = 1;
 $response = json_decode($endpoint->view_numbers(), true);
 ticket_assert($response['order_numbers'] === '0000001,0006516,0000000', 'View numbers endpoint');
 
-echo "OK: examples, 3000 generated numbers, legacy data, buyer renderers, zero ticket, animal draws and read-only endpoint.\n";
+// The published winner is an explicit administrator-entered result, not a buyer ticket list.
+// Render its stored spelling exactly, independently of the campaign's ticket width.
+foreach (['pages/home.php', 'pages/winners.php', 'pages/products/automatic.php', 'pages/products/numbers.php'] as $page) {
+    $source = file_get_contents(dirname(__DIR__) . '/' . $page);
+    $matched = preg_match('/echo ([^;\r\n]*\$winner\[\x27number\x27\][^;\r\n]*);/', $source, $fragment);
+    ticket_assert($matched === 1, 'Winner renderer missing: ' . $page);
+    foreach (['08932', '1', '0000001', '0', '1234567'] as $configuredNumber) {
+        $winner = ['number' => $configuredNumber];
+        $qty_numbers = 2000000;
+        $row = ['qty_numbers' => $qty_numbers];
+        $display = eval('return ' . $fragment[1] . ';');
+        ticket_assert($display === $configuredNumber, 'Configured winner changed: ' . $page);
+    }
+    $winner = ['number' => '<script>'];
+    ticket_assert(eval('return ' . $fragment[1] . ';') === '&lt;script&gt;', 'Winner HTML escaping: ' . $page);
+}
+
+echo "OK: examples, 3000 generated numbers, legacy data, buyer renderers, zero ticket, animal draws, read-only endpoint and exact configured winner display.\n";

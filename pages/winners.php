@@ -64,7 +64,7 @@ echo '   <div class="app-content">' . "\r\n" . '      ';
 											<p class="mb-0"><b><?php echo $winner['name']; ?></b></p>
 											<div class="ganhadorItem_ganhadorDescricao__Z4kO2">
                                             	<p class="mb-0">Prêmio:<b><?php echo $winner['product']; ?></b></p>
-                                            <p class="mb-0">Número da sorte <b><?php echo jnsalles_format_ticket($winner['number'], $row['qty_numbers']); ?></b></p>
+                                            <p class="mb-0">Número da sorte <b><?php echo htmlspecialchars((string) $winner['number'], ENT_QUOTES, 'UTF-8'); ?></b></p>
                                             	<p class="mb-0">Data da premiação <b><?php echo $winner['date']; ?></b></p>
                                             	<p class="mb-0">Telefone <b><?php echo $winner['phone']; ?></b></p>
                                             </div>
