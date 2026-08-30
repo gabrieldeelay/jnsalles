@@ -184,7 +184,7 @@
 			color: #fff;
 		}
 
-		.campaign-actions{display:flex;min-width:305px;align-items:center;gap:7px;flex-wrap:nowrap}.campaign-actions>a{display:inline-flex!important;margin:0!important;text-decoration:none!important}.campaign-actions button{display:inline-flex!important;min-width:38px;min-height:38px;align-items:center;justify-content:center;border:1px solid #354158!important;border-radius:9px!important;background:#151c29!important;color:#cbd5e1!important;transition:.18s}.campaign-actions button:hover{border-color:#7c3aed!important;background:#20283a!important;color:#fff!important}.campaign-actions button>svg{width:17px;height:17px}.campaign-actions .campaign-edit-button{gap:6px;padding:0 12px!important;border-color:rgba(139,92,246,.55)!important;background:linear-gradient(135deg,#7c3aed,#6d28d9)!important;color:#fff!important}.campaign-delete-button{gap:7px!important;padding:0 12px!important;border-color:rgba(248,113,113,.45)!important;background:rgba(127,29,29,.24)!important;color:#fecaca!important;font-size:12px!important;font-weight:750!important}.campaign-delete-button:hover{border-color:#ef4444!important;background:rgba(185,28,28,.35)!important;color:#fff!important}@media(max-width:760px){.campaign-actions{min-width:292px}.campaign-delete-button span{display:inline}}
+		.campaign-actions{display:flex;min-width:420px;align-items:center;gap:7px;flex-wrap:wrap}.campaign-actions>a{display:inline-flex!important;margin:0!important;text-decoration:none!important}.campaign-actions button{display:inline-flex!important;min-width:38px;min-height:38px;align-items:center;justify-content:center;border:1px solid #354158!important;border-radius:9px!important;background:#151c29!important;color:#cbd5e1!important;transition:.18s}.campaign-actions button:hover{border-color:#7c3aed!important;background:#20283a!important;color:#fff!important}.campaign-actions button>svg{width:17px;height:17px}.campaign-actions .campaign-edit-button{gap:6px;padding:0 12px!important;border-color:rgba(139,92,246,.55)!important;background:linear-gradient(135deg,#7c3aed,#6d28d9)!important;color:#fff!important}.campaign-status-button,.campaign-winner-button{min-height:38px;align-items:center;justify-content:center;gap:7px;padding:0 11px!important;border:1px solid!important;border-radius:9px!important;font-size:12px!important;font-weight:750!important}.campaign-status-button svg,.campaign-winner-button svg{width:17px;height:17px}.campaign-status-button.is-finalize{border-color:rgba(251,146,60,.5)!important;background:rgba(154,52,18,.24)!important;color:#fed7aa!important}.campaign-status-button.is-reactivate{border-color:rgba(52,211,153,.45)!important;background:rgba(6,95,70,.28)!important;color:#a7f3d0!important}.campaign-winner-button{border-color:rgba(250,204,21,.45)!important;background:rgba(113,63,18,.26)!important;color:#fde68a!important}.campaign-delete-button{gap:7px!important;padding:0 12px!important;border-color:rgba(248,113,113,.45)!important;background:rgba(127,29,29,.24)!important;color:#fecaca!important;font-size:12px!important;font-weight:750!important}.campaign-delete-button:hover{border-color:#ef4444!important;background:rgba(185,28,28,.35)!important;color:#fff!important}@media(max-width:760px){.campaign-actions{min-width:320px}.campaign-delete-button span{display:inline}}
 	</style>
 
 
@@ -384,8 +384,8 @@ while ($row = $qry->fetch_assoc()) {
 	echo $row['id'];
 
 
-	echo '" href="#" ';
-	echo '>' . "\r\n\t\t\t" .
+		echo '" href="#" ';
+		echo '>' . "\r\n\t\t\t" .
 
 
 		'<button type="button" title="Duplicar campanha" ' . "\r\n\t\t\t" . 'class="flex items-center justify-between px-2 py-2 text-sm font-medium leading-5 text-purple-600 rounded-lg focus:outline-none focus:shadow-outline-gray"' . "\r\n\t\t\t" . 'aria-label="Duplicar campanha">' . "\r\n\t\t\t\t" . '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2m6-5v6m-3-3h6"/></svg>' . "\r\n\t\t\t" . '</button>'
@@ -393,6 +393,22 @@ while ($row = $qry->fetch_assoc()) {
 
 
 		. "\r\n\t\t" . '</a>' . "\r\n\t\t";
+
+	if ($_settings->userdata('type') == '1') {
+		$productId = (int) $row['id'];
+		$productName = htmlspecialchars((string) $row['name'], ENT_QUOTES, 'UTF-8');
+		$isFinalized = (int) $row['status'] === 3;
+		if ($isFinalized) {
+			echo '<a href="./?page=products/manage_product&id=' . $productId . '#tab6" class="campaign-winner-button" title="Adicionar ou alterar ganhador" aria-label="Adicionar ou alterar ganhador"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8m-4-4v4M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4v2a4 4 0 0 0 4 4m9-6h3v2a4 4 0 0 1-4 4"/></svg><span>Ganhador</span></a>';
+		}
+		$lifecycleAction = $isFinalized ? 'reactivate' : 'finalize';
+		$lifecycleLabel = $isFinalized ? 'Reativar' : 'Finalizar';
+		$lifecycleClass = $isFinalized ? 'is-reactivate' : 'is-finalize';
+		$lifecycleIcon = $isFinalized
+			? '<path d="M5 12a7 7 0 1 0 2-4.9M5 4v5h5"/>'
+			: '<path d="M8 12.5 10.5 15 16 9.5"/><circle cx="12" cy="12" r="9"/>';
+		echo '<button type="button" class="campaign-status-button ' . $lifecycleClass . '" onclick="toggleCampaignLifecycle(this)" data-id="' . $productId . '" data-name="' . $productName . '" data-action="' . $lifecycleAction . '" title="' . $lifecycleLabel . ' campanha" aria-label="' . $lifecycleLabel . ' campanha"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' . $lifecycleIcon . '</svg><span>' . $lifecycleLabel . '</span></button>';
+	}
 
 
 
@@ -567,6 +583,48 @@ echo "\r\n" . '</tbody>' . "\r\n" . '</table>';
 				if (!result.isConfirmed || !result.value) return;
 				Swal.fire({ icon: 'success', title: 'Campanha excluída', text: result.value.msg || 'A campanha foi excluída com sucesso.', timer: 1700, showConfirmButton: false })
 					.then(function () { location.reload(); });
+			});
+		}
+
+		function toggleCampaignLifecycle(button) {
+			var productId = Number(button.getAttribute('data-id') || 0);
+			var productName = button.getAttribute('data-name') || 'esta campanha';
+			var lifecycleAction = button.getAttribute('data-action') || '';
+			var isFinalizing = lifecycleAction === 'finalize';
+			if (!productId || (!isFinalizing && lifecycleAction !== 'reactivate')) return;
+
+			Swal.fire({
+				title: isFinalizing ? 'Finalizar campanha?' : 'Reativar campanha?',
+				html: isFinalizing
+					? 'A campanha <strong>' + $('<div>').text(productName).html() + '</strong> deixará de aceitar novas compras, mas continuará visível como <strong>Finalizada</strong>.<br><small>Pedidos, ranking e ganhadores serão preservados.</small>'
+					: 'A campanha <strong>' + $('<div>').text(productName).html() + '</strong> voltará a aceitar novas compras.',
+				icon: 'question',
+				showCancelButton: true,
+				confirmButtonText: isFinalizing ? 'Sim, finalizar' : 'Sim, reativar',
+				cancelButtonText: 'Cancelar',
+				confirmButtonColor: isFinalizing ? '#c2410c' : '#047857',
+				cancelButtonColor: '#334155',
+				reverseButtons: true,
+				showLoaderOnConfirm: true,
+				preConfirm: function () {
+					return $.ajax({
+						url: _base_url_ + 'class/Main.php?action=update_product_lifecycle',
+						method: 'POST',
+						dataType: 'json',
+						data: { id: productId, lifecycle_action: lifecycleAction },
+						timeout: 30000
+					}).then(function (response) {
+						if (!response || response.status !== 'success') throw new Error(response && response.msg ? response.msg : 'Não foi possível atualizar a campanha.');
+						return response;
+					}).catch(function (error) {
+						Swal.showValidationMessage(error.responseJSON && error.responseJSON.msg ? error.responseJSON.msg : error.message || 'Não foi possível atualizar a campanha.');
+					});
+				},
+				allowOutsideClick: function () { return !Swal.isLoading(); }
+			}).then(function (result) {
+				if (!result.isConfirmed || !result.value) return;
+				Swal.fire({ icon: 'success', title: isFinalizing ? 'Campanha finalizada' : 'Campanha reativada', text: result.value.msg, timer: 1900, showConfirmButton: false })
+					.then(function () { window.location.href = './?page=products&status=' + (isFinalizing ? '3' : '1'); });
 			});
 		}
 	</script>

@@ -479,6 +479,11 @@ class Main extends DBConnection
         $status_display = $this->conn->real_escape_string(
             $_POST["status_display"]
         );
+        if ((int) $status === 3) {
+            $status_display = '4';
+        } elseif ((int) $status !== 3 && (string) $status_display === '4') {
+            $status_display = '1';
+        }
         $subtitle = $this->conn->real_escape_string($_POST["subtitle"]);
         $cotas_premiadas = $this->conn->real_escape_string($_POST["cotas_premiadas"]);
         $cotas_premiadas_descricao = $this->conn->real_escape_string($_POST["cotas_premiadas_descricao"]);
@@ -1114,6 +1119,50 @@ class Main extends DBConnection
         return json_encode([
             'status' => 'success',
             'msg' => 'Campanha “' . (string) $product['name'] . '” excluída com sucesso.',
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
+    public function update_product_lifecycle()
+    {
+        if (empty($this->settings->userdata('firstname')) || (int) $this->settings->userdata('type') !== 1) {
+            http_response_code(403);
+            return json_encode(['status' => 'failed', 'msg' => 'Somente um administrador pode alterar a situação da campanha.']);
+        }
+
+        $productId = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $requestedAction = strtolower(trim((string) ($_POST['lifecycle_action'] ?? '')));
+        if (!$productId || !in_array($requestedAction, ['finalize', 'reactivate'], true)) {
+            return json_encode(['status' => 'failed', 'msg' => 'Ação inválida. Atualize a página e tente novamente.']);
+        }
+
+        $find = $this->conn->prepare('SELECT name, status FROM product_list WHERE id = ? LIMIT 1');
+        $find->bind_param('i', $productId);
+        $find->execute();
+        $product = $find->get_result()->fetch_assoc();
+        $find->close();
+        if (!$product) {
+            return json_encode(['status' => 'failed', 'msg' => 'A campanha não foi encontrada.']);
+        }
+
+        $newStatus = $requestedAction === 'finalize' ? 3 : 1;
+        $newDisplayStatus = $requestedAction === 'finalize' ? '4' : '1';
+        $update = $this->conn->prepare('UPDATE product_list SET status = ?, status_display = ? WHERE id = ?');
+        $update->bind_param('isi', $newStatus, $newDisplayStatus, $productId);
+        $updated = $update->execute();
+        $update->close();
+        if (!$updated) {
+            error_log('[campaign] lifecycle update failed for #' . $productId . ': ' . $this->conn->error);
+            return json_encode(['status' => 'failed', 'msg' => 'Não foi possível atualizar a campanha. Tente novamente.']);
+        }
+
+        $campaignName = (string) $product['name'];
+        return json_encode([
+            'status' => 'success',
+            'campaign_status' => $newStatus,
+            'status_display' => (int) $newDisplayStatus,
+            'msg' => $requestedAction === 'finalize'
+                ? 'Campanha “' . $campaignName . '” finalizada. Pedidos e ganhadores foram preservados.'
+                : 'Campanha “' . $campaignName . '” reativada e liberada para novas compras.',
         ], JSON_UNESCAPED_UNICODE);
     }
 
@@ -6592,6 +6641,9 @@ switch ($action) {
         break;
     case "delete_product_sys":
         echo $Main->delete_product();
+        break;
+    case "update_product_lifecycle":
+        echo $Main->update_product_lifecycle();
         break;
     case "generate_pdf":
         echo $Main->generate_pdf();

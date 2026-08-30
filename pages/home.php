@@ -44,15 +44,17 @@ if ($siteDescription === '') {
 	</div>
 	
 	<?php
-	$qry = $conn->query('SELECT * FROM `product_list` WHERE status_display <> \'4\' AND featured_draw = \'1\' ORDER BY RAND() LIMIT 1');
+	$featuredProductId = 0;
+	$qry = $conn->query("SELECT * FROM `product_list` WHERE featured_draw = '1' AND private_draw = '0' ORDER BY CASE status WHEN 1 THEN 0 WHEN 2 THEN 1 ELSE 2 END, id DESC LIMIT 1");
 	while ($row = $qry->fetch_assoc()) { ?>
+		<?php $featuredProductId = (int) $row['id']; ?>
 		<div class="col-12 mb-2 home-featured">
 			<a href="/campanha/<?php echo $row['slug']; ?>" class="h-100 SorteioTpl_sorteioTpl__home SorteioTpl_destaque__3vnWR pointer custom-highlight-card">
 			    
 			    <div style="bottom: 68px !important;" class="custom-badge-display">
 				
 			<?php
-$status = (int) $row['status_display'];
+$status = (int) $row['status'] === 3 ? 4 : (int) $row['status_display'];
 switch ($status) {
     case 1:
         echo '<span class="badge bg-azul-personalizado blink font-xsss text-white">Adquira já!</span>';
@@ -64,7 +66,7 @@ switch ($status) {
         echo '<span class="badge bg-dark font-xsss mobile badge-status-3">Aguarde a campanha!</span>';
         break;
     case 4:
-        echo '<span class="badge bg-dark font-xsss">Concluído</span>';
+        echo '<span class="badge bg-dark font-xsss">Finalizada</span>';
         break;
     case 5:
         echo '<span class="badge bg-dark font-xsss">Em breve!</span>';
@@ -111,7 +113,8 @@ if (!empty($row['date_of_draw'])) {
 
 	<div class="home-campaign-grid">
 	<?php
-$qry = $conn->query('SELECT * FROM `product_list` WHERE featured_draw = \'0\' AND private_draw = \'0\' ORDER BY id DESC LIMIT 10');
+$excludeFeaturedProduct = $featuredProductId > 0 ? ' AND id <> ' . $featuredProductId : '';
+$qry = $conn->query("SELECT * FROM `product_list` WHERE private_draw = '0'" . $excludeFeaturedProduct . " ORDER BY id DESC LIMIT 10");
 
 if ($qry->num_rows > 0) {
 	while ($row = $qry->fetch_assoc()) {
@@ -130,17 +133,18 @@ if ($qry->num_rows > 0) {
 						<p class="SorteioTpl_descricao__1b7iL" style="margin-bottom:1px"><?php echo isset($row['subtitle']) ? $row['subtitle'] : ''; ?></p>
 
 						<?php
-						if ($row['status_display'] == 1) {
+						$cardDisplayStatus = (int) $row['status'] === 3 ? 4 : (int) $row['status_display'];
+						if ($cardDisplayStatus == 1) {
 							echo '<span class="badge bg-success blink bg-opacity-75 font-xsss">Adquira já!</span>';
-						} elseif ($row['status_display'] == 2) {
+						} elseif ($cardDisplayStatus == 2) {
 							echo '<span class="badge bg-dark blink font-xsss mobile badge-status-1">Corre que está acabando!</span>';
-						} elseif ($row['status_display'] == 3) {
+						} elseif ($cardDisplayStatus == 3) {
 							echo '<span class="badge bg-dark font-xsss mobile badge-status-3">Aguarde a campanha!</span>';
-						} elseif ($row['status_display'] == 4) {
-							echo '<span class="badge bg-dark font-xsss">Concluído</span>';
-						} elseif ($row['status_display'] == 5) {
+						} elseif ($cardDisplayStatus == 4) {
+							echo '<span class="badge bg-dark font-xsss">Finalizada</span>';
+						} elseif ($cardDisplayStatus == 5) {
 							echo '<span class="badge bg-dark font-xsss">Em breve!</span>';
-						} elseif ($row['status_display'] == 6) {
+						} elseif ($cardDisplayStatus == 6) {
 							echo '<span class="badge bg-dark font-xsss">Aguarde o sorteio!</span>';
 						}
 						?>

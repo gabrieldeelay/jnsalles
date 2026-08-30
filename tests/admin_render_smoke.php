@@ -81,8 +81,12 @@ if (!str_contains($html, 'admin-context-guide-template')) {
     fwrite(STDERR, "A ajuda contextual não foi carregada em {$requestedPage}.\n");
     exit(1);
 }
-if ($requestedPage === 'products' && (!str_contains($html, 'campaign-delete-button') || !str_contains($html, 'confirmCampaignDeletion'))) {
-    fwrite(STDERR, "O botão visual de exclusão não foi renderizado.\n");
+if ($requestedPage === 'products' && (!str_contains($html, 'campaign-delete-button')
+    || !str_contains($html, 'confirmCampaignDeletion')
+    || !str_contains($html, 'campaign-status-button')
+    || !str_contains($html, 'toggleCampaignLifecycle')
+    || !str_contains($html, 'update_product_lifecycle'))) {
+	fwrite(STDERR, "As ações visuais da campanha não foram renderizadas.\n");
     exit(1);
 }
 if ($requestedPage === 'products') {

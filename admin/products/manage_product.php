@@ -804,6 +804,7 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
                         
                     </div>
                     <div id="tab6" class="tabcontent text-gray-700 dark:text-gray-400 hidden">
+						<div class="campaign-tab-guide"><strong>Resultado público</strong>Você pode cadastrar ou alterar o ganhador mesmo depois de finalizar a campanha. Ao salvar, o resultado será exibido na página principal sem reativar a campanha.</div>
                         <label class="add_field_ block mt-4 text-sm" style="display:inline-block;"><span class="px-5 py-3 font-medium leading-5 text-white transition-colors duration-150 bg-purple-600 border border-transparent rounded-lg active:bg-purple-600 hover:bg-purple-700 focus:outline-none focus:shadow-outline-purple">Adicionar ganhador</span></label>
                         <!-- Descontos -->
                         <div id="ganhadores" class="ganhadores">
@@ -1850,14 +1851,17 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
                 }
             });
         });
-        var storedTab = localStorage.getItem('selectedTab_' + pageToken);
-        if (storedTab) {
-            var selectedTab = storedTab.substring(pageToken.length + 1);
-            $("#tabs a").removeClass("active-tab");
-            $(selectedTab).addClass("active-tab");
-            $(".tabcontent").hide();
-            $(selectedTab).show();
-        }
+		var requestedTab = window.location.hash;
+		var storedTab = localStorage.getItem('selectedTab_' + pageToken);
+		var selectedTab = requestedTab && $('#tabs a[href="' + requestedTab + '"]').length
+			? requestedTab
+			: (storedTab ? storedTab.substring(pageToken.length + 1) : '');
+		if (selectedTab) {
+			$("#tabs a").removeClass("active-tab");
+			$('#tabs a[href="' + selectedTab + '"]').addClass("active-tab");
+			$(".tabcontent").hide();
+			$(selectedTab).removeClass('hidden').show();
+		}
         //End tabs
         // Descontos
         var max_fields = 4; // Maximum allowed input pairs

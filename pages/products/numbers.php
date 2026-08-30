@@ -67,7 +67,7 @@ if ($status_display == 3) {
 echo '      ';
 
 if ($status_display == 4) {
-    echo '         <span class="badge bg-dark font-xsss">Concluído</span>' . "\r\n" . '      ';
+    echo '         <span class="badge bg-dark font-xsss">Finalizada</span>' . "\r\n" . '      ';
 }
 
 echo '      ';

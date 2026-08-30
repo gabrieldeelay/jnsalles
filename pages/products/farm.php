@@ -593,7 +593,7 @@ if ($enable_cpf == 1) {
                     <span class="badge bg-dark font-xsss mobile badge-status-3">Aguarde o sorteio!</span>
                 <?php } ?>
                 <?php if ($status_display == 4) { ?>
-                    <span class="badge bg-dark font-xsss">Concluído</span>
+                    <span class="badge bg-dark font-xsss">Finalizada</span>
                 <?php } ?>
                 <?php if ($status_display == 5) { ?>
                     <span class="badge bg-dark font-xsss">Em breve!</span>

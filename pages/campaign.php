@@ -37,7 +37,7 @@ if (0 < $qry->num_rows) {
 		echo '                  ';
 
 		if ($row['status_display'] == 4) {
-			echo '                     <span class="badge bg-dark font-xsss">Concluído</span>' . "\r\n" . '                  ';
+			echo '                     <span class="badge bg-dark font-xsss">Finalizada</span>' . "\r\n" . '                  ';
 		}
 
 		echo '                  ';
