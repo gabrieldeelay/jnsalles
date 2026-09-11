@@ -45,7 +45,7 @@ if ($siteDescription === '') {
 	
 	<?php
 	$featuredProductId = 0;
-	$qry = $conn->query("SELECT * FROM `product_list` WHERE featured_draw = '1' AND private_draw = '0' ORDER BY CASE status WHEN 1 THEN 0 WHEN 2 THEN 1 ELSE 2 END, id DESC LIMIT 1");
+	$qry = $conn->query("SELECT * FROM `product_list` WHERE delete_flag = '0' AND featured_draw = '1' AND private_draw = '0' ORDER BY CASE status WHEN 1 THEN 0 WHEN 2 THEN 1 ELSE 2 END, id DESC LIMIT 1");
 	while ($row = $qry->fetch_assoc()) { ?>
 		<?php $featuredProductId = (int) $row['id']; ?>
 		<div class="col-12 mb-2 home-featured">
@@ -114,7 +114,7 @@ if (!empty($row['date_of_draw'])) {
 	<div class="home-campaign-grid">
 	<?php
 $excludeFeaturedProduct = $featuredProductId > 0 ? ' AND id <> ' . $featuredProductId : '';
-$qry = $conn->query("SELECT * FROM `product_list` WHERE private_draw = '0'" . $excludeFeaturedProduct . " ORDER BY id DESC LIMIT 10");
+$qry = $conn->query("SELECT * FROM `product_list` WHERE delete_flag = '0' AND private_draw = '0'" . $excludeFeaturedProduct . " ORDER BY id DESC LIMIT 10");
 
 if ($qry->num_rows > 0) {
 	while ($row = $qry->fetch_assoc()) {
@@ -174,7 +174,7 @@ if ($qry->num_rows > 0) {
 
 	<?php
 
-	$sql = 'SELECT name AS product_name, qty_numbers, draw_number, draw_winner, image_path, slug, date_of_draw FROM product_list WHERE draw_number <> \'\' ORDER BY date_of_draw DESC LIMIT 5';
+	$sql = 'SELECT name AS product_name, qty_numbers, draw_number, draw_winner, image_path, slug, date_of_draw FROM product_list WHERE delete_flag = 0 AND private_draw = 0 AND draw_number <> \'\' ORDER BY date_of_draw DESC LIMIT 5';
 	$products = $conn->query($sql);
 
 	if (0 < $products->num_rows) {

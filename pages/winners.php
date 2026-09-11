@@ -2,7 +2,7 @@
 
 
 echo '<div class="container app-main">' . "\r\n" . '   <div class="app-title mb-2">' . "\r\n" . '      <h1>🏆 Ganhadores</h1>' . "\r\n" . '      <div class="app-title-desc">sortudos</div>' . "\r\n" . '   </div>' . "\r\n" . '   ';
-	$sql = 'SELECT name AS product_name, qty_numbers, draw_number, draw_winner, image_path, slug, date_of_draw FROM product_list WHERE draw_number <> \'\' ORDER BY date_of_draw DESC LIMIT 5';
+	$sql = 'SELECT name AS product_name, qty_numbers, draw_number, draw_winner, image_path, slug, date_of_draw FROM product_list WHERE delete_flag = 0 AND private_draw = 0 AND draw_number <> \'\' ORDER BY date_of_draw DESC LIMIT 5';
 	$products = $conn->query($sql);
 echo '   <div class="app-content">' . "\r\n" . '      ';
 

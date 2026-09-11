@@ -31,7 +31,7 @@ if (isset($cat_result['id'])) {
 	$cat_where = ' and `category_id` = \'' . $cat_result['id'] . '\' ';
 }
 
-$qry = $conn->query('SELECT *, (COALESCE((SELECT SUM(quantity) FROM `stock_list` where product_id = product_list.id ), 0) - COALESCE((SELECT SUM(quantity) FROM `order_items` where product_id = product_list.id), 0)) as `available` FROM `product_list` where (COALESCE((SELECT SUM(quantity) FROM `stock_list` where product_id = product_list.id ), 0) - COALESCE((SELECT SUM(quantity) FROM `order_items` where product_id = product_list.id), 0)) > 0 ' . $cat_where . ' order by RAND()');
+$qry = $conn->query('SELECT *, (COALESCE((SELECT SUM(quantity) FROM `stock_list` where product_id = product_list.id ), 0) - COALESCE((SELECT SUM(quantity) FROM `order_items` where product_id = product_list.id), 0)) as `available` FROM `product_list` where delete_flag = 0 AND (COALESCE((SELECT SUM(quantity) FROM `stock_list` where product_id = product_list.id ), 0) - COALESCE((SELECT SUM(quantity) FROM `order_items` where product_id = product_list.id), 0)) > 0 ' . $cat_where . ' order by RAND()');
 
 while ($row = $qry->fetch_assoc()) {
 	echo '                            <div class="col">' . "\r\n" . '                                <a class="card rounded-0 shadow product-item text-decoration-none text-reset h-100" href="./?p=products/view_product&id=';

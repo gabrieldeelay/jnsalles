@@ -2,7 +2,7 @@
 
 
 echo '<div class="container app-main">' . "\r\n" . '   <div class="app-title">' . "\r\n" . '      <h1>⚡ Campanhas</h1>' . "\r\n" . '      <div class="app-title-desc">Escolha sua sorte</div>' . "\r\n" . '   </div>' . "\r\n" . '   <div class="app-card card mb-2">' . "\r\n" . '      <div class="app-body d-flex align-items-center justify-content-center py-2">' . "\r\n" . '         <p class="text-muted font-xs text-uppercase mb-0 me-2">Listar</p>' . "\r\n" . '         <div class="btn-group btn-group-sm" role="group" aria-label="Filtros de listagem">' . "\r\n" . '            <button type="button" class="btn"><a href="/campanhas">Ativas</a></button>' . "\r\n" . '            <button type="button" class="btn"><a href="/concluidas">Concluídas</a></button>' . "\r\n" . '            <button type="button" class="btn" style="background-color: var(--incrivel-primariaDarken);color:var(--incrivel-bgColor);"><a href="/em-breve">Em breve</a></button>' . "\r\n" . '         </div>' . "\r\n" . '      </div>' . "\r\n" . '   </div>' . "\r\n" . '   <div class="campanhas-listagem">' . "\r\n" . '      ';
-$qry = $conn->query('SELECT * FROM `product_list` WHERE status = \'2\' AND private_draw = \'0\' ORDER BY id DESC');
+$qry = $conn->query('SELECT * FROM `product_list` WHERE delete_flag = \'0\' AND status = \'2\' AND private_draw = \'0\' ORDER BY id DESC');
 
 if (0 < $qry->num_rows) {
 	while ($row = $qry->fetch_assoc()) {

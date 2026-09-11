@@ -811,7 +811,7 @@ $id = isset($_GET['id']) ? $_GET['id'] : '';
 $support_number = $_settings->info('phone') ? $_settings->info('phone') : '';
 
 if ($id && $id != '') {
-    $qry = $conn->query('SELECT * from `product_list` where slug = \'' . $id . '\' ');
+    $qry = $conn->query('SELECT * from `product_list` where delete_flag = 0 and slug = \'' . $id . '\' ');
 
     if (0 < $qry->num_rows) {
         foreach ($qry->fetch_assoc() as $k => $v) {

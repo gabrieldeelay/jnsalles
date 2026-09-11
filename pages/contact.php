@@ -2,7 +2,7 @@
 
 
 echo '<div class="container app-main app-form">' . "\r\n" . '   <div class="app-title mb-2">' . "\r\n" . '      <h1>✉️ Contato</h1>' . "\r\n" . '      <div class="app-title-desc">Tire suas dúvidas.</div>' . "\r\n" . '   </div>' . "\r\n" . '   <form id="form-contact">' . "\r\n" . '      <div class="app-card card mb-2">' . "\r\n" . '         <div class="card-body">' . "\r\n" . '            <div class="mb-2"><label class="form-label">Nome</label><input type="text" name="nome" id="nome"' . "\r\n" . '                  class="form-control text-black" required=""></div>' . "\r\n" . '            <div class="mb-2"><label class="form-label">Email</label><input type="email" maxlength="50"' . "\r\n" . '                  name="email" id="email" class="form-control text-black" required="" value=""></div>' . "\r\n" . '            <div class="mb-2"><label class="form-label">Telefone</label><input onkeyup="formatarTEL(this);" maxlength="15"' . "\r\n" . '                  name="telefone" id="telefone" class="form-control text-black" required="" value=""></div>' . "\r\n" . '            <div class="mb-2">' . "\r\n" . '               <label class="form-label">Campanha</label>' . "\r\n" . '               <select name="campanha" id="campanha" class="form-control text-black" required="">' . "\r\n" . '                  <option>Deseja falar sobre uma campanha?</option>' . "\r\n" . '                  ';
-$qry = $conn->query('SELECT * from `product_list` order by id desc');
+$qry = $conn->query('SELECT * from `product_list` WHERE delete_flag = 0 AND private_draw = 0 order by id desc');
 
 if (0 < $qry->num_rows) {
 	while ($row = $qry->fetch_assoc()) {
