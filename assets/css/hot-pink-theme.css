@@ -70,8 +70,7 @@ body {
 body {
   color: var(--hot-pink-text);
   background-color: var(--hot-pink-surface);
-  background-image: radial-gradient(circle at top, #ffd0e7 0, #fff0f7 34%, #fff8fb 72%);
-  background-attachment: fixed;
+  background-image: none;
 }
 
 ::selection {
@@ -90,7 +89,7 @@ body {
   color: #ffffff !important;
   background-color: var(--hot-pink-strong) !important;
   background-image: linear-gradient(135deg, var(--hot-pink) 0%, var(--hot-pink-strong) 58%, var(--hot-pink-dark) 100%) !important;
-  box-shadow: 0 10px 30px rgba(143, 0, 79, 0.2);
+  box-shadow: 0 4px 14px rgba(143, 0, 79, 0.14);
 }
 
 .navbar.scrolled {
@@ -114,7 +113,7 @@ body {
 .SorteioTpl_sorteioTpl__2s2Wu,
 .SorteioTpl_sorteioTpl__home {
   border: 1px solid rgba(255, 20, 147, 0.16);
-  box-shadow: 0 8px 24px rgba(143, 0, 79, 0.1);
+  box-shadow: 0 2px 10px rgba(61, 16, 41, 0.06);
 }
 
 .bg-cor-primaria,
@@ -229,7 +228,7 @@ body {
 
 .home-hero {
   background: linear-gradient(135deg, #5c0a38 0%, var(--hot-pink-strong) 62%, var(--hot-pink) 140%) !important;
-  box-shadow: 0 10px 26px rgba(143, 0, 79, 0.2) !important;
+  box-shadow: 0 4px 16px rgba(143, 0, 79, 0.14) !important;
 }
 
 .home-hero__eyebrow {
@@ -238,8 +237,8 @@ body {
 
 .home-info-card {
   border-color: rgba(255, 20, 147, 0.2) !important;
-  background: linear-gradient(145deg, #ffffff, var(--hot-pink-surface)) !important;
-  box-shadow: 0 7px 20px rgba(143, 0, 79, 0.08) !important;
+  background: #ffffff !important;
+  box-shadow: 0 2px 10px rgba(61, 16, 41, 0.06) !important;
 }
 
 .home-info-card h2 {
@@ -257,4 +256,308 @@ body {
 
 .comprador {
   border-color: var(--hot-pink-strong) !important;
+}
+
+/* Limpeza visual global: superfícies calmas e um único nível de destaque. */
+.app-main {
+  padding-top: 16px;
+  padding-bottom: 28px;
+}
+
+.app-card:not(.rounded-0),
+.modal-content,
+.accordion-item {
+  border-radius: 14px;
+}
+
+.app-card {
+  background: var(--hot-pink-card);
+}
+
+.app-title {
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.app-title h1,
+.app-title .h1 {
+  font-weight: 750;
+  letter-spacing: -0.025em;
+}
+
+.app-title-desc,
+.text-muted {
+  color: #876176 !important;
+}
+
+.form-control,
+.form-select {
+  min-height: 44px;
+  border-color: #e8cfdb;
+  border-radius: 10px;
+  background-color: #ffffff;
+  box-shadow: none !important;
+}
+
+.btn {
+  border-radius: 10px;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.badge {
+  box-shadow: none !important;
+}
+
+/* Compra de cotas: mais legibilidade, menos blocos competindo entre si. */
+.purchase-helper-card {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.purchase-helper-card .card-body {
+  padding: 8px 12px;
+}
+
+.purchase-helper-card p {
+  margin: 0;
+  color: #795568;
+  line-height: 1.4;
+}
+
+.ranking-spotlight {
+  min-height: 46px;
+  margin-bottom: 10px;
+  border-color: rgba(209, 0, 117, 0.15);
+  border-radius: 12px;
+  background: #ffffff;
+  background-image: none;
+  color: var(--hot-pink-dark);
+  box-shadow: 0 2px 9px rgba(61, 16, 41, 0.07);
+}
+
+.ranking-spotlight:hover,
+.ranking-spotlight:focus-visible {
+  color: var(--hot-pink-dark);
+  transform: none;
+  box-shadow: 0 3px 12px rgba(61, 16, 41, 0.1);
+}
+
+.ranking-spotlight:focus-visible {
+  outline-color: rgba(255, 20, 147, 0.22);
+}
+
+.ranking-spotlight__icon {
+  color: #ffffff;
+  background: var(--hot-pink-strong);
+}
+
+.app-vendas-express {
+  padding: 12px;
+  border: 1px solid rgba(209, 0, 117, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.vendasExpressNumsSelect.v2 {
+  width: 100%;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.vendasExpressNumsSelect.v2 .item {
+  width: calc(33.333% - 6px);
+  margin-bottom: 0 !important;
+  overflow: visible;
+  border: 1px solid #efd5e1;
+  border-radius: 12px;
+  background: transparent !important;
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.vendasExpressNumsSelect.v2 .item:hover {
+  transform: translateY(-1px);
+  border-color: var(--hot-pink);
+  box-shadow: 0 4px 12px rgba(143, 0, 79, 0.09);
+}
+
+.vendasExpressNumsSelect.v2 .item .item-content {
+  min-height: 70px;
+  height: auto;
+  border: 0;
+  border-radius: 11px;
+  background: #ffffff;
+  color: var(--hot-pink-text);
+}
+
+.vendasExpressNumsSelect.v2 .item .item-content h3,
+.vendasExpressNumsSelect.v2 .item .item-content p {
+  color: var(--hot-pink-text) !important;
+}
+
+.vendasExpressNumsSelect.v2 .item .item-content h3 {
+  font-size: 1.55rem !important;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.vendasExpressNumsSelect.v2 .item .item-content p {
+  margin-top: 3px;
+  color: #8a6075 !important;
+  font-size: 0.67rem !important;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.vendasExpressNumsSelect.v2 .item.mais-popular {
+  border: 2px solid var(--hot-pink-strong) !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(209, 0, 117, 0.13);
+}
+
+.vendasExpressNumsSelect .item.mais-popular::before {
+  top: -2px;
+  width: 104px;
+  padding: 3px 8px;
+  border-radius: 0 0 9px 9px;
+  font-size: 0.62rem;
+  font-weight: 750;
+}
+
+.vendasExpressNumsSelect.v2 .item.mais-popular .item-content {
+  padding-top: 21px !important;
+  background: #fff3f9 !important;
+  background-image: none !important;
+  color: var(--hot-pink-text) !important;
+}
+
+.vendasExpressNumsSelect.v2 .item.mais-popular .item-content h3,
+.vendasExpressNumsSelect.v2 .item.mais-popular .item-content p {
+  color: var(--hot-pink-text) !important;
+}
+
+.vendasExpressNumsSelect.v2 .item.active,
+.vendasExpressNumsSelect.v2 .item.active .item-content {
+  border-color: var(--hot-pink-strong) !important;
+  background: var(--hot-pink-strong) !important;
+  background-image: none !important;
+}
+
+.vendasExpressNumsSelect.v2 .item.active .item-content h3,
+.vendasExpressNumsSelect.v2 .item.active .item-content p {
+  color: #ffffff !important;
+}
+
+.purchase-action-row {
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.purchase-quantity-control {
+  flex: 0 0 46%;
+  margin-right: 0 !important;
+  border-color: #ead1dd;
+  box-shadow: none;
+}
+
+.purchase-quantity-control .card-body {
+  height: 56px;
+  gap: 7px;
+}
+
+.purchase-quantity-control .numeroChange {
+  padding: 7px;
+  color: var(--hot-pink-dark);
+}
+
+.purchase-quantity-control .qty {
+  min-height: 38px;
+  border-color: #ead1dd;
+  background: #fff8fb;
+  color: var(--hot-pink-text);
+  font-weight: 800;
+}
+
+.purchase-submit-button {
+  min-height: 58px;
+  margin-bottom: 0 !important;
+  border: 0 !important;
+  background: var(--hot-pink-strong) !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 5px 14px rgba(209, 0, 117, 0.18);
+}
+
+.purchase-submit-button:hover,
+.purchase-submit-button:focus {
+  background: var(--hot-pink-dark) !important;
+  transform: translateY(-1px);
+}
+
+.purchase-submit-content,
+.purchase-submit-icon {
+  display: flex;
+  align-items: center;
+}
+
+.purchase-submit-content {
+  justify-content: center;
+  gap: 10px;
+}
+
+.purchase-submit-icon {
+  flex: 0 0 auto;
+}
+
+.purchase-submit-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.purchase-submit-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+}
+
+.purchase-submit-title {
+  font-size: 0.96rem;
+  font-weight: 800;
+}
+
+.purchase-submit-button #total {
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 0.76rem !important;
+  font-weight: 700;
+}
+
+@media (max-width: 420px) {
+  .app-vendas-express {
+    padding: 10px;
+  }
+
+  .vendasExpressNumsSelect.v2 {
+    gap: 6px;
+  }
+
+  .vendasExpressNumsSelect.v2 .item {
+    width: calc(33.333% - 4px);
+  }
+
+  .vendasExpressNumsSelect.v2 .item .item-content h3 {
+    font-size: 1.35rem !important;
+  }
+
+  .purchase-action-row {
+    flex-wrap: wrap;
+  }
+
+  .purchase-quantity-control,
+  .purchase-submit-button {
+    flex: 1 1 100%;
+    width: 100% !important;
+  }
 }

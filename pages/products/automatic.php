@@ -1005,7 +1005,7 @@ if ($status == '1') { ?>
 <?php }
 
 if ($available > 0 && $status == '1') {
-    echo '<div class="app-card card mb-2">' . "\r\n" . '   <div class="card-body text-center">' . "\r\n" . '   <p class="font-xs">Quanto mais títulos, mais chances de ganhar!!</p>' . "\r\n" . '   </div>' . "\r\n" . '</div>' . "\r\n";
+    echo '<div class="app-card card mb-2 purchase-helper-card">' . "\r\n" . '   <div class="card-body text-center">' . "\r\n" . '   <p class="font-xs">Escolha a quantidade de cotas. Quanto mais cotas, mais chances de ganhar.</p>' . "\r\n" . '   </div>' . "\r\n" . '</div>' . "\r\n";
 }
 
 if ($available > 0 && $status == '1') {
@@ -1026,31 +1026,9 @@ if ($available > 0 && $status == '1') {
                     </div>
                 <?php endif; ?>
                 <?php if ($qty_select_2 > 0): ?>
-                     <div onclick="qtyRaffle('<?= $qty_select_2 ?>', false)" 
-          class="item mb-2 bg-success"
-     style="position: relative; 
-            border: 2px solid transparent; 
-            border-image: linear-gradient(90deg, #198754, #0a3420) 1; 
-            border-radius: 4px; 
-            overflow: hidden;
-            -webkit-mask-image: radial-gradient(#fff, #000); 
-            mask-image: radial-gradient(#fff, #000);">
-
-       <div class="px-2 text-white text-center"
-     style="background-color: rgb(25, 135, 84);
-            position: absolute;
-            font-family: Montserrat;
-            font-size: 0.7em;
-            padding: 2px;
-            width: 100px;
-            top: -2px;
-            border-bottom-left-radius: 10px;
-            border-bottom-right-radius: 10px;">
-  Mais popular
-</div>
-        <div class="item-content flex-column p-2" 
-             style="background-color: rgb(200, 250, 205); color: #000;">
-            <h3 class="mb-0" style="color: #000;">
+                    <div onclick="qtyRaffle('<?= $qty_select_2 ?>', false)" class="item mais-popular mb-2">
+                        <div class="item-content flex-column p-2">
+                            <h3 class="mb-0">
                 <small class="item-content-plus font-xsss">+</small>
                                 <?= $qty_select_2 ?>
                             </h3>
@@ -1099,9 +1077,9 @@ if ($available > 0 && $status == '1') {
                     </div>
                 <?php endif; ?>
             </div>
-              <div class="d-flex w-100 justify-content-center items-center ">
-                <div class="vendasExpressNums app-card card mb-2 w-100 font-xs me-1">
-                    <div class="card-body d-flex align-items-center justify-content-center font-xss p-1" style="height: 55px;">
+              <div class="d-flex w-100 justify-content-center items-center purchase-action-row">
+                <div class="vendasExpressNums app-card card mb-2 w-100 font-xs me-1 purchase-quantity-control">
+                    <div class="card-body d-flex align-items-center justify-content-center font-xss p-1">
                         <div class="left pointer">
                             <div class="removeNumero numeroChange"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="MuiBox-root css-11elljy iconify iconify--lucide" sx="[object Object]" width="2em" height="2em" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8"></path></g></svg></div>
                         </div>
@@ -1116,20 +1094,21 @@ if ($available > 0 && $status == '1') {
                 
                 <?php
                 if ($user_id) { ?>
-                    <button id="add_to_cart" data-bs-toggle="modal" data-bs-target="#newCheckoutModal" class="btn w-100 mb-2 btn-custom">
+                    <button id="add_to_cart" data-bs-toggle="modal" data-bs-target="#newCheckoutModal" class="btn w-100 mb-2 btn-custom purchase-submit-button">
                     <?php } else { ?>
                         <span id="add_to_cart"></span>
                         
-                        <button data-bs-toggle="modal" data-bs-target="#newCheckoutModal" class="btn w-100 mb-2 btn-custom">
+                        <button data-bs-toggle="modal" data-bs-target="#newCheckoutModal" class="btn w-100 mb-2 btn-custom purchase-submit-button">
                         <?php   }
                         ?>
-                        <div class="d-flex align-items-center" style="display: flex; flex-direction:row; ">
-                           <div class="me-4" style="display:flex; align-items:center">
+                        <div class="purchase-submit-content">
+                           <div class="purchase-submit-icon">
                                   <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="MuiBox-root css-5zprff iconify iconify--prime" sx="[object Object]" width="2em" height="2em" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><path fill="currentColor" d="M10.5 15.25A.74.74 0 0 1 10 15l-3-3a.75.75 0 0 1 1-1l2.47 2.47L19 5a.75.75 0 0 1 1 1l-9 9a.74.74 0 0 1-.5.25"></path><path fill="currentColor" d="M12 21a9 9 0 0 1-7.87-4.66a8.7 8.7 0 0 1-1.07-3.41a9 9 0 0 1 4.6-8.81a8.7 8.7 0 0 1 3.41-1.07a8.9 8.9 0 0 1 3.55.34a.75.75 0 1 1-.43 1.43a7.6 7.6 0 0 0-3-.28a7.4 7.4 0 0 0-2.84.89a7.5 7.5 0 0 0-2.2 1.84a7.42 7.42 0 0 0-1.64 5.51a7.4 7.4 0 0 0 .89 2.84a7.5 7.5 0 0 0 1.84 2.2a7.42 7.42 0 0 0 5.51 1.64a7.4 7.4 0 0 0 2.84-.89a7.5 7.5 0 0 0 2.2-1.84a7.42 7.42 0 0 0 1.64-5.51a.75.75 0 1 1 1.57-.15a9 9 0 0 1-4.61 8.81A8.7 8.7 0 0 1 12.93 21z"></path></svg>
-                            <div style="flex-direction:column; display:flex; align-items: flex-start;">
-                                <div class="col pe-0 text-nowrap">Quero participar</div>
+                            </div>
+                            <div class="purchase-submit-copy">
+                                <div class="col pe-0 text-nowrap purchase-submit-title">Quero participar</div>
                                 <div class="col pe-0 text-nowrap price-mobile">
-                                    <span id="total" style="opacity: 0.7; font-size: 0.75rem !important; color: white;">R$
+                                    <span id="total">R$
                                     <?php
                                     if (isset($price)) {
                                         $price_total = $price * $min_purchase;
