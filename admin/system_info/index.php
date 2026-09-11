@@ -45,30 +45,103 @@ $(function () {
     if (!form.length) return;
     var feedback = $('<div id="settings-feedback" class="settings-feedback" role="status" aria-live="polite"></div>');
     form.before(feedback);
+
+    function prepareSettingsData(formElement) {
+        var data = new FormData(formElement);
+        var imageInput = formElement.querySelector('input[type="file"][name="img"]');
+        var imageFile = imageInput && imageInput.files ? imageInput.files[0] : null;
+
+        if (!imageFile) return Promise.resolve(data);
+        if (!/^image\/(png|jpeg)$/.test(imageFile.type)) {
+            return Promise.reject(new Error('Escolha uma imagem PNG ou JPG.'));
+        }
+        if (imageFile.size > 4 * 1024 * 1024) {
+            return Promise.reject(new Error('A imagem deve ter no máximo 4 MB.'));
+        }
+
+        // O preview do Plesk pode interromper uploads grandes antes de eles
+        // chegarem ao PHP. Otimizamos apenas quando necessário e mantemos o
+        // arquivo enviado abaixo de 700 KB.
+        if (imageFile.size <= 700 * 1024) return Promise.resolve(data);
+
+        feedback.attr('class', 'settings-feedback info').text('Otimizando a imagem antes de salvar...');
+        return optimizeBrandImage(imageFile).then(function (optimizedImage) {
+            var originalName = imageFile.name.replace(/\.[^.]+$/, '') || 'logo';
+            data.set('img', optimizedImage, originalName + '-otimizada.jpg');
+            return data;
+        });
+    }
+
+    function optimizeBrandImage(file) {
+        return new Promise(function (resolve, reject) {
+            var objectUrl = URL.createObjectURL(file);
+            var image = new Image();
+
+            image.onload = function () {
+                URL.revokeObjectURL(objectUrl);
+                var maxDimension = 1000;
+                var scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+                var canvas = document.createElement('canvas');
+                canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+                canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+                var context = canvas.getContext('2d');
+
+                context.fillStyle = '#ffffff';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(function (blob) {
+                    if (!blob) {
+                        reject(new Error('Não foi possível preparar a imagem. Escolha outro arquivo.'));
+                        return;
+                    }
+                    resolve(blob);
+                }, 'image/jpeg', 0.82);
+            };
+            image.onerror = function () {
+                URL.revokeObjectURL(objectUrl);
+                reject(new Error('Não foi possível abrir a imagem escolhida.'));
+            };
+            image.src = objectUrl;
+        });
+    }
+
     form.off('submit').on('submit', function (event) {
         event.preventDefault();
         var button = form.find('button[form="manage-system"]');
         button.prop('disabled', true).text('Salvando...');
         feedback.attr('class', 'settings-feedback info').text('Salvando configurações...');
-        $.ajax({
-            url: _base_url_ + 'class/System.php?action=update_system',
-            data: new FormData(this),
-            cache: false,
-            contentType: false,
-            processData: false,
-            method: 'POST',
-            dataType: 'json'
-        }).done(function (response) {
-            if (response.status === 'success') {
-                feedback.attr('class', 'settings-feedback success').text('Configurações salvas com sucesso.');
-                window.setTimeout(function () { window.location.reload(); }, 900);
-            } else {
-                feedback.attr('class', 'settings-feedback error').text(response.msg || 'Não foi possível salvar as configurações.');
-            }
-        }).fail(function (request) {
-            var message = request.responseJSON && request.responseJSON.msg ? request.responseJSON.msg : 'O servidor não concluiu o salvamento. Tente novamente.';
-            feedback.attr('class', 'settings-feedback error').text(message);
-        }).always(function () {
+        prepareSettingsData(this).then(function (data) {
+            $.ajax({
+                url: _base_url_ + 'class/System.php?action=update_system',
+                data: data,
+                cache: false,
+                contentType: false,
+                processData: false,
+                method: 'POST',
+                dataType: 'json'
+            }).done(function (response) {
+                if (response.status === 'success') {
+                    feedback.attr('class', 'settings-feedback success').text('Configurações salvas com sucesso.');
+                    window.setTimeout(function () { window.location.reload(); }, 900);
+                } else {
+                    feedback.attr('class', 'settings-feedback error').text(response.msg || 'Não foi possível salvar as configurações.');
+                }
+            }).fail(function (request) {
+                var message;
+                if (request.responseJSON && request.responseJSON.msg) {
+                    message = request.responseJSON.msg;
+                } else if (request.status === 413) {
+                    message = 'A imagem ultrapassou o limite de envio do servidor. Escolha uma imagem menor.';
+                } else {
+                    var status = request.status ? ' (HTTP ' + request.status + ')' : '';
+                    message = 'O servidor não concluiu o salvamento' + status + '. Tente novamente.';
+                }
+                feedback.attr('class', 'settings-feedback error').text(message);
+            }).always(function () {
+                button.prop('disabled', false).text('Salvar');
+            });
+        }).catch(function (error) {
+            feedback.attr('class', 'settings-feedback error').text(error.message || 'Não foi possível preparar a imagem.');
             button.prop('disabled', false).text('Salvar');
         });
     });
