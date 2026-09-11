@@ -74,7 +74,11 @@ if ($_settings->info('favicon')) {
     echo '">' . "\r\n\r\n" . '  ';
 }
 
-echo '<script>' . 'var _base_url_ =\'' . BASE_URL . '\';</script>';
+echo '<script>'
+    . 'var _base_url_=' . json_encode(BASE_URL, JSON_UNESCAPED_SLASHES) . ';'
+    . 'var _preview_base_match_=window.location.pathname.match(/^\\/plesk-site-preview\\/[^/]+\\/https?\\/[^/]+/);'
+    . 'if(_preview_base_match_){_base_url_=window.location.origin+_preview_base_match_[0]+"/";}'
+    . '</script>';
 
 echo '<script src="' . BASE_URL . 'admin/assets/js/focus-trap.js"></script>';
 

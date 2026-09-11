@@ -81,6 +81,10 @@ if (!str_contains($html, 'admin-context-guide-template')) {
     fwrite(STDERR, "A ajuda contextual não foi carregada em {$requestedPage}.\n");
     exit(1);
 }
+if (!str_contains($html, '_preview_base_match_') || !str_contains($html, 'plesk-site-preview')) {
+    fwrite(STDERR, "A URL dinamica para a previa do Plesk nao foi carregada.\n");
+    exit(1);
+}
 if ($requestedPage === 'products' && (!str_contains($html, 'campaign-delete-button')
     || !str_contains($html, 'confirmCampaignDeletion')
     || !str_contains($html, 'campaign-status-button')

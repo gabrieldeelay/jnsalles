@@ -55,7 +55,10 @@ require dirname(__DIR__) . '/index.php';
 $html = (string) ob_get_clean();
 chdir($originalDirectory);
 
-$valid = $html !== '' && !str_contains($html, 'Fatal error');
+$valid = $html !== ''
+    && !str_contains($html, 'Fatal error')
+    && str_contains($html, '_preview_base_match_')
+    && str_contains($html, 'plesk-site-preview');
 if ($target === 'home') {
 	$valid = $valid
 		&& str_contains($html, 'home-campaign-card')

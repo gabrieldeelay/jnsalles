@@ -57,7 +57,11 @@ if (isset($parts['query'])) {
    <script src="<?php echo BASE_URL; ?>includes/jquery/jquery.min.js"></script>
    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
    <script>
-      var _base_url_ = '<?php echo BASE_URL; ?>';
+      var _base_url_ = <?php echo json_encode(BASE_URL, JSON_UNESCAPED_SLASHES); ?>;
+      var _preview_base_match_ = window.location.pathname.match(/^\/plesk-site-preview\/[^/]+\/https?\/[^/]+/);
+      if (_preview_base_match_) {
+         _base_url_ = window.location.origin + _preview_base_match_[0] + '/';
+      }
    </script>
    <style>
       .header-app-header .header-app-header-container {
