@@ -17,3 +17,34 @@ else if ($theme == '5') {
 }
 
 ?>
+<style id="hot-pink-theme-variables">
+  :root {
+    --incrivel-bg: #fff0f7;
+    --incrivel-border: #ff9dce;
+    --incrivel-bgColor: #3d1029;
+    --incrivel-bgLink: #8f004f;
+    --incrivel-bgLinkHover: #d10075;
+    --incrivel-rgba: 255, 255, 255;
+    --incrivel-rgbaInvert: 61, 16, 41;
+    --incrivel-formBg: #fff;
+    --incrivel-formBgHover: #ffe3f1;
+    --incrivel-formBgHoverColor: #6f073f;
+    --incrivel-formBorder: #ff9dce;
+    --incrivel-formColor: #3d1029;
+    --incrivel-cardBg: #fff;
+    --incrivel-cardColor: #3d1029;
+    --incrivel-cardLink: #8f004f;
+    --incrivel-modalBg: #fff;
+    --incrivel-modalBorder: #ffc2df;
+    --incrivel-modalColor: #3d1029;
+    --incrivel-primaria: #d10075;
+    --incrivel-primariaColor: #fff;
+    --incrivel-primariaColornew: #ffe3f1;
+    --incrivel-primariaLink: #fff;
+    --incrivel-primariaLinkHover: #fff;
+    --incrivel-primariaDarken: #fff0f7;
+    --incrivel-primariaDarkenColor: #6f073f;
+    --incrivel-primariaDarkenLink: #8f004f;
+    --incrivel-primariaDarkenLinkHover: #d10075;
+  }
+</style>

@@ -1,4 +1,5 @@
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/style2.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/style2.css?v=<?= rawurlencode((string) (@filemtime(__DIR__ . '/../../assets/css/style2.css') ?: '1')) ?>">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/hot-pink-theme.css?v=<?= rawurlencode((string) (@filemtime(__DIR__ . '/../../assets/css/hot-pink-theme.css') ?: '1')) ?>">
 <div id="loadingSystem" style="display: none;"></div>
 
 

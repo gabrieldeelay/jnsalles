@@ -16,6 +16,10 @@ $styleVersion = @filemtime(__DIR__ . '/../../assets/css/style.css');
 if (!$styleVersion) {
    $styleVersion = '1';
 }
+$pinkThemeVersion = @filemtime(__DIR__ . '/../../assets/css/hot-pink-theme.css');
+if (!$pinkThemeVersion) {
+   $pinkThemeVersion = '1';
+}
 $url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 $parts = parse_url($url);
 $path_name = $parts['path'];
@@ -33,7 +37,7 @@ if (isset($parts['query'])) {
 <html lang="pt-br">
 
 <head>
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#d10075">
    <meta charset="utf-8">
    <meta http-equiv="X-UA-Compatible" content="IE=edge">
    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no">
@@ -46,9 +50,10 @@ if (isset($parts['query'])) {
       <link rel="icon" type="image/png" sizes="16x16" href="<?php echo validate_image($_settings->info('favicon')); ?>">
    <?php endif; ?>
    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-   <meta name="theme-color" content="#000000">
+   <meta name="theme-color" content="#d10075">
    
    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/style.css?v=<?= rawurlencode((string) $styleVersion) ?>">
+   <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/hot-pink-theme.css?v=<?= rawurlencode((string) $pinkThemeVersion) ?>">
    <script src="<?php echo BASE_URL; ?>includes/jquery/jquery.min.js"></script>
    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
    <script>

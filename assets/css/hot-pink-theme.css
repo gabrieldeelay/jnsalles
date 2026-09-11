@@ -1,0 +1,223 @@
+/*
+ * Tema rosa-choque da JN Salles.
+ * Mantido separado do CSS legado para facilitar ajustes e reversao.
+ */
+
+:root {
+  --hot-pink: #ff1493;
+  --hot-pink-strong: #d10075;
+  --hot-pink-dark: #8f004f;
+  --hot-pink-soft: #ffd6ea;
+  --hot-pink-surface: #fff0f7;
+  --hot-pink-card: #ffffff;
+  --hot-pink-text: #3d1029;
+
+  --incrivel-bg: #fff0f7;
+  --incrivel-border: #ff9dce;
+  --incrivel-bgColor: #3d1029;
+  --incrivel-bgLink: #8f004f;
+  --incrivel-bgLinkHover: #d10075;
+  --incrivel-rgba: 255, 255, 255;
+  --incrivel-rgbaInvert: 61, 16, 41;
+  --incrivel-formBg: #ffffff;
+  --incrivel-formBgHover: #ffe3f1;
+  --incrivel-formBgHoverColor: #6f073f;
+  --incrivel-formBorder: #ff9dce;
+  --incrivel-formColor: #3d1029;
+  --incrivel-cardBg: #ffffff;
+  --incrivel-cardColor: #3d1029;
+  --incrivel-cardLink: #8f004f;
+  --incrivel-modalBg: #ffffff;
+  --incrivel-modalBorder: #ffc2df;
+  --incrivel-modalColor: #3d1029;
+  --incrivel-primaria: #d10075;
+  --incrivel-primariaColor: #ffffff;
+  --incrivel-primariaColornew: #ffe3f1;
+  --incrivel-primariaLink: #ffffff;
+  --incrivel-primariaLinkHover: #ffffff;
+  --incrivel-primariaDarken: #fff0f7;
+  --incrivel-primariaDarkenColor: #6f073f;
+  --incrivel-primariaDarkenLink: #8f004f;
+  --incrivel-primariaDarkenLinkHover: #d10075;
+  --incrivel-secundaria: #8f004f;
+  --cor-secundaria: #8f004f;
+  --cor-primaria-light: #ff85c1;
+  --cor-primaria-lighten: #ffe3f1;
+  --cor-primaria-link: #ffffff;
+  --cor-secundaria-link: #ffffff;
+
+  --primary-color: #ff1493;
+  --primary-text-color: #ffffff;
+  --secondary-color: #8f004f;
+  --tertiary-color: #d10075;
+  --header-bg-color: #d10075;
+  --button-color: #d10075;
+  --button-border: #ff5cae;
+  --title-color: #ffffff;
+  --text-color: #ffd6ea;
+
+  --bs-primary: #d10075;
+  --bs-primary-rgb: 209, 0, 117;
+  --bs-success: #d10075;
+  --bs-success-rgb: 209, 0, 117;
+}
+
+html,
+body {
+  accent-color: var(--hot-pink-strong);
+}
+
+body {
+  color: var(--hot-pink-text);
+  background-color: var(--hot-pink-surface);
+  background-image: radial-gradient(circle at top, #ffd0e7 0, #fff0f7 34%, #fff8fb 72%);
+  background-attachment: fixed;
+}
+
+::selection {
+  color: #ffffff;
+  background: var(--hot-pink-strong);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--hot-pink), var(--hot-pink-dark)) !important;
+}
+
+.header-app-header .header-app-header-container,
+.header-app-header.campanha .header-app-header-container,
+.app-header,
+.navbar {
+  color: #ffffff !important;
+  background-color: var(--hot-pink-strong) !important;
+  background-image: linear-gradient(135deg, var(--hot-pink) 0%, var(--hot-pink-strong) 58%, var(--hot-pink-dark) 100%) !important;
+  box-shadow: 0 10px 30px rgba(143, 0, 79, 0.2);
+}
+
+.navbar.scrolled {
+  background-color: rgba(209, 0, 117, 0.94) !important;
+}
+
+.black-bar,
+.black-bar.campanha {
+  background-color: var(--hot-pink-dark) !important;
+  background-image: linear-gradient(90deg, var(--hot-pink-dark), var(--hot-pink-strong)) !important;
+}
+
+.app-main,
+.app-footer {
+  background-color: var(--hot-pink-surface);
+}
+
+.app-card,
+.ganhadorItem_ganhadorContainer__1Sbxm,
+.app-titulos-premiados--item,
+.SorteioTpl_sorteioTpl__2s2Wu,
+.SorteioTpl_sorteioTpl__home {
+  border: 1px solid rgba(255, 20, 147, 0.16);
+  box-shadow: 0 8px 24px rgba(143, 0, 79, 0.1);
+}
+
+.bg-cor-primaria,
+.btn-success,
+.btn-primary,
+.bg-primary,
+.bg-success {
+  color: #ffffff !important;
+  border-color: var(--hot-pink-strong) !important;
+  background-color: var(--hot-pink-strong) !important;
+  background-image: linear-gradient(135deg, var(--hot-pink), var(--hot-pink-strong)) !important;
+}
+
+.btn-success:hover,
+.btn-success:focus,
+.btn-success:active,
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  color: #ffffff !important;
+  border-color: var(--hot-pink-dark) !important;
+  background-color: var(--hot-pink-dark) !important;
+  background-image: linear-gradient(135deg, var(--hot-pink-strong), var(--hot-pink-dark)) !important;
+  box-shadow: 0 0 0 0.25rem rgba(255, 20, 147, 0.24) !important;
+}
+
+.btn-outline-success,
+.btn-outline-primary {
+  color: var(--hot-pink-strong) !important;
+  border-color: var(--hot-pink-strong) !important;
+}
+
+.btn-outline-success:hover,
+.btn-outline-primary:hover {
+  color: #ffffff !important;
+  background-color: var(--hot-pink-strong) !important;
+}
+
+.text-primary,
+.text-success,
+.text-cor-primaria,
+.incrivel-primariaLink {
+  color: var(--hot-pink-strong) !important;
+}
+
+.vendasExpressNumsSelect .item.mais-popular {
+  border-color: var(--hot-pink) !important;
+}
+
+.vendasExpressNumsSelect .item.mais-popular::before {
+  color: #ffffff;
+  background-color: var(--hot-pink-strong);
+}
+
+.vendasExpressNumsSelect.v2 .item.mais-popular .item-content,
+.vendasExpressNumsSelect .item.active {
+  color: #ffffff !important;
+  border-color: var(--hot-pink-strong) !important;
+  background-color: var(--hot-pink-strong) !important;
+  background-image: linear-gradient(135deg, var(--hot-pink), var(--hot-pink-strong)) !important;
+}
+
+.vendasExpressNumsSelect .item.active h3,
+.vendasExpressNumsSelect .item.active p,
+.vendasExpressNumsSelect.v2 .item.mais-popular h3 {
+  color: #ffffff !important;
+}
+
+.progress-bar,
+.step1-progress.active,
+.step2-progress.active,
+.step3-progress.active,
+.step4-progress.active,
+.step-header i.active {
+  background-color: var(--hot-pink-strong) !important;
+  background-image: linear-gradient(90deg, var(--hot-pink), var(--hot-pink-strong)) !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--hot-pink) !important;
+  box-shadow: 0 0 0 0.25rem rgba(255, 20, 147, 0.18) !important;
+}
+
+.custom-content-wrapper-details .btn,
+.botao-girar {
+  color: #ffffff !important;
+  border-color: var(--hot-pink-strong) !important;
+  background: linear-gradient(135deg, var(--hot-pink), var(--hot-pink-strong)) !important;
+}
+
+.bg-gradient-pink,
+.bg-gradient-purple,
+.bg-gradient-red2 {
+  border-color: var(--hot-pink-strong) !important;
+  background: linear-gradient(90deg, var(--hot-pink-dark), var(--hot-pink), #ff72ba) !important;
+}
+
+.css-dtzixn {
+  color: var(--hot-pink-strong);
+  border-color: var(--hot-pink-strong);
+}
+
+.css-1mcv32d {
+  color: var(--hot-pink-strong);
+}
