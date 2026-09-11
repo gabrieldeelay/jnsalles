@@ -4,14 +4,43 @@ ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
 error_reporting(E_ALL);
 
+if (!function_exists('jnsalles_detect_base_url')) {
+    function jnsalles_detect_base_url()
+    {
+        $configured = trim((string) getenv('APP_URL'));
+        if ($configured !== '') {
+            return rtrim($configured, '/') . '/';
+        }
+
+        $host = trim((string) ($_SERVER['HTTP_HOST'] ?? ''));
+        if ($host === '' || !preg_match('/^[a-z0-9.-]+(?::\d+)?$/i', $host)) {
+            return 'https://jnsalles.online/';
+        }
+
+        $https = strtolower((string) ($_SERVER['HTTPS'] ?? ''));
+        $scheme = $https !== '' && $https !== 'off' && $https !== '0' ? 'https' : 'http';
+        $requestPath = (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/');
+        $basePath = '/';
+
+        // O preview do Plesk adiciona o domínio e o destino HTTPS ao caminho.
+        // Preserve esse prefixo para links, AJAX, checkout e webhooks.
+        if (preg_match('#^(/plesk-site-preview/[^/]+/(?:https?|http)/[^/]+/)#i', $requestPath, $match)) {
+            $basePath = $match[1];
+        }
+
+        return $scheme . '://' . $host . $basePath;
+    }
+}
+
+$detectedBaseUrl = jnsalles_detect_base_url();
 if (!defined('BASE_URL')) {
-    define('BASE_URL', 'https://jnsalles.online/');
+    define('BASE_URL', $detectedBaseUrl);
 }
 if (!defined('BASE_REF')) {
-    define('BASE_REF', 'https://jnsalles.online/');
+    define('BASE_REF', $detectedBaseUrl);
 }
 if (!defined('base_url')) {
-    define('base_url', 'https://jnsalles.online/');
+    define('base_url', $detectedBaseUrl);
 }
 if (!defined('base_app')) {
     define('base_app', str_replace('\\', '/', __DIR__) . '/');
