@@ -2246,7 +2246,7 @@ if ($available > 0 && $status == '1') {
                                     let qty = $('.qty').val();
 
                                     $('#qty_cotas').text(qty);
-                                    $.ajax({
+                                    return $.ajax({
                                         url: _base_url_ + "class/Main.php?action=add_to_card",
                                         method: "POST",
                                         data: {

@@ -913,11 +913,21 @@ if (!$user_id) { ?>
 			$('#submitFormNew').click(function(event) {
 				event.preventDefault();
 				$("#overlay").fadeIn(300);
-				$('#add_to_cart').click();
-				setTimeout(function() {
-					$('#place_order').click();
-					//$("#overlay").fadeOut(300);                    
-				}, 2000);
+				var cartRequest = typeof add_cart === 'function' ? add_cart() : null;
+				if (!cartRequest || typeof cartRequest.done !== 'function') {
+					$("#overlay").stop(true, true).hide();
+					alert('Não foi possível preparar a compra. Tente novamente.');
+					return;
+				}
+				cartRequest.done(function(resp) {
+					if (resp && resp.status === 'success') {
+						$('#place_order').click();
+						return;
+					}
+					$("#overlay").stop(true, true).hide();
+				}).fail(function() {
+					$("#overlay").stop(true, true).hide();
+				});
 			});
 		});
 	</script>

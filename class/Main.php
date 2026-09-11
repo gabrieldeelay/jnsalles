@@ -35,6 +35,45 @@ class Main extends DBConnection
         }
     }
 
+    private function current_customer_id()
+    {
+        $customerId = (int) $this->settings->userdata('id');
+        if ($customerId > 0) {
+            $statement = $this->conn->prepare('SELECT id FROM customer_list WHERE id = ? LIMIT 1');
+            $statement->bind_param('i', $customerId);
+            $statement->execute();
+            $result = $statement->get_result();
+            $exists = $result && $result->num_rows > 0;
+            $statement->close();
+            if ($exists) {
+                return $customerId;
+            }
+        }
+
+        // Sessões antigas do painel podem conservar um ID de administrador.
+        // O telefone do cliente autenticado permite restaurar a referência
+        // correta sem aceitar um identificador enviado pelo navegador.
+        $phone = preg_replace('/\D+/', '', (string) $this->settings->userdata('phone'));
+        if ($phone === '') {
+            return 0;
+        }
+
+        $statement = $this->conn->prepare('SELECT id FROM customer_list WHERE phone = ? LIMIT 1');
+        $statement->bind_param('s', $phone);
+        $statement->execute();
+        $result = $statement->get_result();
+        $customer = $result ? $result->fetch_assoc() : null;
+        $statement->close();
+        if (!$customer) {
+            return 0;
+        }
+
+        $customerId = (int) $customer['id'];
+        $this->settings->set_userdata('id', $customerId);
+        $this->settings->set_userdata('login_type', 2);
+        return $customerId;
+    }
+
     private function campaign_upload_error($code)
     {
         $messages = [
@@ -1175,7 +1214,13 @@ class Main extends DBConnection
             ]);
         }
         extract($_POST);
-        $customer_id = $this->settings->userdata("id");
+        $customer_id = $this->current_customer_id();
+        if ($customer_id <= 0) {
+            return json_encode([
+                'status' => 'failed',
+                'msg' => 'Sua sessão expirou. Informe seu telefone novamente para continuar.',
+            ], JSON_UNESCAPED_UNICODE);
+        }
         $delete = $this->conn->query(
             'DELETE FROM `cart_list` WHERE customer_id = \'' .
                 $customer_id .
@@ -2144,7 +2189,15 @@ class Main extends DBConnection
         // será adquirida somente no instante de reservar estoque e cotas.
         if (is_resource($lock)) {
 
-            $customer_id = $this->settings->userdata("id");
+            $customer_id = $this->current_customer_id();
+            if ($customer_id <= 0) {
+                flock($lock, LOCK_UN);
+                fclose($lock);
+                return json_encode([
+                    'status' => 'failed',
+                    'error' => 'Sua sessão expirou. Informe seu telefone novamente para continuar.',
+                ], JSON_UNESCAPED_UNICODE);
+            }
             $customer_fname = $this->settings->userdata("firstname");
             $customer_lname = $this->settings->userdata("lastname");
             $customer_phone = $this->settings->userdata("phone");
@@ -3713,7 +3766,7 @@ class Main extends DBConnection
 
     public function generate_order_pix()
     {
-        $customerId = (int) $this->settings->userdata('id');
+        $customerId = $this->current_customer_id();
         if ($customerId <= 0) {
             return json_encode(['status' => 'failed', 'msg' => 'Não autorizado.'], JSON_UNESCAPED_UNICODE);
         }
