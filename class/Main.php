@@ -3119,7 +3119,7 @@ class Main extends DBConnection
             }
 
             if ($resp["status"] == "success") {
-                $resp["redirect"] = "/compra/" . $order_token . "";
+                $resp["redirect"] = rtrim(BASE_URL, "/") . "/compra/" . $order_token;
             }
 
             if (empty($deferredPaymentGeneration) && $this->settings->info("enable_pixel") == 1) {

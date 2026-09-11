@@ -611,7 +611,7 @@ $order_numbers = implode(",", $numeris) . ",";
 			}
 
 			if ($resp['status'] == 'success') {
-				$resp['redirect'] = '/compra/' . $order_token . '';
+				$resp['redirect'] = rtrim(BASE_URL, '/') . '/compra/' . $order_token;
 			}
 
 			if ($this->settings->info('enable_pixel') == 1) {
