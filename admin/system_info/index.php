@@ -67,7 +67,7 @@ $(function () {
         feedback.attr('class', 'settings-feedback info').text('Otimizando a imagem antes de salvar...');
         return optimizeBrandImage(imageFile).then(function (optimizedImage) {
             var originalName = imageFile.name.replace(/\.[^.]+$/, '') || 'logo';
-            data.set('img', optimizedImage, originalName + '-otimizada.jpg');
+            data.set('img', optimizedImage.blob, originalName + '-otimizada.' + optimizedImage.extension);
             return { data: data, hasImage: true };
         });
     }
@@ -79,23 +79,43 @@ $(function () {
 
             image.onload = function () {
                 URL.revokeObjectURL(objectUrl);
-                var maxDimension = 1000;
-                var scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
-                var canvas = document.createElement('canvas');
-                canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-                canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-                var context = canvas.getContext('2d');
+                var preserveTransparency = file.type === 'image/png';
+                var outputType = preserveTransparency ? 'image/png' : 'image/jpeg';
+                var extension = preserveTransparency ? 'png' : 'jpg';
+                var originalMax = Math.max(image.naturalWidth, image.naturalHeight);
+                var targetMax = Math.min(1000, originalMax);
 
-                context.fillStyle = '#ffffff';
-                context.fillRect(0, 0, canvas.width, canvas.height);
-                context.drawImage(image, 0, 0, canvas.width, canvas.height);
-                canvas.toBlob(function (blob) {
-                    if (!blob) {
-                        reject(new Error('Não foi possível preparar a imagem. Escolha outro arquivo.'));
-                        return;
+                function encodeNextSize() {
+                    var scale = Math.min(1, targetMax / originalMax);
+                    var canvas = document.createElement('canvas');
+                    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+                    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+                    var context = canvas.getContext('2d');
+
+                    if (!preserveTransparency) {
+                        context.fillStyle = '#ffffff';
+                        context.fillRect(0, 0, canvas.width, canvas.height);
                     }
-                    resolve(blob);
-                }, 'image/jpeg', 0.82);
+                    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob(function (blob) {
+                        if (!blob) {
+                            reject(new Error('Não foi possível preparar a imagem. Escolha outro arquivo.'));
+                            return;
+                        }
+                        if (blob.size > 600 * 1024 && targetMax > 360) {
+                            targetMax = Math.max(360, Math.floor(targetMax * 0.82));
+                            encodeNextSize();
+                            return;
+                        }
+                        if (blob.size > 700 * 1024) {
+                            reject(new Error('Não foi possível reduzir a imagem sem perder qualidade. Escolha um PNG menor.'));
+                            return;
+                        }
+                        resolve({ blob: blob, extension: extension });
+                    }, outputType, preserveTransparency ? undefined : 0.82);
+                }
+
+                encodeNextSize();
             };
             image.onerror = function () {
                 URL.revokeObjectURL(objectUrl);
@@ -205,7 +225,7 @@ if ($theme == '5') {
 	echo 'selected';
 }
 
-echo '>Laranja</option>' . "\r\n\t\t\t\t\t\t" . '</select>' . "\r\n\t\t\t\t\t" . '</label>' . "\r\n\r\n\t\t\t\t\t" . '<label class="block mt-4 text-sm">' . "\r\n\t\t\t\t\t\t" . '<span class="text-gray-700 dark:text-gray-400">Logo do site e favicon:</span>' . "\r\n\t\t\t\t\t\t" . '<p class="mb-2" style="font-size:13px;color: orange;font-style:italic;">A mesma imagem ser&aacute; aplicada no cabe&ccedil;alho e no &iacute;cone da aba do navegador. Use PNG ou JPG de at&eacute; 4 MB.</p>' . "\r\n\t\t\t\t\t\t" . '<input id="customFile1" name="img" onchange="displayImg(this,$(this))" type="file" class="block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input" accept="image/png, image/jpeg">' . "\r\n\t\t\t\t\t" . '</label>' . "\r\n\r\n\t\t\t\t\t" . '<label class="block mt-4 text-sm">' . "\r\n\t\t\t\t\t\t" . '<img src="';
+echo '>Laranja</option>' . "\r\n\t\t\t\t\t\t" . '</select>' . "\r\n\t\t\t\t\t" . '</label>' . "\r\n\r\n\t\t\t\t\t" . '<label class="block mt-4 text-sm">' . "\r\n\t\t\t\t\t\t" . '<span class="text-gray-700 dark:text-gray-400">Logo do site e favicon:</span>' . "\r\n\t\t\t\t\t\t" . '<p class="mb-2" style="font-size:13px;color: orange;font-style:italic;">A mesma imagem ser&aacute; aplicada no cabe&ccedil;alho e no &iacute;cone da aba do navegador. Use PNG ou JPG de at&eacute; 4 MB. A transpar&ecirc;ncia de arquivos PNG ser&aacute; preservada.</p>' . "\r\n\t\t\t\t\t\t" . '<input id="customFile1" name="img" onchange="displayImg(this,$(this))" type="file" class="block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input" accept="image/png, image/jpeg">' . "\r\n\t\t\t\t\t" . '</label>' . "\r\n\r\n\t\t\t\t\t" . '<label class="block mt-4 text-sm">' . "\r\n\t\t\t\t\t\t" . '<img src="';
 echo validate_image($_settings->info('logo'));
 echo '" alt="Pr&eacute;via da logo do site" id="cimg" class="img-fluid img-thumbnail">' . "\r\n\t\t\t\t\t" . '</label>' . "\r\n\r\n\t\t\t\t\t" . '<label class="block mt-4 text-sm">' . "\r\n\t\t\t\t\t\t\t" . '<span class="text-gray-700 dark:text-gray-400">Bloquear múltiplos pedidos?</span>' . "\t\r\n\t\t\t\t\t\t\t" . '<p class="mb-2" style="font-size:13px;color: orange;font-style:italic;">Ao habilitar esta opção, o cliente só poderá realizar um novo pedido após efetuar o pagamento do pedido anterior ou o mesmo expirar.</p>' . "\t\r\n\t\t\t\t\t\t" . '</label>' . "\r\n\t\t\t\t\t\t" . '<div class="can-toggle">' . "\r\n\t\t\t\t\t\t\t" . '<input type="checkbox" name="enable_multiple_order" id="enable_multiple_order" ';
 echo (isset($enable_multiple_order) && $enable_multiple_order == 1 ? 'checked' : '');
