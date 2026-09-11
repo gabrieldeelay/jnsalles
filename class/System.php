@@ -50,12 +50,19 @@ class System extends DBConnection
 
     private function save_brand_image($file)
     {
-        if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
-            return ['ok' => false, 'message' => 'O arquivo da logo não foi recebido.'];
+        $uploadError = $file['error'] ?? UPLOAD_ERR_NO_FILE;
+        if ($uploadError !== UPLOAD_ERR_OK) {
+            if ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) {
+                return ['ok' => false, 'message' => 'A imagem ultrapassou o limite aceito pelo servidor.'];
+            }
+            if ($uploadError === UPLOAD_ERR_NO_FILE) {
+                return ['ok' => false, 'message' => 'Nenhuma imagem foi recebida pelo servidor.'];
+            }
+            return ['ok' => false, 'message' => 'Não foi possível enviar a logo. Tente novamente.'];
         }
 
-        if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
-            return ['ok' => false, 'message' => 'Não foi possível enviar a logo. Tente novamente.'];
+        if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+            return ['ok' => false, 'message' => 'O arquivo da logo não foi recebido.'];
         }
 
         if (($file['size'] ?? 0) <= 0 || $file['size'] > 4 * 1024 * 1024) {
@@ -297,16 +304,20 @@ class System extends DBConnection
             }
         }
 
-        if (!empty($_FILES['img']['tmp_name'])) {
-            $brandImage = $this->save_brand_image($_FILES['img']);
+        $brandUpdated = false;
+        $brandUpload = null;
+        if (isset($_FILES['img']) && (($_FILES['img']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE)) {
+            $brandUpload = $_FILES['img'];
+        } elseif (isset($_FILES['favicon']) && (($_FILES['favicon']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE)) {
+            $brandUpload = $_FILES['favicon'];
+        }
+
+        if ($brandUpload !== null) {
+            $brandImage = $this->save_brand_image($brandUpload);
             if (!$brandImage['ok']) {
                 return json_encode(['status' => 'failed', 'msg' => $brandImage['message']]);
             }
-        } elseif (!empty($_FILES['favicon']['tmp_name'])) {
-            $brandImage = $this->save_brand_image($_FILES['favicon']);
-            if (!$brandImage['ok']) {
-                return json_encode(['status' => 'failed', 'msg' => $brandImage['message']]);
-            }
+            $brandUpdated = true;
         }
 
         /* Legacy image handlers kept below for backwards compatibility. */
@@ -514,7 +525,11 @@ class System extends DBConnection
 
         if ($update) {
             $resp['status'] = 'success';
-            $resp['msg'] = 'Configurações salvas com sucesso!';
+            $resp['msg'] = 'Configurações salvas e verificadas no servidor.';
+            $resp['brand_updated'] = $brandUpdated;
+            $resp['saved_name'] = (string) $this->info('name');
+            $resp['logo_url'] = validate_image($this->info('logo'));
+            $resp['saved_at'] = time();
             $user_name = $_SESSION['userdata']['firstname'];
             $insert = $this->conn->query('INSERT INTO `logs` (`origin`, `description`) VALUES (\'SYSTEM\', \'Configurações do sistema atualizadas pelo usuário ' . $user_name . '\')');
         } else {

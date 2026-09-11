@@ -51,7 +51,7 @@ $(function () {
         var imageInput = formElement.querySelector('input[type="file"][name="img"]');
         var imageFile = imageInput && imageInput.files ? imageInput.files[0] : null;
 
-        if (!imageFile) return Promise.resolve(data);
+        if (!imageFile) return Promise.resolve({ data: data, hasImage: false });
         if (!/^image\/(png|jpeg)$/.test(imageFile.type)) {
             return Promise.reject(new Error('Escolha uma imagem PNG ou JPG.'));
         }
@@ -62,13 +62,13 @@ $(function () {
         // O preview do Plesk pode interromper uploads grandes antes de eles
         // chegarem ao PHP. Otimizamos apenas quando necessário e mantemos o
         // arquivo enviado abaixo de 700 KB.
-        if (imageFile.size <= 700 * 1024) return Promise.resolve(data);
+        if (imageFile.size <= 700 * 1024) return Promise.resolve({ data: data, hasImage: true });
 
         feedback.attr('class', 'settings-feedback info').text('Otimizando a imagem antes de salvar...');
         return optimizeBrandImage(imageFile).then(function (optimizedImage) {
             var originalName = imageFile.name.replace(/\.[^.]+$/, '') || 'logo';
             data.set('img', optimizedImage, originalName + '-otimizada.jpg');
-            return data;
+            return { data: data, hasImage: true };
         });
     }
 
@@ -110,10 +110,12 @@ $(function () {
         var button = form.find('button[form="manage-system"]');
         button.prop('disabled', true).text('Salvando...');
         feedback.attr('class', 'settings-feedback info').text('Salvando configurações...');
-        prepareSettingsData(this).then(function (data) {
+        var preparedUpload = null;
+        prepareSettingsData(this).then(function (prepared) {
+            preparedUpload = prepared;
             $.ajax({
                 url: _base_url_ + 'class/System.php?action=update_system',
-                data: data,
+                data: prepared.data,
                 cache: false,
                 contentType: false,
                 processData: false,
@@ -121,8 +123,19 @@ $(function () {
                 dataType: 'json'
             }).done(function (response) {
                 if (response.status === 'success') {
-                    feedback.attr('class', 'settings-feedback success').text('Configurações salvas com sucesso.');
-                    window.setTimeout(function () { window.location.reload(); }, 900);
+                    if (preparedUpload.hasImage && !response.brand_updated) {
+                        feedback.attr('class', 'settings-feedback error').text('Os textos foram salvos, mas o servidor não confirmou a nova imagem. Tente novamente.');
+                        return;
+                    }
+                    if (response.logo_url) {
+                        $('#cimg').attr('src', response.logo_url);
+                    }
+                    feedback.attr('class', 'settings-feedback success').text(response.msg || 'Configurações salvas e verificadas no servidor.');
+                    window.setTimeout(function () {
+                        var freshUrl = new URL(window.location.href);
+                        freshUrl.searchParams.set('_saved', response.saved_at || Date.now());
+                        window.location.replace(freshUrl.toString());
+                    }, 1100);
                 } else {
                     feedback.attr('class', 'settings-feedback error').text(response.msg || 'Não foi possível salvar as configurações.');
                 }

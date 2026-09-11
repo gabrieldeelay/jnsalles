@@ -1,5 +1,13 @@
 <?php
 
+// As páginas do site são montadas com configurações editáveis no painel.
+// Evita que o navegador ou o preview do Plesk reutilize HTML anterior após um salvamento.
+if (!headers_sent()) {
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+}
+
 require_once __DIR__ . '/includes/ticket_numbers.php';
 
 if (!function_exists('jnsalles_default_site_description')) {
