@@ -221,3 +221,40 @@ body {
 .css-1mcv32d {
   color: var(--hot-pink-strong);
 }
+
+/* A pagina inicial declara parte do visual depois do CSS principal. */
+.bg-azul-personalizado {
+  background-color: var(--hot-pink-strong) !important;
+}
+
+.home-hero {
+  background: linear-gradient(135deg, #5c0a38 0%, var(--hot-pink-strong) 62%, var(--hot-pink) 140%) !important;
+  box-shadow: 0 10px 26px rgba(143, 0, 79, 0.2) !important;
+}
+
+.home-hero__eyebrow {
+  color: var(--hot-pink-soft) !important;
+}
+
+.home-info-card {
+  border-color: rgba(255, 20, 147, 0.2) !important;
+  background: linear-gradient(145deg, #ffffff, var(--hot-pink-surface)) !important;
+  box-shadow: 0 7px 20px rgba(143, 0, 79, 0.08) !important;
+}
+
+.home-info-card h2 {
+  color: var(--hot-pink-text) !important;
+}
+
+.home-info-card p {
+  color: #7b4965 !important;
+}
+
+.home-info-actions a {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, var(--hot-pink), var(--hot-pink-strong)) !important;
+}
+
+.comprador {
+  border-color: var(--hot-pink-strong) !important;
+}
