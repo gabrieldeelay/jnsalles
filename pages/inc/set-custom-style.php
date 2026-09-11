@@ -19,32 +19,32 @@ else if ($theme == '5') {
 ?>
 <style id="hot-pink-theme-variables">
   :root {
-    --incrivel-bg: #fff0f7;
-    --incrivel-border: #ff9dce;
-    --incrivel-bgColor: #3d1029;
-    --incrivel-bgLink: #8f004f;
-    --incrivel-bgLinkHover: #d10075;
+    --incrivel-bg: #faf8f9;
+    --incrivel-border: #eadde3;
+    --incrivel-bgColor: #34242c;
+    --incrivel-bgLink: #6f2445;
+    --incrivel-bgLinkHover: #b42c63;
     --incrivel-rgba: 255, 255, 255;
-    --incrivel-rgbaInvert: 61, 16, 41;
+    --incrivel-rgbaInvert: 52, 36, 44;
     --incrivel-formBg: #fff;
-    --incrivel-formBgHover: #ffe3f1;
-    --incrivel-formBgHoverColor: #6f073f;
-    --incrivel-formBorder: #ff9dce;
-    --incrivel-formColor: #3d1029;
+    --incrivel-formBgHover: #f8edf2;
+    --incrivel-formBgHoverColor: #5c3145;
+    --incrivel-formBorder: #ded0d7;
+    --incrivel-formColor: #34242c;
     --incrivel-cardBg: #fff;
-    --incrivel-cardColor: #3d1029;
-    --incrivel-cardLink: #8f004f;
+    --incrivel-cardColor: #34242c;
+    --incrivel-cardLink: #6f2445;
     --incrivel-modalBg: #fff;
-    --incrivel-modalBorder: #ffc2df;
-    --incrivel-modalColor: #3d1029;
-    --incrivel-primaria: #d10075;
+    --incrivel-modalBorder: #eadde3;
+    --incrivel-modalColor: #34242c;
+    --incrivel-primaria: #b42c63;
     --incrivel-primariaColor: #fff;
-    --incrivel-primariaColornew: #ffe3f1;
+    --incrivel-primariaColornew: #f8edf2;
     --incrivel-primariaLink: #fff;
     --incrivel-primariaLinkHover: #fff;
-    --incrivel-primariaDarken: #fff0f7;
-    --incrivel-primariaDarkenColor: #6f073f;
-    --incrivel-primariaDarkenLink: #8f004f;
-    --incrivel-primariaDarkenLinkHover: #d10075;
+    --incrivel-primariaDarken: #f7f1f4;
+    --incrivel-primariaDarkenColor: #5c3145;
+    --incrivel-primariaDarkenLink: #6f2445;
+    --incrivel-primariaDarkenLinkHover: #b42c63;
   }
 </style>

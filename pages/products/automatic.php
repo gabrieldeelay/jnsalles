@@ -545,11 +545,11 @@ if ($enable_cpf == 1) {
         min-height: 46px;
         margin-bottom: 10px;
         padding: 7px 8px 7px 10px;
-        border: 1px solid rgba(209, 0, 117, .15);
+        border: 1px solid rgba(52, 36, 44, .1);
         border-radius: 12px;
         background: #fff;
-        box-shadow: 0 2px 9px rgba(61, 16, 41, .07);
-        color: #8f004f;
+        box-shadow: 0 1px 4px rgba(52, 36, 44, .04);
+        color: #6f2445;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -561,14 +561,14 @@ if ($enable_cpf == 1) {
 
     .ranking-spotlight:hover,
     .ranking-spotlight:focus-visible {
-        color: #8f004f;
+        color: #6f2445;
         filter: none;
         transform: none;
-        box-shadow: 0 3px 12px rgba(61, 16, 41, .1);
+        box-shadow: 0 2px 7px rgba(52, 36, 44, .07);
     }
 
     .ranking-spotlight:focus-visible {
-        outline: 3px solid rgba(255, 20, 147, .22);
+        outline: 3px solid rgba(180, 44, 99, .18);
         outline-offset: 2px;
     }
 
@@ -604,7 +604,7 @@ if ($enable_cpf == 1) {
         flex: 0 0 28px;
         border-radius: 8px;
         color: #fff;
-        background: #d10075;
+        background: #b42c63;
         display: inline-flex;
         align-items: center;
         justify-content: center;

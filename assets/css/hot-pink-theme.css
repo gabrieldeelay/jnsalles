@@ -1,65 +1,65 @@
 /*
- * Tema rosa-choque da JN Salles.
+ * Tema rosa elegante da JN Salles.
  * Mantido separado do CSS legado para facilitar ajustes e reversao.
  */
 
 :root {
-  --hot-pink: #ff1493;
-  --hot-pink-strong: #d10075;
-  --hot-pink-dark: #8f004f;
-  --hot-pink-soft: #ffd6ea;
-  --hot-pink-surface: #fff0f7;
+  --hot-pink: #d83f7d;
+  --hot-pink-strong: #b42c63;
+  --hot-pink-dark: #6f2445;
+  --hot-pink-soft: #f4dce7;
+  --hot-pink-surface: #faf8f9;
   --hot-pink-card: #ffffff;
-  --hot-pink-text: #3d1029;
+  --hot-pink-text: #34242c;
 
-  --incrivel-bg: #fff0f7;
-  --incrivel-border: #ff9dce;
-  --incrivel-bgColor: #3d1029;
-  --incrivel-bgLink: #8f004f;
-  --incrivel-bgLinkHover: #d10075;
+  --incrivel-bg: #faf8f9;
+  --incrivel-border: #eadde3;
+  --incrivel-bgColor: #34242c;
+  --incrivel-bgLink: #6f2445;
+  --incrivel-bgLinkHover: #b42c63;
   --incrivel-rgba: 255, 255, 255;
-  --incrivel-rgbaInvert: 61, 16, 41;
+  --incrivel-rgbaInvert: 52, 36, 44;
   --incrivel-formBg: #ffffff;
-  --incrivel-formBgHover: #ffe3f1;
-  --incrivel-formBgHoverColor: #6f073f;
-  --incrivel-formBorder: #ff9dce;
-  --incrivel-formColor: #3d1029;
+  --incrivel-formBgHover: #f8edf2;
+  --incrivel-formBgHoverColor: #5c3145;
+  --incrivel-formBorder: #ded0d7;
+  --incrivel-formColor: #34242c;
   --incrivel-cardBg: #ffffff;
-  --incrivel-cardColor: #3d1029;
-  --incrivel-cardLink: #8f004f;
+  --incrivel-cardColor: #34242c;
+  --incrivel-cardLink: #6f2445;
   --incrivel-modalBg: #ffffff;
-  --incrivel-modalBorder: #ffc2df;
-  --incrivel-modalColor: #3d1029;
-  --incrivel-primaria: #d10075;
+  --incrivel-modalBorder: #eadde3;
+  --incrivel-modalColor: #34242c;
+  --incrivel-primaria: #b42c63;
   --incrivel-primariaColor: #ffffff;
-  --incrivel-primariaColornew: #ffe3f1;
+  --incrivel-primariaColornew: #f8edf2;
   --incrivel-primariaLink: #ffffff;
   --incrivel-primariaLinkHover: #ffffff;
-  --incrivel-primariaDarken: #fff0f7;
-  --incrivel-primariaDarkenColor: #6f073f;
-  --incrivel-primariaDarkenLink: #8f004f;
-  --incrivel-primariaDarkenLinkHover: #d10075;
-  --incrivel-secundaria: #8f004f;
-  --cor-secundaria: #8f004f;
-  --cor-primaria-light: #ff85c1;
-  --cor-primaria-lighten: #ffe3f1;
+  --incrivel-primariaDarken: #f7f1f4;
+  --incrivel-primariaDarkenColor: #5c3145;
+  --incrivel-primariaDarkenLink: #6f2445;
+  --incrivel-primariaDarkenLinkHover: #b42c63;
+  --incrivel-secundaria: #6f2445;
+  --cor-secundaria: #6f2445;
+  --cor-primaria-light: #d8739d;
+  --cor-primaria-lighten: #f8edf2;
   --cor-primaria-link: #ffffff;
   --cor-secundaria-link: #ffffff;
 
-  --primary-color: #ff1493;
+  --primary-color: #b42c63;
   --primary-text-color: #ffffff;
-  --secondary-color: #8f004f;
-  --tertiary-color: #d10075;
-  --header-bg-color: #d10075;
-  --button-color: #d10075;
-  --button-border: #ff5cae;
+  --secondary-color: #6f2445;
+  --tertiary-color: #b42c63;
+  --header-bg-color: #472536;
+  --button-color: #b42c63;
+  --button-border: #c75b87;
   --title-color: #ffffff;
-  --text-color: #ffd6ea;
+  --text-color: #f4dce7;
 
-  --bs-primary: #d10075;
-  --bs-primary-rgb: 209, 0, 117;
-  --bs-success: #d10075;
-  --bs-success-rgb: 209, 0, 117;
+  --bs-primary: #b42c63;
+  --bs-primary-rgb: 180, 44, 99;
+  --bs-success: #b42c63;
+  --bs-success-rgb: 180, 44, 99;
 }
 
 html,
@@ -79,7 +79,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--hot-pink), var(--hot-pink-dark)) !important;
+  background: #b9a4ae !important;
 }
 
 .header-app-header .header-app-header-container,
@@ -87,19 +87,19 @@ body {
 .app-header,
 .navbar {
   color: #ffffff !important;
-  background-color: var(--hot-pink-strong) !important;
-  background-image: linear-gradient(135deg, var(--hot-pink) 0%, var(--hot-pink-strong) 58%, var(--hot-pink-dark) 100%) !important;
-  box-shadow: 0 4px 14px rgba(143, 0, 79, 0.14);
+  background-color: #472536 !important;
+  background-image: none !important;
+  box-shadow: 0 1px 0 rgba(52, 36, 44, 0.16);
 }
 
 .navbar.scrolled {
-  background-color: rgba(209, 0, 117, 0.94) !important;
+  background-color: rgba(71, 37, 54, 0.97) !important;
 }
 
 .black-bar,
 .black-bar.campanha {
-  background-color: var(--hot-pink-dark) !important;
-  background-image: linear-gradient(90deg, var(--hot-pink-dark), var(--hot-pink-strong)) !important;
+  background-color: var(--hot-pink-strong) !important;
+  background-image: none !important;
 }
 
 .app-main,
@@ -107,13 +107,18 @@ body {
   background-color: var(--hot-pink-surface);
 }
 
+.app-footer {
+  border-top: 1px solid #e8e0e4;
+  background-color: #f5f2f4 !important;
+}
+
 .app-card,
 .ganhadorItem_ganhadorContainer__1Sbxm,
 .app-titulos-premiados--item,
 .SorteioTpl_sorteioTpl__2s2Wu,
 .SorteioTpl_sorteioTpl__home {
-  border: 1px solid rgba(255, 20, 147, 0.16);
-  box-shadow: 0 2px 10px rgba(61, 16, 41, 0.06);
+  border: 1px solid rgba(52, 36, 44, 0.1);
+  box-shadow: 0 1px 4px rgba(52, 36, 44, 0.04);
 }
 
 .bg-cor-primaria,
@@ -124,7 +129,7 @@ body {
   color: #ffffff !important;
   border-color: var(--hot-pink-strong) !important;
   background-color: var(--hot-pink-strong) !important;
-  background-image: linear-gradient(135deg, var(--hot-pink), var(--hot-pink-strong)) !important;
+  background-image: none !important;
 }
 
 .btn-success:hover,
@@ -136,8 +141,8 @@ body {
   color: #ffffff !important;
   border-color: var(--hot-pink-dark) !important;
   background-color: var(--hot-pink-dark) !important;
-  background-image: linear-gradient(135deg, var(--hot-pink-strong), var(--hot-pink-dark)) !important;
-  box-shadow: 0 0 0 0.25rem rgba(255, 20, 147, 0.24) !important;
+  background-image: none !important;
+  box-shadow: 0 0 0 0.2rem rgba(180, 44, 99, 0.14) !important;
 }
 
 .btn-outline-success,
@@ -173,7 +178,7 @@ body {
   color: #ffffff !important;
   border-color: var(--hot-pink-strong) !important;
   background-color: var(--hot-pink-strong) !important;
-  background-image: linear-gradient(135deg, var(--hot-pink), var(--hot-pink-strong)) !important;
+  background-image: none !important;
 }
 
 .vendasExpressNumsSelect .item.active h3,
@@ -189,27 +194,27 @@ body {
 .step4-progress.active,
 .step-header i.active {
   background-color: var(--hot-pink-strong) !important;
-  background-image: linear-gradient(90deg, var(--hot-pink), var(--hot-pink-strong)) !important;
+  background-image: none !important;
 }
 
 .form-control:focus,
 .form-select:focus {
   border-color: var(--hot-pink) !important;
-  box-shadow: 0 0 0 0.25rem rgba(255, 20, 147, 0.18) !important;
+  box-shadow: 0 0 0 0.2rem rgba(180, 44, 99, 0.12) !important;
 }
 
 .custom-content-wrapper-details .btn,
 .botao-girar {
   color: #ffffff !important;
   border-color: var(--hot-pink-strong) !important;
-  background: linear-gradient(135deg, var(--hot-pink), var(--hot-pink-strong)) !important;
+  background: var(--hot-pink-strong) !important;
 }
 
 .bg-gradient-pink,
 .bg-gradient-purple,
 .bg-gradient-red2 {
   border-color: var(--hot-pink-strong) !important;
-  background: linear-gradient(90deg, var(--hot-pink-dark), var(--hot-pink), #ff72ba) !important;
+  background: var(--hot-pink-strong) !important;
 }
 
 .css-dtzixn {
@@ -227,8 +232,8 @@ body {
 }
 
 .home-hero {
-  background: linear-gradient(135deg, #5c0a38 0%, var(--hot-pink-strong) 62%, var(--hot-pink) 140%) !important;
-  box-shadow: 0 4px 16px rgba(143, 0, 79, 0.14) !important;
+  background: linear-gradient(135deg, #3b2330 0%, #632945 100%) !important;
+  box-shadow: 0 3px 12px rgba(52, 36, 44, 0.1) !important;
 }
 
 .home-hero__eyebrow {
@@ -236,9 +241,9 @@ body {
 }
 
 .home-info-card {
-  border-color: rgba(255, 20, 147, 0.2) !important;
+  border-color: rgba(52, 36, 44, 0.1) !important;
   background: #ffffff !important;
-  box-shadow: 0 2px 10px rgba(61, 16, 41, 0.06) !important;
+  box-shadow: 0 1px 4px rgba(52, 36, 44, 0.04) !important;
 }
 
 .home-info-card h2 {
@@ -251,7 +256,7 @@ body {
 
 .home-info-actions a {
   color: #ffffff !important;
-  background: linear-gradient(135deg, var(--hot-pink), var(--hot-pink-strong)) !important;
+  background: var(--hot-pink-strong) !important;
 }
 
 .comprador {
@@ -288,13 +293,13 @@ body {
 
 .app-title-desc,
 .text-muted {
-  color: #876176 !important;
+  color: #806976 !important;
 }
 
 .form-control,
 .form-select {
   min-height: 44px;
-  border-color: #e8cfdb;
+  border-color: #ded0d7;
   border-radius: 10px;
   background-color: #ffffff;
   box-shadow: none !important;
@@ -323,30 +328,30 @@ body {
 
 .purchase-helper-card p {
   margin: 0;
-  color: #795568;
+  color: #806976;
   line-height: 1.4;
 }
 
 .ranking-spotlight {
   min-height: 46px;
   margin-bottom: 10px;
-  border-color: rgba(209, 0, 117, 0.15);
+  border-color: rgba(52, 36, 44, 0.1);
   border-radius: 12px;
   background: #ffffff;
   background-image: none;
   color: var(--hot-pink-dark);
-  box-shadow: 0 2px 9px rgba(61, 16, 41, 0.07);
+  box-shadow: 0 1px 4px rgba(52, 36, 44, 0.04);
 }
 
 .ranking-spotlight:hover,
 .ranking-spotlight:focus-visible {
   color: var(--hot-pink-dark);
   transform: none;
-  box-shadow: 0 3px 12px rgba(61, 16, 41, 0.1);
+  box-shadow: 0 2px 7px rgba(52, 36, 44, 0.07);
 }
 
 .ranking-spotlight:focus-visible {
-  outline-color: rgba(255, 20, 147, 0.22);
+  outline-color: rgba(180, 44, 99, 0.18);
 }
 
 .ranking-spotlight__icon {
@@ -356,9 +361,9 @@ body {
 
 .app-vendas-express {
   padding: 12px;
-  border: 1px solid rgba(209, 0, 117, 0.12);
+  border: 1px solid rgba(52, 36, 44, 0.1);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.72);
+  background: #ffffff;
 }
 
 .vendasExpressNumsSelect.v2 {
@@ -371,7 +376,7 @@ body {
   width: calc(33.333% - 6px);
   margin-bottom: 0 !important;
   overflow: visible;
-  border: 1px solid #efd5e1;
+  border: 1px solid #e6dbe0;
   border-radius: 12px;
   background: transparent !important;
   transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
@@ -380,7 +385,7 @@ body {
 .vendasExpressNumsSelect.v2 .item:hover {
   transform: translateY(-1px);
   border-color: var(--hot-pink);
-  box-shadow: 0 4px 12px rgba(143, 0, 79, 0.09);
+  box-shadow: 0 2px 7px rgba(52, 36, 44, 0.06);
 }
 
 .vendasExpressNumsSelect.v2 .item .item-content {
@@ -405,7 +410,7 @@ body {
 
 .vendasExpressNumsSelect.v2 .item .item-content p {
   margin-top: 3px;
-  color: #8a6075 !important;
+  color: #806976 !important;
   font-size: 0.67rem !important;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -414,7 +419,7 @@ body {
 .vendasExpressNumsSelect.v2 .item.mais-popular {
   border: 2px solid var(--hot-pink-strong) !important;
   background: #ffffff !important;
-  box-shadow: 0 4px 14px rgba(209, 0, 117, 0.13);
+  box-shadow: none;
 }
 
 .vendasExpressNumsSelect .item.mais-popular::before {
@@ -428,7 +433,7 @@ body {
 
 .vendasExpressNumsSelect.v2 .item.mais-popular .item-content {
   padding-top: 21px !important;
-  background: #fff3f9 !important;
+  background: #fbf3f7 !important;
   background-image: none !important;
   color: var(--hot-pink-text) !important;
 }
@@ -458,7 +463,7 @@ body {
 .purchase-quantity-control {
   flex: 0 0 46%;
   margin-right: 0 !important;
-  border-color: #ead1dd;
+  border-color: #e6dbe0;
   box-shadow: none;
 }
 
@@ -474,8 +479,8 @@ body {
 
 .purchase-quantity-control .qty {
   min-height: 38px;
-  border-color: #ead1dd;
-  background: #fff8fb;
+  border-color: #ded0d7;
+  background: #faf8f9;
   color: var(--hot-pink-text);
   font-weight: 800;
 }
@@ -487,7 +492,7 @@ body {
   background: var(--hot-pink-strong) !important;
   background-image: none !important;
   color: #ffffff !important;
-  box-shadow: 0 5px 14px rgba(209, 0, 117, 0.18);
+  box-shadow: 0 2px 7px rgba(111, 36, 69, 0.14);
 }
 
 .purchase-submit-button:hover,
