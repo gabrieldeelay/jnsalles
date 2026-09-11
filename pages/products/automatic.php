@@ -542,14 +542,14 @@ if ($enable_cpf == 1) {
 
     .ranking-spotlight {
         width: 100%;
-        min-height: 44px;
-        margin-bottom: 7px;
-        padding: 6px 7px 6px 9px;
-        border: 1px solid rgba(255, 255, 255, .18);
-        border-radius: 10px;
-        background: linear-gradient(135deg, #198754 0%, #117343 100%);
-        box-shadow: 0 5px 14px rgba(17, 115, 67, .2);
-        color: #fff;
+        min-height: 46px;
+        margin-bottom: 10px;
+        padding: 7px 8px 7px 10px;
+        border: 1px solid rgba(209, 0, 117, .15);
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 2px 9px rgba(61, 16, 41, .07);
+        color: #8f004f;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -561,14 +561,14 @@ if ($enable_cpf == 1) {
 
     .ranking-spotlight:hover,
     .ranking-spotlight:focus-visible {
-        color: #fff;
-        filter: brightness(1.04);
-        transform: translateY(-1px);
-        box-shadow: 0 7px 18px rgba(17, 115, 67, .25);
+        color: #8f004f;
+        filter: none;
+        transform: none;
+        box-shadow: 0 3px 12px rgba(61, 16, 41, .1);
     }
 
     .ranking-spotlight:focus-visible {
-        outline: 3px solid rgba(25, 135, 84, .25);
+        outline: 3px solid rgba(255, 20, 147, .22);
         outline-offset: 2px;
     }
 
@@ -603,7 +603,8 @@ if ($enable_cpf == 1) {
         height: 28px;
         flex: 0 0 28px;
         border-radius: 8px;
-        background: rgba(255, 255, 255, .16);
+        color: #fff;
+        background: #d10075;
         display: inline-flex;
         align-items: center;
         justify-content: center;
