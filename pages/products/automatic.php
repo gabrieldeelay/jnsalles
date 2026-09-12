@@ -40,10 +40,10 @@ try {
     ];
 }
 $rankingTimerHasPeriod = $rankingTimer['enabled'] && $rankingTimer['configured'];
-$rankingTimerStart = $rankingTimer['start'];
-$rankingTimerEnd = $rankingTimer['end'];
-$rankingTimerIsRunning = $rankingTimer['state'] === 'running';
-$rankingTimerPausedAt = $rankingTimer['paused_at'];
+$rankingTimerIsEnded = $rankingTimerHasPeriod && $rankingTimer['state'] === 'ended';
+$rankingTimerShowStatus = $rankingTimerHasPeriod && in_array($rankingTimer['state'], ['running', 'ended'], true);
+$rankingTimerPublicLabel = $rankingTimerIsEnded ? 'Evento finalizado' : 'Evento acontecendo!';
+$rankingTimerPublicClass = $rankingTimerIsEnded ? ' is-ended' : ($rankingTimerShowStatus ? ' is-event' : '');
 $rankingWindowStart = $rankingTimerHasPeriod ? $rankingTimer['window_start'] : date('Y-m-d 00:00:00');
 $rankingWindowEnd = $rankingTimerHasPeriod ? $rankingTimer['window_end'] : date('Y-m-d 23:59:59');
 $rankingWindowUsesReset = $rankingTimerHasPeriod && $rankingTimer['uses_reset'];
@@ -651,7 +651,7 @@ if ($enable_cpf == 1) {
 
     .ranking-spotlight.is-warning{background:linear-gradient(135deg,#d97706,#b45309);box-shadow:0 7px 18px rgba(180,83,9,.28)}
     .ranking-spotlight.is-urgent{background:linear-gradient(135deg,#dc2626,#991b1b);box-shadow:0 7px 20px rgba(185,28,28,.34);animation:rankingUrgency 1.35s ease-in-out infinite}
-    .ranking-spotlight.is-ended{background:linear-gradient(135deg,#64748b,#475569);box-shadow:none}
+    .ranking-spotlight.is-ended,.ranking-spotlight.is-ended:hover,.ranking-spotlight.is-ended:focus-visible{background:linear-gradient(135deg,#64748b,#475569);box-shadow:none;color:#fff}
     .ranking-buyer-row{display:flex;align-items:center;gap:10px;padding:8px 9px;border-bottom:1px solid #eef0f3}.ranking-buyer-row:last-child{border-bottom:0}.ranking-buyer-medal{width:50px;flex:0 0 50px;color:#5b6470;text-align:center}.ranking-buyer-info{display:flex;min-width:0;flex:1;align-items:center;justify-content:space-between;gap:12px}.ranking-buyer-name{overflow:hidden;color:#24272c;font-size:1rem;font-weight:700;text-overflow:ellipsis;white-space:nowrap}.ranking-buyer-total{flex:0 0 auto;padding:5px 9px;border-radius:999px;background:#e9f7ef;color:#117343;font-size:.72rem;font-weight:800;white-space:nowrap}@media(max-width:420px){.ranking-buyer-row{gap:6px;padding-inline:3px}.ranking-buyer-medal{width:42px;flex-basis:42px}.ranking-buyer-name{font-size:.9rem}.ranking-buyer-total{padding:4px 7px;font-size:.65rem}}
     @keyframes rankingUrgency{50%{filter:brightness(1.13);transform:translateY(-1px)}}
     @media (prefers-reduced-motion:reduce){.ranking-spotlight.is-urgent{animation:none}}
@@ -981,7 +981,7 @@ if ($available > 0 && $enable_sale == 1 && $enable_discount == 0 && $status == '
 
 echo "\r\n";
 if ($status == '1') { ?>
-<button type="button" class="ranking-spotlight<?= $rankingTimerIsRunning ? ' is-event' : '' ?>" data-bs-toggle="modal" data-bs-target="#modal-premios" aria-label="Abrir Top Compradores Diário">
+<button type="button" class="ranking-spotlight<?= $rankingTimerPublicClass ?>" data-bs-toggle="modal" data-bs-target="#modal-premios" aria-label="Abrir Top Compradores Diário">
     <span class="ranking-spotlight__title">
         <span class="ranking-spotlight__icon" aria-hidden="true">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -991,10 +991,10 @@ if ($status == '1') { ?>
         </span>
         <span>Top Compradores Diário</span>
     </span>
-    <?php if ($rankingTimerIsRunning): ?>
+    <?php if ($rankingTimerShowStatus): ?>
         <span class="ranking-spotlight__event">
-            <span class="ranking-spotlight__event-dot" aria-hidden="true"></span>
-            <strong>Evento acontecendo!</strong>
+            <?php if (!$rankingTimerIsEnded): ?><span class="ranking-spotlight__event-dot" aria-hidden="true"></span><?php endif; ?>
+            <strong><?= $rankingTimerPublicLabel ?></strong>
         </span>
     <?php else: ?>
         <svg class="ranking-spotlight__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1833,9 +1833,9 @@ if ($available > 0 && $status == '1') {
                                                 <div class="modal-body">
                                                      
                                                  <p class="text-center"><small class="text-muted">Atualizado às <?= date('d/m/Y \à\s H:i') ?></small></p>
-                                                    <?php if ($rankingTimerIsRunning): ?>
-                                                        <div class="text-center text-white fw-bolder rounded py-2 px-3 mb-3" style="background:#198754">
-                                                            Evento acontecendo!
+                                                    <?php if ($rankingTimerShowStatus): ?>
+                                                        <div class="text-center text-white fw-bolder rounded py-2 px-3 mb-3" style="background:<?= $rankingTimerIsEnded ? '#64748b' : '#198754' ?>">
+                                                            <?= $rankingTimerPublicLabel ?>
                                                         </div>
                                                     <?php endif; ?>
                                                     <?php if ($enable_ranking_definido == 1 && false): ?>
