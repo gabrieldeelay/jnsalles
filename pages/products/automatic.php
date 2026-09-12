@@ -39,14 +39,14 @@ try {
         'uses_reset' => false,
     ];
 }
-$rankingTimerVisible = $rankingTimer['enabled'] && $rankingTimer['configured'];
+$rankingTimerHasPeriod = $rankingTimer['enabled'] && $rankingTimer['configured'];
 $rankingTimerStart = $rankingTimer['start'];
 $rankingTimerEnd = $rankingTimer['end'];
-$rankingTimerState = $rankingTimer['state'];
+$rankingTimerIsRunning = $rankingTimer['state'] === 'running';
 $rankingTimerPausedAt = $rankingTimer['paused_at'];
-$rankingWindowStart = $rankingTimerVisible ? $rankingTimer['window_start'] : date('Y-m-d 00:00:00');
-$rankingWindowEnd = $rankingTimerVisible ? $rankingTimer['window_end'] : date('Y-m-d 23:59:59');
-$rankingWindowUsesReset = $rankingTimerVisible && $rankingTimer['uses_reset'];
+$rankingWindowStart = $rankingTimerHasPeriod ? $rankingTimer['window_start'] : date('Y-m-d 00:00:00');
+$rankingWindowEnd = $rankingTimerHasPeriod ? $rankingTimer['window_end'] : date('Y-m-d 23:59:59');
+$rankingWindowUsesReset = $rankingTimerHasPeriod && $rankingTimer['uses_reset'];
 
 $max_discount = 0;
 if ($available < $min_purchase) {
@@ -981,7 +981,7 @@ if ($available > 0 && $enable_sale == 1 && $enable_discount == 0 && $status == '
 
 echo "\r\n";
 if ($status == '1') { ?>
-<button type="button" class="ranking-spotlight<?= $rankingTimerVisible ? ' is-event' : '' ?>" data-bs-toggle="modal" data-bs-target="#modal-premios" aria-label="Abrir Top Compradores Diário">
+<button type="button" class="ranking-spotlight<?= $rankingTimerIsRunning ? ' is-event' : '' ?>" data-bs-toggle="modal" data-bs-target="#modal-premios" aria-label="Abrir Top Compradores Diário">
     <span class="ranking-spotlight__title">
         <span class="ranking-spotlight__icon" aria-hidden="true">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -991,7 +991,7 @@ if ($status == '1') { ?>
         </span>
         <span>Top Compradores Diário</span>
     </span>
-    <?php if ($rankingTimerVisible): ?>
+    <?php if ($rankingTimerIsRunning): ?>
         <span class="ranking-spotlight__event">
             <span class="ranking-spotlight__event-dot" aria-hidden="true"></span>
             <strong>Evento acontecendo!</strong>
@@ -1833,7 +1833,7 @@ if ($available > 0 && $status == '1') {
                                                 <div class="modal-body">
                                                      
                                                  <p class="text-center"><small class="text-muted">Atualizado às <?= date('d/m/Y \à\s H:i') ?></small></p>
-                                                    <?php if ($rankingTimerVisible): ?>
+                                                    <?php if ($rankingTimerIsRunning): ?>
                                                         <div class="text-center text-white fw-bolder rounded py-2 px-3 mb-3" style="background:#198754">
                                                             Evento acontecendo!
                                                         </div>
@@ -1858,7 +1858,7 @@ if ($available > 0 && $status == '1') {
                                                     ?>
                                                     <?php
                                                     $ranking_limit = 3;
-                                                    $rankingConditions = $rankingTimerVisible
+                                                    $rankingConditions = $rankingTimerHasPeriod
                                                         ? ranking_timer_sql_conditions('o', $rankingTimer, $conn)
                                                         : [
                                                             payment_ranking_datetime_sql('o') . " >= '" . $conn->real_escape_string($rankingWindowStart) . "'",
