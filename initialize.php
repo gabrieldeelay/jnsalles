@@ -7,28 +7,33 @@ error_reporting(E_ALL);
 if (!function_exists('jnsalles_detect_base_url')) {
     function jnsalles_detect_base_url()
     {
+        $host = trim((string) ($_SERVER['HTTP_HOST'] ?? ''));
+        $requestPath = (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/');
+
+        // O preview do Plesk adiciona o domínio e o destino HTTPS ao caminho.
+        // Ele precisa ter prioridade sobre APP_URL; caso contrário, respostas AJAX
+        // redirecionam o cliente para o domínio público durante o teste do preview.
+        if ($host !== ''
+            && preg_match('/^[a-z0-9.-]+(?::\d+)?$/i', $host)
+            && preg_match('#^(/plesk-site-preview/[^/]+/(?:https?|http)/[^/]+/)#i', $requestPath, $match)
+        ) {
+            $https = strtolower((string) ($_SERVER['HTTPS'] ?? ''));
+            $scheme = $https !== '' && $https !== 'off' && $https !== '0' ? 'https' : 'http';
+            return $scheme . '://' . $host . $match[1];
+        }
+
         $configured = trim((string) getenv('APP_URL'));
         if ($configured !== '') {
             return rtrim($configured, '/') . '/';
         }
 
-        $host = trim((string) ($_SERVER['HTTP_HOST'] ?? ''));
         if ($host === '' || !preg_match('/^[a-z0-9.-]+(?::\d+)?$/i', $host)) {
             return 'https://jnsalles.online/';
         }
 
         $https = strtolower((string) ($_SERVER['HTTPS'] ?? ''));
         $scheme = $https !== '' && $https !== 'off' && $https !== '0' ? 'https' : 'http';
-        $requestPath = (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/');
-        $basePath = '/';
-
-        // O preview do Plesk adiciona o domínio e o destino HTTPS ao caminho.
-        // Preserve esse prefixo para links, AJAX, checkout e webhooks.
-        if (preg_match('#^(/plesk-site-preview/[^/]+/(?:https?|http)/[^/]+/)#i', $requestPath, $match)) {
-            $basePath = $match[1];
-        }
-
-        return $scheme . '://' . $host . $basePath;
+        return $scheme . '://' . $host . '/';
     }
 }
 
