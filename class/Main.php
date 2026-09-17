@@ -3356,7 +3356,7 @@ class Main extends DBConnection
         $message = str_replace('[COTAS]', $cotas, $message);
         $message = str_replace('[TOTAL]', $total, $message);
         $message = str_replace('[PIX]', $pix, $message);
-        $link = "https://".$_SERVER['HTTP_HOST']."/compra/" . $order_token;
+        $link = rtrim(BASE_URL, '/') . '/compra/' . rawurlencode($order_token);
         $message = str_replace("[LINK]", $link, $message);
         
         // Define os dados da API dwapi

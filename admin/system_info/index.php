@@ -23,6 +23,8 @@ $text_footer = $_settings->info('text_footer');
 $telegram_group_url = $_settings->info('telegram_group_url');
 $whatsapp_group_url = $_settings->info('whatsapp_group_url');
 $theme = $_settings->info('theme');
+require_once dirname(__DIR__, 2) . '/includes/theme_colors.php';
+$themeColors = jnsalles_theme_colors($_settings);
 $enable_pixel = $_settings->info('enable_pixel');
 $facebook_access_token = $_settings->info('facebook_access_token');
 $facebook_pixel_id = $_settings->info('facebook_pixel_id');
@@ -45,6 +47,31 @@ $(function () {
     if (!form.length) return;
     var feedback = $('<div id="settings-feedback" class="settings-feedback" role="status" aria-live="polite"></div>');
     form.before(feedback);
+
+    var themeEditor = $('#theme-editor');
+    function refreshThemePreview() {
+        if (!themeEditor.length) return;
+        var primary = $('#theme_primary_color').val();
+        var secondary = $('#theme_secondary_color').val();
+        var header = $('#theme_header_color').val();
+        var background = $('#theme_background_color').val();
+        var surface = $('#theme_surface_color').val();
+        var text = $('#theme_text_color').val();
+        themeEditor.css({ '--preview-primary': primary, '--preview-secondary': secondary, '--preview-header': header, '--preview-background': background, '--preview-surface': surface, '--preview-text': text });
+        themeEditor.find('.theme-color-value').each(function () {
+            var input = document.getElementById($(this).data('for'));
+            if (input) $(this).text(input.value.toUpperCase());
+        });
+    }
+    themeEditor.on('input change', 'input[type="color"]', refreshThemePreview);
+    $('#reset-theme-colors').on('click', function () {
+        var defaults = $(this).data('defaults');
+        Object.keys(defaults).forEach(function (name) {
+            $('#theme_' + name + '_color').val(defaults[name]);
+        });
+        refreshThemePreview();
+    });
+    refreshThemePreview();
 
     function prepareSettingsData(formElement) {
         var data = new FormData(formElement);
@@ -187,6 +214,7 @@ body main.h-full>.container{display:block!important;max-width:1180px;padding:30p
 <style>
 #tabs li:has(>a[href="#tab3"]),#tabs li:has(>a[href="#tab5"]),#tabs li:has(>a[href="#tab7"]),#tab3,#tab5,#tab7,.social-rodape,#tab4 .groups,#tab4 .groups_social{display:none!important}
 #manage-system label:has(+ .can-toggle #enable_instagram),#manage-system .can-toggle:has(#enable_instagram){display:none!important}
+.theme-editor{--preview-primary:#b42c63;--preview-secondary:#6f2445;--preview-header:#472536;--preview-background:#faf8f9;--preview-surface:#fff;--preview-text:#34242c;margin-top:22px;padding:18px;border:1px solid #3f4d63;border-radius:14px;background:rgba(15,23,42,.68)}.theme-editor__heading{margin:0 0 5px;color:#f8fafc;font-size:15px;font-weight:800}.theme-editor__help{margin:0 0 16px;color:#94a3b8;font-size:12px;line-height:1.5}.theme-color-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.theme-color-field{display:block!important;padding:11px;border:1px solid #334155;border-radius:10px;background:#111827}.theme-color-field>span{display:block;margin-bottom:8px;color:#cbd5e1!important}.theme-color-control{display:flex;align-items:center;gap:10px}.theme-color-control input[type=color]{width:42px!important;min-width:42px;height:36px!important;min-height:36px!important;padding:2px!important;border:1px solid #475569!important;border-radius:8px!important;background:#0f172a!important;cursor:pointer}.theme-color-value{color:#e2e8f0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700}.theme-preview{overflow:hidden;margin-top:14px;border:1px solid #334155;border-radius:12px;background:var(--preview-background)}.theme-preview__header{padding:10px 14px;background:var(--preview-header);color:#fff;font-size:12px;font-weight:800}.theme-preview__body{padding:14px;color:var(--preview-text)}.theme-preview__card{padding:12px;border-radius:9px;background:var(--preview-surface);box-shadow:0 1px 4px rgba(0,0,0,.12)}.theme-preview__button{display:inline-block;margin-top:10px;padding:7px 12px;border-radius:8px;background:var(--preview-primary);color:#fff;font-size:11px;font-weight:800}.theme-preview__link{margin-left:10px;color:var(--preview-secondary);font-size:11px;font-weight:700}.theme-editor__actions{display:flex;justify-content:flex-end;margin-top:12px}.theme-reset{padding:7px 11px;border:1px solid #475569;border-radius:8px;background:#1e293b;color:#e2e8f0;font-size:11px;font-weight:700;cursor:pointer}@media(max-width:760px){.theme-color-grid{grid-template-columns:1fr 1fr}}@media(max-width:480px){.theme-color-grid{grid-template-columns:1fr}}
 </style>
 <?php
 echo '<style>' . "\r\n\t" . '.active-tab{border-bottom:none!important}.can-toggle{position:relative;margin-bottom:20px}.can-toggle *,.can-toggle :after,.can-toggle :before{box-sizing:border-box}.can-toggle input[type=checkbox]{opacity:0;position:absolute;top:0;left:0}.can-toggle input[type=checkbox]:checked~label .can-toggle__switch:before{content:attr(data-unchecked);left:0}.can-toggle label{cursor:pointer;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;position:relative;display:flex;align-items:center;font-size:14px}.can-toggle label .can-toggle__switch{position:relative;transition:background-color .3s cubic-bezier(0, 1, .5, 1);background:#848484;height:36px;flex:0 0 134px;border-radius:4px}.can-toggle label .can-toggle__switch:before{content:attr(data-checked);position:absolute;top:0;text-transform:uppercase;text-align:center;color:rgba(255,255,255,.5);left:67px;font-size:12px;line-height:36px;width:67px;padding:0 12px}.can-toggle label .can-toggle__switch:after{content:attr(data-unchecked);position:absolute;z-index:5;text-transform:uppercase;text-align:center;background:#fff;transform:translate3d(0,0,0);transition:transform .3s cubic-bezier(0, 1, .5, 1);color:#777;top:2px;left:2px;border-radius:2px;width:65px;line-height:32px;font-size:12px}.can-toggle input[type=checkbox]:focus~label .can-toggle__switch,.can-toggle input[type=checkbox]:hover~label .can-toggle__switch{background-color:#777}.can-toggle input[type=checkbox]:focus~label .can-toggle__switch:after,.can-toggle input[type=checkbox]:hover~label .can-toggle__switch:after{color:#5e5e5e;box-shadow:0 3px 3px rgba(0,0,0,.4)}.can-toggle input[type=checkbox]:hover~label{color:#6a6a6a}.can-toggle input[type=checkbox]:checked~label:hover{color:#55bc49}.can-toggle input[type=checkbox]:checked~label .can-toggle__switch{background-color:#70c767}.can-toggle input[type=checkbox]:checked~label .can-toggle__switch:after{content:attr(data-checked);color:#4fb743;transform:translate3d(65px,0,0)}.can-toggle input[type=checkbox]:checked:focus~label .can-toggle__switch,.can-toggle input[type=checkbox]:checked:hover~label .can-toggle__switch{background-color:#5fc054}.can-toggle input[type=checkbox]:checked:focus~label .can-toggle__switch:after,.can-toggle input[type=checkbox]:checked:hover~label .can-toggle__switch:after{color:#47a43d;box-shadow:0 3px 3px rgba(0,0,0,.4)}.can-toggle label .can-toggle__switch:hover:after{box-shadow:0 3px 3px rgba(0,0,0,.4)}@media all and (max-width:40em){#tabs{flex-wrap:wrap}#tabs .mr-1{margin-bottom:15px}}#cimg{max-width:100%;max-height:25em;object-fit:scale-down;object-position:center center}h2.social-rodape{font-weight:700;margin-top:20px}' . "\r\n" . '</style>' . "\r\n" . '<main class="h-full pb-16 overflow-y-auto">' . "\r\n\t" . '<div class="container px-6 mx-auto grid">' . "\r\n\t\t" . '<h2' . "\t" . 'class="my-6 text-2xl font-semibold text-gray-700 dark:text-gray-200">Configuração</h2>' . "\r\n\r\n\t" . '<div class="px-4 py-3 mb-8 bg-white rounded-lg shadow-md dark:bg-gray-800">' . "\r\n\t\t" . '<div class="flex">' . "\r\n\t\t\t" . '<ul class="flex" id="tabs">' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab1" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700 active-tab">Configurações</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab2" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Cadastro</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab3" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Social</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab4" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Rodapé</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab6" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Ocultar Cotas</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab7" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">WhatsApp</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab8" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Email</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab9" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">FAQ</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab10" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Termos</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab5" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Facebook</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab11" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Google</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\r\n\t\t\t" . '</ul>' . "\r\n\t\t" . '</div>' . "\r\n\r\n\r\n\r\n\t\t" . '<form action="" id="manage-system">' . "\r\n\r\n\t\t\t" . '<div class="mt-4">' . "\t\r\n\r\n\r\n\t\t\t\t" . '<div id="tab1" class="tabcontent text-gray-700 dark:text-gray-400">' . "\r\n\r\n\t\t\t\t\t" . '<label class="block text-sm">' . "\r\n\t\t\t\t\t\t" . '<span class="text-gray-700 dark:text-gray-400">Titulo do site</span>' . "\r\n\t\t\t\t\t\t" . '<input name="name" id="name" class="block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input"' . "\r\n\t\t\t\t\t\t" . 'placeholder="Titulo" value="';
@@ -195,37 +223,32 @@ echo '" required maxlength="120"/>' . "\r\n\t\t\t\t\t" . '</label>' . "\r\n\r\n\
 echo $_settings->info('email');
 echo '"/>' . "\r\n\t\t\t\t\t" . '</label>' . "\r\n\r\n\t\t\t\t\t" . '<label class="block mt-4 text-sm">' . "\r\n\t\t\t\t\t\t" . '<span class="text-gray-700 dark:text-gray-400">Telefone</span>' . "\r\n\t\t\t\t\t\t" . '<input name="phone" id="phone" class="block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input"' . "\r\n\t\t\t\t\t\t" . 'placeholder="(00) 00000-0000" value="';
 echo $_settings->info('phone');
-echo '"/>' . "\r\n\t\t\t\t\t" . '</label>' . "\r\n\r\n\t\t\t\t\t" . '<label class="block mt-4 text-sm">' . "\r\n\t\t\t\t\t\t" . '<span class="text-gray-700 dark:text-gray-400">' . "\r\n\t\t\t\t\t\t\t" . 'Tema' . "\r\n\t\t\t\t\t\t" . '</span>' . "\r\n\t\t\t\t\t\t" . '<select name="theme" id="theme" class="block w-full mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray">' . "\r\n\t\t\t\t\t\t\t" . '<option value="1" ';
-
-if ($theme == '1') {
-	echo 'selected';
+echo '"/>' . "\r\n\t\t\t\t\t" . '</label>';
+echo '<input type="hidden" name="theme" value="1">';
+echo '<section class="theme-editor" id="theme-editor">';
+echo '<h3 class="theme-editor__heading">Cores do tema do site</h3>';
+echo '<p class="theme-editor__help">Escolha as cores principais. Tons de foco, bordas e contraste são calculados automaticamente para manter a leitura.</p>';
+echo '<div class="theme-color-grid">';
+$themeFieldLabels = [
+	'primary' => 'Cor principal',
+	'secondary' => 'Cor secundária',
+	'header' => 'Cabeçalho',
+	'background' => 'Fundo do site',
+	'surface' => 'Cartões e modais',
+	'text' => 'Textos',
+];
+foreach ($themeFieldLabels as $themeField => $themeLabel) {
+	$themeInputId = 'theme_' . $themeField . '_color';
+	echo '<label class="theme-color-field" for="' . $themeInputId . '">';
+	echo '<span>' . htmlspecialchars($themeLabel, ENT_QUOTES, 'UTF-8') . '</span>';
+	echo '<span class="theme-color-control"><input type="color" id="' . $themeInputId . '" name="' . $themeInputId . '" value="' . htmlspecialchars($themeColors[$themeField], ENT_QUOTES, 'UTF-8') . '"><small class="theme-color-value" data-for="' . $themeInputId . '">' . strtoupper($themeColors[$themeField]) . '</small></span>';
+	echo '</label>';
 }
-
-echo '>Padrão</option>' . "\r\n\t\t\t\t\t\t\t" . '<option value="2" ';
-
-if ($theme == '2') {
-	echo 'selected';
-}
-
-echo '>Preto</option>' . "\r\n\t\t\t\t\t\t\t" . '<option value="3" ';
-
-if ($theme == '3') {
-	echo 'selected';
-}
-
-echo '>Azul</option>' . "\r\n\t\t\t\t\t\t\t" . '<option value="4" ';
-
-if ($theme == '4') {
-	echo 'selected';
-}
-
-echo '>Roxo</option>' . "\r\n\t\t\t\t\t\t\t" . '<option value="5" ';
-
-if ($theme == '5') {
-	echo 'selected';
-}
-
-echo '>Laranja</option>' . "\r\n\t\t\t\t\t\t" . '</select>' . "\r\n\t\t\t\t\t" . '</label>' . "\r\n\r\n\t\t\t\t\t" . '<label class="block mt-4 text-sm">' . "\r\n\t\t\t\t\t\t" . '<span class="text-gray-700 dark:text-gray-400">Logo do site e favicon:</span>' . "\r\n\t\t\t\t\t\t" . '<p class="mb-2" style="font-size:13px;color: orange;font-style:italic;">A mesma imagem ser&aacute; aplicada no cabe&ccedil;alho e no &iacute;cone da aba do navegador. Use PNG ou JPG de at&eacute; 4 MB. A transpar&ecirc;ncia de arquivos PNG ser&aacute; preservada.</p>' . "\r\n\t\t\t\t\t\t" . '<input id="customFile1" name="img" onchange="displayImg(this,$(this))" type="file" class="block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input" accept="image/png, image/jpeg">' . "\r\n\t\t\t\t\t" . '</label>' . "\r\n\r\n\t\t\t\t\t" . '<label class="block mt-4 text-sm">' . "\r\n\t\t\t\t\t\t" . '<img src="';
+echo '</div>';
+echo '<div class="theme-preview" aria-label="Prévia das cores"><div class="theme-preview__header">Prévia do cabeçalho</div><div class="theme-preview__body"><div class="theme-preview__card"><strong>Cartão de campanha</strong><br><small>Texto de apoio do site</small><br><span class="theme-preview__button">Botão principal</span><span class="theme-preview__link">Link secundário</span></div></div></div>';
+echo '<div class="theme-editor__actions"><button type="button" class="theme-reset" id="reset-theme-colors" data-defaults="' . htmlspecialchars(json_encode(jnsalles_theme_defaults()), ENT_QUOTES, 'UTF-8') . '">Restaurar rosa padrão</button></div>';
+echo '</section>';
+echo '<label class="block mt-4 text-sm">' . "\r\n\t\t\t\t\t\t" . '<span class="text-gray-700 dark:text-gray-400">Logo do site e favicon:</span>' . "\r\n\t\t\t\t\t\t" . '<p class="mb-2" style="font-size:13px;color: orange;font-style:italic;">A mesma imagem ser&aacute; aplicada no cabe&ccedil;alho e no &iacute;cone da aba do navegador. Use PNG ou JPG de at&eacute; 4 MB. A transpar&ecirc;ncia de arquivos PNG ser&aacute; preservada.</p>' . "\r\n\t\t\t\t\t\t" . '<input id="customFile1" name="img" onchange="displayImg(this,$(this))" type="file" class="block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input" accept="image/png, image/jpeg">' . "\r\n\t\t\t\t\t" . '</label>' . "\r\n\r\n\t\t\t\t\t" . '<label class="block mt-4 text-sm">' . "\r\n\t\t\t\t\t\t" . '<img src="';
 echo validate_image($_settings->info('logo'));
 echo '" alt="Pr&eacute;via da logo do site" id="cimg" class="img-fluid img-thumbnail">' . "\r\n\t\t\t\t\t" . '</label>' . "\r\n\r\n\t\t\t\t\t" . '<label class="block mt-4 text-sm">' . "\r\n\t\t\t\t\t\t\t" . '<span class="text-gray-700 dark:text-gray-400">Bloquear múltiplos pedidos?</span>' . "\t\r\n\t\t\t\t\t\t\t" . '<p class="mb-2" style="font-size:13px;color: orange;font-style:italic;">Ao habilitar esta opção, o cliente só poderá realizar um novo pedido após efetuar o pagamento do pedido anterior ou o mesmo expirar.</p>' . "\t\r\n\t\t\t\t\t\t" . '</label>' . "\r\n\t\t\t\t\t\t" . '<div class="can-toggle">' . "\r\n\t\t\t\t\t\t\t" . '<input type="checkbox" name="enable_multiple_order" id="enable_multiple_order" ';
 echo (isset($enable_multiple_order) && $enable_multiple_order == 1 ? 'checked' : '');

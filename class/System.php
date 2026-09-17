@@ -312,6 +312,25 @@ class System extends DBConnection
             $brandUpload = $_FILES['favicon'];
         }
 
+        $themeFields = [
+            'theme_primary_color',
+            'theme_secondary_color',
+            'theme_header_color',
+            'theme_background_color',
+            'theme_surface_color',
+            'theme_text_color',
+        ];
+        foreach ($themeFields as $themeField) {
+            if (!isset($_POST[$themeField])) {
+                continue;
+            }
+            $themeValue = strtolower(trim((string) $_POST[$themeField]));
+            if (!preg_match('/^#[0-9a-f]{6}$/', $themeValue)) {
+                return json_encode(['status' => 'failed', 'msg' => 'Uma das cores do tema é inválida. Use o formato hexadecimal completo.']);
+            }
+            $_POST[$themeField] = $themeValue;
+        }
+
         if ($brandUpload !== null) {
             $brandImage = $this->save_brand_image($brandUpload);
             if (!$brandImage['ok']) {

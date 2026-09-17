@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../../includes/theme_colors.php';
+$themeColors = jnsalles_theme_colors($_settings);
 
 $theme = $_settings->info('theme');
 
@@ -17,34 +19,81 @@ else if ($theme == '5') {
 }
 
 ?>
-<style id="hot-pink-theme-variables">
+<style id="site-theme-variables">
   :root {
-    --incrivel-bg: #faf8f9;
-    --incrivel-border: #eadde3;
-    --incrivel-bgColor: #34242c;
-    --incrivel-bgLink: #6f2445;
-    --incrivel-bgLinkHover: #b42c63;
+    --theme-primary: <?= $themeColors['primary'] ?>;
+    --theme-primary-hover: <?= $themeColors['primary_hover'] ?>;
+    --theme-secondary: <?= $themeColors['secondary'] ?>;
+    --theme-header: <?= $themeColors['header'] ?>;
+    --theme-background: <?= $themeColors['background'] ?>;
+    --theme-surface: <?= $themeColors['surface'] ?>;
+    --theme-text: <?= $themeColors['text'] ?>;
+    --theme-muted: <?= $themeColors['muted'] ?>;
+    --theme-border: <?= $themeColors['border'] ?>;
+    --theme-soft: <?= $themeColors['soft'] ?>;
+    --theme-on-primary: <?= $themeColors['on_primary'] ?>;
+    --theme-on-header: <?= $themeColors['on_header'] ?>;
+    --hot-pink: <?= $themeColors['accent'] ?>;
+    --hot-pink-strong: <?= $themeColors['primary'] ?>;
+    --hot-pink-dark: <?= $themeColors['primary_hover'] ?>;
+    --hot-pink-soft: <?= $themeColors['soft'] ?>;
+    --hot-pink-surface: <?= $themeColors['background'] ?>;
+    --hot-pink-card: <?= $themeColors['surface'] ?>;
+    --hot-pink-text: <?= $themeColors['text'] ?>;
+    --incrivel-bg: <?= $themeColors['background'] ?>;
+    --incrivel-border: <?= $themeColors['border'] ?>;
+    --incrivel-bgColor: <?= $themeColors['text'] ?>;
+    --incrivel-bgLink: <?= $themeColors['secondary'] ?>;
+    --incrivel-bgLinkHover: <?= $themeColors['primary'] ?>;
     --incrivel-rgba: 255, 255, 255;
-    --incrivel-rgbaInvert: 52, 36, 44;
-    --incrivel-formBg: #fff;
-    --incrivel-formBgHover: #f8edf2;
-    --incrivel-formBgHoverColor: #5c3145;
-    --incrivel-formBorder: #ded0d7;
-    --incrivel-formColor: #34242c;
-    --incrivel-cardBg: #fff;
-    --incrivel-cardColor: #34242c;
-    --incrivel-cardLink: #6f2445;
-    --incrivel-modalBg: #fff;
-    --incrivel-modalBorder: #eadde3;
-    --incrivel-modalColor: #34242c;
-    --incrivel-primaria: #b42c63;
-    --incrivel-primariaColor: #fff;
-    --incrivel-primariaColornew: #f8edf2;
-    --incrivel-primariaLink: #fff;
-    --incrivel-primariaLinkHover: #fff;
-    --incrivel-primariaDarken: #f7f1f4;
-    --incrivel-primariaDarkenColor: #5c3145;
-    --incrivel-primariaDarkenLink: #6f2445;
-    --incrivel-primariaDarkenLinkHover: #b42c63;
+    --incrivel-rgbaInvert: <?= $themeColors['text_rgb'] ?>;
+    --incrivel-formBg: <?= $themeColors['surface'] ?>;
+    --incrivel-formBgHover: <?= $themeColors['soft'] ?>;
+    --incrivel-formBgHoverColor: <?= $themeColors['text'] ?>;
+    --incrivel-formBorder: <?= $themeColors['border'] ?>;
+    --incrivel-formColor: <?= $themeColors['text'] ?>;
+    --incrivel-cardBg: <?= $themeColors['surface'] ?>;
+    --incrivel-cardColor: <?= $themeColors['text'] ?>;
+    --incrivel-cardLink: <?= $themeColors['secondary'] ?>;
+    --incrivel-modalBg: <?= $themeColors['surface'] ?>;
+    --incrivel-modalBorder: <?= $themeColors['border'] ?>;
+    --incrivel-modalColor: <?= $themeColors['text'] ?>;
+    --incrivel-primaria: <?= $themeColors['primary'] ?>;
+    --incrivel-primariaColor: <?= $themeColors['on_primary'] ?>;
+    --incrivel-primariaColornew: <?= $themeColors['soft'] ?>;
+    --incrivel-primariaLink: <?= $themeColors['on_primary'] ?>;
+    --incrivel-primariaLinkHover: <?= $themeColors['on_primary'] ?>;
+    --incrivel-primariaDarken: <?= $themeColors['soft'] ?>;
+    --incrivel-primariaDarkenColor: <?= $themeColors['text'] ?>;
+    --incrivel-primariaDarkenLink: <?= $themeColors['secondary'] ?>;
+    --incrivel-primariaDarkenLinkHover: <?= $themeColors['primary'] ?>;
+    --incrivel-secundaria: <?= $themeColors['secondary'] ?>;
+    --cor-secundaria: <?= $themeColors['secondary'] ?>;
+    --cor-primaria-light: <?= $themeColors['accent'] ?>;
+    --cor-primaria-lighten: <?= $themeColors['soft'] ?>;
+    --primary-color: <?= $themeColors['primary'] ?>;
+    --primary-text-color: <?= $themeColors['on_primary'] ?>;
+    --secondary-color: <?= $themeColors['secondary'] ?>;
+    --tertiary-color: <?= $themeColors['primary'] ?>;
+    --header-bg-color: <?= $themeColors['header'] ?>;
+    --button-color: <?= $themeColors['primary'] ?>;
+    --button-border: <?= $themeColors['accent'] ?>;
+    --title-color: <?= $themeColors['on_header'] ?>;
+    --text-color: <?= $themeColors['soft'] ?>;
+    --bs-primary: <?= $themeColors['primary'] ?>;
+    --bs-primary-rgb: <?= $themeColors['primary_rgb'] ?>;
+    --bs-success: <?= $themeColors['primary'] ?>;
+    --bs-success-rgb: <?= $themeColors['primary_rgb'] ?>;
   }
+
+  body,.app-main,.app-footer{color:var(--theme-text);background-color:var(--theme-background)}
+  .header-app-header .header-app-header-container,.header-app-header.campanha .header-app-header-container,.app-header,.navbar{color:var(--theme-on-header)!important;background-color:var(--theme-header)!important}
+  .navbar.scrolled{background-color:var(--theme-header)!important}
+  .black-bar,.black-bar.campanha,.bg-azul-personalizado{color:var(--theme-on-primary)!important;background-color:var(--theme-primary)!important}
+  .home-hero{background:linear-gradient(135deg,var(--theme-header),var(--theme-secondary))!important}
+  .app-card,.home-info-card,.app-vendas-express,.modal-content,.accordion-item,.vendasExpressNumsSelect.v2 .item .item-content{background-color:var(--theme-surface)!important;color:var(--theme-text)}
+  .form-control,.form-select,.purchase-quantity-control .qty{border-color:var(--theme-border);background-color:var(--theme-surface);color:var(--theme-text)}
+  .app-title-desc,.text-muted,.purchase-helper-card p,.vendasExpressNumsSelect.v2 .item .item-content p{color:var(--theme-muted)!important}
+  .btn-primary,.btn-success,.bg-primary,.bg-success,.purchase-submit-button,.home-info-actions a{color:var(--theme-on-primary)!important;border-color:var(--theme-primary)!important;background:var(--theme-primary)!important}
+  .btn-primary:hover,.btn-success:hover,.purchase-submit-button:hover{color:var(--theme-on-primary)!important;background:var(--theme-primary-hover)!important}
 </style>

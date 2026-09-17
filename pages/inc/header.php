@@ -12,6 +12,8 @@ $google_gtm_id = $_settings->info('google_gtm_id');
 $facebook_access_token = $_settings->info('facebook_access_token');
 $facebook_pixel_id = $_settings->info('facebook_pixel_id');
 $affiliate = $_settings->userdata('is_affiliate');
+require_once __DIR__ . '/../../includes/theme_colors.php';
+$themeColors = jnsalles_theme_colors($_settings);
 $styleVersion = @filemtime(__DIR__ . '/../../assets/css/style.css');
 if (!$styleVersion) {
    $styleVersion = '1';
@@ -37,7 +39,7 @@ if (isset($parts['query'])) {
 <html lang="pt-br">
 
 <head>
-    <meta name="theme-color" content="#d10075">
+    <meta name="theme-color" content="<?= htmlspecialchars($themeColors['header'], ENT_QUOTES, 'UTF-8') ?>">
    <meta charset="utf-8">
    <meta http-equiv="X-UA-Compatible" content="IE=edge">
    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no">
@@ -50,8 +52,6 @@ if (isset($parts['query'])) {
       <link rel="icon" type="image/png" sizes="16x16" href="<?php echo validate_image($_settings->info('favicon')); ?>">
    <?php endif; ?>
    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-   <meta name="theme-color" content="#d10075">
-   
    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/style.css?v=<?= rawurlencode((string) $styleVersion) ?>">
    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/hot-pink-theme.css?v=<?= rawurlencode((string) $pinkThemeVersion) ?>">
    <script src="<?php echo BASE_URL; ?>includes/jquery/jquery.min.js"></script>
