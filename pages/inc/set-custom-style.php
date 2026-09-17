@@ -96,4 +96,10 @@ else if ($theme == '5') {
   .app-title-desc,.text-muted,.purchase-helper-card p,.vendasExpressNumsSelect.v2 .item .item-content p{color:var(--theme-muted)!important}
   .btn-primary,.btn-success,.bg-primary,.bg-success,.purchase-submit-button,.home-info-actions a{color:var(--theme-on-primary)!important;border-color:var(--theme-primary)!important;background:var(--theme-primary)!important}
   .btn-primary:hover,.btn-success:hover,.purchase-submit-button:hover{color:var(--theme-on-primary)!important;background:var(--theme-primary-hover)!important}
+  #mobileMenu .modal-content{color:var(--theme-text)!important;background-color:var(--theme-background)!important}
+  #mobileMenu .nav-vertical ul li{border:1px solid var(--theme-border);background-color:var(--theme-soft)!important;color:var(--theme-text)!important}
+  #mobileMenu .nav-vertical ul li>a:not(.btn){color:var(--theme-text)!important}
+  #mobileMenu .nav-vertical ul li>a:not(.btn) .icone{color:var(--theme-secondary)!important}
+  #mobileMenu .nav-vertical ul li>a.btn{color:var(--theme-on-primary)!important}
+  #mobileMenu .app-header .menu-mobile--button{color:var(--theme-on-header)!important}
 </style>

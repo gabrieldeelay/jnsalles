@@ -66,6 +66,37 @@ if ($enable_footer == '1') { ?>
 		.text-center.links-rodape a {
 			color: #eee;
 		}
+
+		.footer-legal {
+			color: var(--theme-text);
+			line-height: 1.55;
+		}
+
+		.footer-company-registration {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			gap: 6px;
+			max-width: 100%;
+			margin: 9px auto;
+			padding: 7px 12px;
+			border: 1px solid var(--theme-border);
+			border-radius: 999px;
+			background: var(--theme-surface);
+			color: var(--theme-text);
+		}
+
+		.footer-company-registration span {
+			white-space: nowrap;
+		}
+
+		@media (max-width: 480px) {
+			.footer-company-registration {
+				flex-direction: column;
+				gap: 1px;
+				border-radius: 10px;
+			}
+		}
 	</style>
 	<div class="container-fluid rodape mt-3">
 		<div class="row justify-content-center align-items-center" style="padding:15px;background-color: #dee2e7;">
@@ -130,7 +161,6 @@ if ($enable_footer == '1') { ?>
 					}
 					?>
 				</ul>
-				<a class="btn btn-sm btn-dark px-4 py-2" href="https://suportejnsalles.vercel.app/" target="_blank" rel="noopener noreferrer"><i class="bi bi-headset me-1"></i> Suporte</a>
 			</div>
 			<?php
 			if ($enable_footer) {
@@ -148,15 +178,19 @@ if ($enable_footer == '1') { ?>
 				</div>
 
 
-				<div class="col-md-12 col-12" style="font-size:11px;">
+				<div class="col-md-12 col-12 footer-legal" style="font-size:11px;">
 					<hr>
 					<?php
 					if ($text_footer) {
 						echo blockHTML($text_footer);
 					} else { ?>
-						<span style="color:var(--incrivel-bgLink);">© Copyright <?= date('Y') ?> - <?= $site_name ?> Todos os direitos reservados.</span><br>
+						<span>© Copyright <?= date('Y') ?> - <?= $site_name ?> Todos os direitos reservados.</span><br>
 					<?php } ?>
-						<span style="color:var(--incrivel-bgLink);">Desenvolvido por</span> <span
+					<div class="footer-company-registration" aria-label="Dados da empresa">
+						<strong>NXP GAMING SOLUTION LTDA</strong>
+						<span>CNPJ 64.895.043/0001-65</span>
+					</div><br>
+						<span>Desenvolvido por</span> <span
                        class="font-weight-600 font-xs badge"
                        style="background-color:#0d6efd;color:#fff;cursor:default;">
                         <?= $site_name ?>

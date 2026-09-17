@@ -298,7 +298,6 @@ if (isset($parts['query'])) {
 
                            <?php endif; ?>
 
-                           <li><a href="<?php echo BASE_URL; ?>contato" class="" style="color: rgb(255,255,255,0.8); font-weight: 600;"><i class="icone bi bi-envelope"></i><span>Entrar em contato</span></a></li>
                            <?php if ($user_id): ?>
                               <li><a href="<?php echo BASE_URL . 'logout?' . $_SERVER['REQUEST_URI']; ?>" class="btn btn-success justify-content-center" style="color: rgb(255,255,255,0.8); font-weight: 600;"><i class="icone bi bi-box-arrow-right"></i><span>Sair</span></a></li>
                            <?php else: ?>
