@@ -25,6 +25,7 @@ $whatsapp_group_url = $_settings->info('whatsapp_group_url');
 $theme = $_settings->info('theme');
 require_once dirname(__DIR__, 2) . '/includes/theme_colors.php';
 $themeColors = jnsalles_theme_colors($_settings);
+$brandImageUrl = validate_image($_settings->info('logo'));
 $enable_pixel = $_settings->info('enable_pixel');
 $facebook_access_token = $_settings->info('facebook_access_token');
 $facebook_pixel_id = $_settings->info('facebook_pixel_id');
@@ -49,6 +50,90 @@ $(function () {
     form.before(feedback);
 
     var themeEditor = $('#theme-editor');
+    var activeThemeColor = null;
+
+    function normalizeThemeHex(value) {
+        var clean = String(value || '').trim().replace(/^#/, '');
+        if (/^[0-9a-f]{3}$/i.test(clean)) {
+            clean = clean.split('').map(function (character) { return character + character; }).join('');
+        }
+        return /^[0-9a-f]{6}$/i.test(clean) ? '#' + clean.toLowerCase() : null;
+    }
+
+    function hexToRgb(hex) {
+        var normalized = normalizeThemeHex(hex) || '#000000';
+        return {
+            r: parseInt(normalized.slice(1, 3), 16),
+            g: parseInt(normalized.slice(3, 5), 16),
+            b: parseInt(normalized.slice(5, 7), 16)
+        };
+    }
+
+    function rgbToHsl(rgb) {
+        var r = rgb.r / 255;
+        var g = rgb.g / 255;
+        var b = rgb.b / 255;
+        var max = Math.max(r, g, b);
+        var min = Math.min(r, g, b);
+        var h = 0;
+        var s = 0;
+        var l = (max + min) / 2;
+        var delta = max - min;
+        if (delta) {
+            s = l > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+            if (max === r) h = ((g - b) / delta + (g < b ? 6 : 0));
+            if (max === g) h = ((b - r) / delta + 2);
+            if (max === b) h = ((r - g) / delta + 4);
+            h *= 60;
+        }
+        return { h: Math.round(h), s: Math.round(s * 100), l: Math.round(l * 100) };
+    }
+
+    function hslToHex(h, s, l) {
+        h = ((Number(h) % 360) + 360) % 360;
+        s = Math.max(0, Math.min(100, Number(s))) / 100;
+        l = Math.max(0, Math.min(100, Number(l))) / 100;
+        var c = (1 - Math.abs(2 * l - 1)) * s;
+        var x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        var m = l - c / 2;
+        var rgb = [0, 0, 0];
+        if (h < 60) rgb = [c, x, 0];
+        else if (h < 120) rgb = [x, c, 0];
+        else if (h < 180) rgb = [0, c, x];
+        else if (h < 240) rgb = [0, x, c];
+        else if (h < 300) rgb = [x, 0, c];
+        else rgb = [c, 0, x];
+        return '#' + rgb.map(function (channel) {
+            return Math.round((channel + m) * 255).toString(16).padStart(2, '0');
+        }).join('');
+    }
+
+    function readableColor(hex) {
+        var rgb = hexToRgb(hex);
+        var luminance = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+        return luminance > 158 ? '#17151a' : '#ffffff';
+    }
+
+    function updateFineTuning(input) {
+        if (!input) return;
+        var hsl = rgbToHsl(hexToRgb(input.value));
+        $('#theme_hue').val(hsl.h);
+        $('#theme_saturation').val(hsl.s);
+        $('#theme_lightness').val(hsl.l);
+        $('#theme_hue_value').text(hsl.h + '°');
+        $('#theme_saturation_value').text(hsl.s + '%');
+        $('#theme_lightness_value').text(hsl.l + '%');
+    }
+
+    function setActiveThemeColor(input) {
+        if (!input) return;
+        activeThemeColor = input;
+        themeEditor.find('.theme-color-field').removeClass('is-active');
+        var field = $(input).closest('.theme-color-field').addClass('is-active');
+        $('#theme-active-color-name').text(field.data('label'));
+        updateFineTuning(input);
+    }
+
     function refreshThemePreview() {
         if (!themeEditor.length) return;
         var primary = $('#theme_primary_color').val();
@@ -57,21 +142,94 @@ $(function () {
         var background = $('#theme_background_color').val();
         var surface = $('#theme_surface_color').val();
         var text = $('#theme_text_color').val();
-        themeEditor.css({ '--preview-primary': primary, '--preview-secondary': secondary, '--preview-header': header, '--preview-background': background, '--preview-surface': surface, '--preview-text': text });
-        themeEditor.find('.theme-color-value').each(function () {
-            var input = document.getElementById($(this).data('for'));
-            if (input) $(this).text(input.value.toUpperCase());
+        themeEditor.css({
+            '--preview-primary': primary,
+            '--preview-secondary': secondary,
+            '--preview-header': header,
+            '--preview-background': background,
+            '--preview-surface': surface,
+            '--preview-text': text,
+            '--preview-on-primary': readableColor(primary),
+            '--preview-on-header': readableColor(header)
+        });
+        themeEditor.find('input[type="color"]').each(function () {
+            var hexInput = themeEditor.find('.theme-hex-input[data-for="' + this.id + '"]');
+            if (!hexInput.is(':focus')) hexInput.val(this.value.slice(1).toUpperCase());
+            $(this).closest('.theme-color-field').find('.theme-color-swatch').css('background', this.value);
         });
     }
-    themeEditor.on('input change', 'input[type="color"]', refreshThemePreview);
+
+    function applyThemeColor(input, color, updateSliders) {
+        var normalized = normalizeThemeHex(color);
+        if (!input || !normalized) return false;
+        input.value = normalized;
+        themeEditor.find('.theme-hex-input[data-for="' + input.id + '"]').val(normalized.slice(1).toUpperCase()).removeClass('is-invalid');
+        refreshThemePreview();
+        if (updateSliders !== false && activeThemeColor === input) updateFineTuning(input);
+        return true;
+    }
+
+    themeEditor.on('click focusin', '.theme-color-field', function () {
+        setActiveThemeColor(document.getElementById($(this).data('color-input')));
+    });
+    themeEditor.on('input change', 'input[type="color"]', function () {
+        setActiveThemeColor(this);
+        applyThemeColor(this, this.value, true);
+    });
+    themeEditor.on('input', '.theme-hex-input', function () {
+        var input = document.getElementById($(this).data('for'));
+        var normalized = normalizeThemeHex($(this).val());
+        $(this).toggleClass('is-invalid', !normalized);
+        if (normalized) {
+            setActiveThemeColor(input);
+            applyThemeColor(input, normalized, true);
+        }
+    });
+    themeEditor.on('blur change', '.theme-hex-input', function () {
+        var input = document.getElementById($(this).data('for'));
+        if (!applyThemeColor(input, $(this).val(), true)) {
+            $(this).val(input.value.slice(1).toUpperCase()).removeClass('is-invalid');
+        }
+    });
+    themeEditor.on('input', '.theme-hsl-range', function () {
+        if (!activeThemeColor) return;
+        var h = $('#theme_hue').val();
+        var s = $('#theme_saturation').val();
+        var l = $('#theme_lightness').val();
+        $('#theme_hue_value').text(h + '°');
+        $('#theme_saturation_value').text(s + '%');
+        $('#theme_lightness_value').text(l + '%');
+        applyThemeColor(activeThemeColor, hslToHex(h, s, l), false);
+    });
+    themeEditor.on('click', '.theme-preset', function () {
+        if (!activeThemeColor) return;
+        applyThemeColor(activeThemeColor, $(this).data('color'), true);
+    });
     $('#reset-theme-colors').on('click', function () {
         var defaults = $(this).data('defaults');
         Object.keys(defaults).forEach(function (name) {
-            $('#theme_' + name + '_color').val(defaults[name]);
+            var input = document.getElementById('theme_' + name + '_color');
+            applyThemeColor(input, defaults[name], false);
         });
         refreshThemePreview();
+        updateFineTuning(activeThemeColor);
     });
+    setActiveThemeColor(document.getElementById('theme_primary_color'));
     refreshThemePreview();
+
+    var currentBrandPreview = $('.js-brand-preview').first().attr('src');
+    $('#customFile1').off('change.themePreview').on('change.themePreview', function () {
+        var file = this.files && this.files[0] ? this.files[0] : null;
+        if (!file) {
+            $('.js-brand-preview').attr('src', currentBrandPreview);
+            return;
+        }
+        var reader = new FileReader();
+        reader.onload = function (event) {
+            $('.js-brand-preview').attr('src', event.target.result);
+        };
+        reader.readAsDataURL(file);
+    });
 
     function prepareSettingsData(formElement) {
         var data = new FormData(formElement);
@@ -175,7 +333,7 @@ $(function () {
                         return;
                     }
                     if (response.logo_url) {
-                        $('#cimg').attr('src', response.logo_url);
+                        $('#cimg, .js-brand-preview').attr('src', response.logo_url);
                     }
                     feedback.attr('class', 'settings-feedback success').text(response.msg || 'Configurações salvas e verificadas no servidor.');
                     window.setTimeout(function () {
@@ -214,7 +372,15 @@ body main.h-full>.container{display:block!important;max-width:1180px;padding:30p
 <style>
 #tabs li:has(>a[href="#tab3"]),#tabs li:has(>a[href="#tab5"]),#tabs li:has(>a[href="#tab7"]),#tab3,#tab5,#tab7,.social-rodape,#tab4 .groups,#tab4 .groups_social{display:none!important}
 #manage-system label:has(+ .can-toggle #enable_instagram),#manage-system .can-toggle:has(#enable_instagram){display:none!important}
-.theme-editor{--preview-primary:#b42c63;--preview-secondary:#6f2445;--preview-header:#472536;--preview-background:#faf8f9;--preview-surface:#fff;--preview-text:#34242c;margin-top:22px;padding:18px;border:1px solid #3f4d63;border-radius:14px;background:rgba(15,23,42,.68)}.theme-editor__heading{margin:0 0 5px;color:#f8fafc;font-size:15px;font-weight:800}.theme-editor__help{margin:0 0 16px;color:#94a3b8;font-size:12px;line-height:1.5}.theme-color-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.theme-color-field{display:block!important;padding:11px;border:1px solid #334155;border-radius:10px;background:#111827}.theme-color-field>span{display:block;margin-bottom:8px;color:#cbd5e1!important}.theme-color-control{display:flex;align-items:center;gap:10px}.theme-color-control input[type=color]{width:42px!important;min-width:42px;height:36px!important;min-height:36px!important;padding:2px!important;border:1px solid #475569!important;border-radius:8px!important;background:#0f172a!important;cursor:pointer}.theme-color-value{color:#e2e8f0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700}.theme-preview{overflow:hidden;margin-top:14px;border:1px solid #334155;border-radius:12px;background:var(--preview-background)}.theme-preview__header{padding:10px 14px;background:var(--preview-header);color:#fff;font-size:12px;font-weight:800}.theme-preview__body{padding:14px;color:var(--preview-text)}.theme-preview__card{padding:12px;border-radius:9px;background:var(--preview-surface);box-shadow:0 1px 4px rgba(0,0,0,.12)}.theme-preview__button{display:inline-block;margin-top:10px;padding:7px 12px;border-radius:8px;background:var(--preview-primary);color:#fff;font-size:11px;font-weight:800}.theme-preview__link{margin-left:10px;color:var(--preview-secondary);font-size:11px;font-weight:700}.theme-editor__actions{display:flex;justify-content:flex-end;margin-top:12px}.theme-reset{padding:7px 11px;border:1px solid #475569;border-radius:8px;background:#1e293b;color:#e2e8f0;font-size:11px;font-weight:700;cursor:pointer}@media(max-width:760px){.theme-color-grid{grid-template-columns:1fr 1fr}}@media(max-width:480px){.theme-color-grid{grid-template-columns:1fr}}
+.theme-editor{--preview-primary:#b42c63;--preview-secondary:#6f2445;--preview-header:#472536;--preview-background:#faf8f9;--preview-surface:#fff;--preview-text:#34242c;--preview-on-primary:#fff;--preview-on-header:#fff;margin-top:22px;padding:20px;border:1px solid #3f4d63;border-radius:16px;background:rgba(15,23,42,.72)}
+.theme-editor__heading{margin:0 0 5px;color:#f8fafc;font-size:17px;font-weight:800}.theme-editor__help{margin:0 0 17px;color:#94a3b8;font-size:12px;line-height:1.55}
+.theme-preset-bar{display:flex;align-items:center;gap:8px;overflow-x:auto;margin-bottom:14px;padding-bottom:3px}.theme-preset-bar__label{flex:0 0 auto;margin-right:3px;color:#94a3b8;font-size:11px;font-weight:750}.theme-preset{flex:0 0 auto;width:28px;height:28px;border:2px solid rgba(255,255,255,.72);border-radius:999px;background:var(--preset-color);box-shadow:0 0 0 1px rgba(15,23,42,.9);cursor:pointer;transition:transform .16s,box-shadow .16s}.theme-preset:hover,.theme-preset:focus{transform:scale(1.12);box-shadow:0 0 0 3px rgba(139,92,246,.28);outline:none}
+.theme-color-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.theme-color-field{display:block!important;padding:12px;border:1px solid #334155;border-radius:12px;background:#111827;cursor:pointer;transition:border-color .17s,transform .17s,box-shadow .17s}.theme-color-field:hover{border-color:#64748b;transform:translateY(-1px)}.theme-color-field.is-active{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,.16)}.theme-color-field__top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}.theme-color-field__label{margin:0;color:#cbd5e1!important;font-size:12px!important;font-weight:750!important}.theme-color-swatch{width:22px;height:22px;border:2px solid rgba(255,255,255,.8);border-radius:7px;box-shadow:0 0 0 1px rgba(0,0,0,.28)}
+.theme-color-control{display:grid;grid-template-columns:54px minmax(0,1fr);align-items:center;gap:9px}.theme-color-control input[type=color]{width:54px!important;min-width:54px;height:43px!important;min-height:43px!important;padding:3px!important;border:1px solid #475569!important;border-radius:9px!important;background:#0f172a!important;cursor:pointer}.theme-hex-control{display:flex;align-items:center;height:43px;border:1px solid #3f4d63;border-radius:9px;background:#0b1220;transition:border-color .16s,box-shadow .16s}.theme-hex-control:focus-within{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,.14)}.theme-hex-prefix{padding-left:10px;color:#64748b;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:800}.theme-hex-input{width:100%;min-width:0;height:40px!important;min-height:40px!important;padding:0 9px 0 3px!important;border:0!important;background:transparent!important;color:#f8fafc!important;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:750;text-transform:uppercase;outline:none!important;box-shadow:none!important}.theme-hex-input.is-invalid{color:#fecaca!important}
+.theme-fine-tuning{margin-top:14px;padding:14px;border:1px solid #334155;border-radius:12px;background:#0b1220}.theme-fine-tuning__head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.theme-fine-tuning__title{color:#f8fafc;font-size:12px;font-weight:800}.theme-fine-tuning__active{padding:4px 8px;border-radius:999px;background:#312e81;color:#ddd6fe;font-size:10px;font-weight:750}.theme-slider-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.theme-slider{display:grid;grid-template-columns:1fr auto;gap:5px 8px;align-items:center}.theme-slider label{color:#94a3b8!important;font-size:11px!important;font-weight:700!important}.theme-slider output{color:#e2e8f0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:700}.theme-slider input[type=range]{grid-column:1/-1;width:100%;height:5px;accent-color:var(--preview-primary);cursor:pointer}.theme-slider--hue input[type=range]{height:8px;border-radius:999px;background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);appearance:none}.theme-slider--hue input[type=range]::-webkit-slider-thumb{width:16px;height:16px;border:2px solid #fff;border-radius:50%;background:#111827;appearance:none}
+.theme-preview-title{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:18px 0 9px}.theme-preview-title strong{color:#f8fafc;font-size:13px}.theme-preview-title span{color:#94a3b8;font-size:10px}.theme-preview-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(190px,.75fr);gap:12px}.theme-site-preview{overflow:hidden;border:1px solid #334155;border-radius:13px;background:var(--preview-background);box-shadow:0 14px 32px rgba(0,0,0,.2)}.theme-browser-bar{display:flex;align-items:end;height:31px;padding:0 8px;background:#111827}.theme-browser-tab{display:flex;align-items:center;gap:6px;max-width:190px;height:25px;padding:0 10px;border-radius:7px 7px 0 0;background:#293244;color:#dbe4f0;font-size:9px}.theme-browser-tab img{width:14px!important;height:14px!important;object-fit:contain}.theme-browser-tab span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.theme-browser-accent{height:3px;background:var(--preview-primary)}.theme-site-header{display:flex;align-items:center;justify-content:space-between;min-height:54px;padding:8px 14px;background:var(--preview-header);color:var(--preview-on-header)}.theme-site-header img{width:auto!important;max-width:78px!important;height:37px!important;object-fit:contain}.theme-site-menu{font-size:16px;font-weight:900;letter-spacing:2px}.theme-site-body{padding:15px;color:var(--preview-text);background:var(--preview-background)}.theme-site-kicker{color:var(--preview-secondary);font-size:8px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}.theme-site-hero{margin:3px 0 12px;font-size:16px;font-weight:850;line-height:1.15}.theme-site-card{display:grid;grid-template-columns:54px 1fr auto;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--preview-surface);box-shadow:0 3px 12px rgba(0,0,0,.1)}.theme-site-card__image{height:45px;border-radius:8px;background:linear-gradient(135deg,var(--preview-primary),var(--preview-secondary))}.theme-site-card strong{display:block;font-size:10px}.theme-site-card small{display:block;margin-top:2px;opacity:.72;font-size:8px}.theme-preview__button{display:inline-block;padding:7px 10px;border-radius:8px;background:var(--preview-primary);color:var(--preview-on-primary);font-size:8px;font-weight:850}.theme-logo-preview{display:grid;grid-template-rows:auto 1fr 1fr;overflow:hidden;border:1px solid #334155;border-radius:13px;background:#0b1220}.theme-logo-preview__label{padding:9px 11px;color:#cbd5e1;font-size:10px;font-weight:800}.theme-logo-stage{display:flex;align-items:center;justify-content:center;min-height:76px;padding:10px}.theme-logo-stage--header{background:var(--preview-header)}.theme-logo-stage--surface{background:var(--preview-surface)}.theme-logo-stage img{width:auto!important;max-width:100%!important;height:54px!important;object-fit:contain}.theme-editor__actions{display:flex;justify-content:flex-end;margin-top:12px}.theme-reset{padding:8px 12px;border:1px solid #475569;border-radius:9px;background:#1e293b;color:#e2e8f0;font-size:11px;font-weight:700;cursor:pointer}.theme-reset:hover{background:#273449}
+@media(max-width:860px){.theme-color-grid{grid-template-columns:1fr 1fr}.theme-preview-grid{grid-template-columns:1fr}.theme-logo-preview{grid-template-columns:auto 1fr 1fr;grid-template-rows:auto}.theme-logo-preview__label{display:flex;align-items:center}.theme-logo-stage{min-height:82px}}
+@media(max-width:580px){.theme-editor{padding:14px}.theme-color-grid,.theme-slider-grid{grid-template-columns:1fr}.theme-preview-title{align-items:start;flex-direction:column}.theme-logo-preview{grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr}.theme-logo-preview__label{grid-column:1/-1}.theme-site-card{grid-template-columns:46px 1fr}.theme-preview__button{grid-column:1/-1;text-align:center}}
 </style>
 <?php
 echo '<style>' . "\r\n\t" . '.active-tab{border-bottom:none!important}.can-toggle{position:relative;margin-bottom:20px}.can-toggle *,.can-toggle :after,.can-toggle :before{box-sizing:border-box}.can-toggle input[type=checkbox]{opacity:0;position:absolute;top:0;left:0}.can-toggle input[type=checkbox]:checked~label .can-toggle__switch:before{content:attr(data-unchecked);left:0}.can-toggle label{cursor:pointer;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;position:relative;display:flex;align-items:center;font-size:14px}.can-toggle label .can-toggle__switch{position:relative;transition:background-color .3s cubic-bezier(0, 1, .5, 1);background:#848484;height:36px;flex:0 0 134px;border-radius:4px}.can-toggle label .can-toggle__switch:before{content:attr(data-checked);position:absolute;top:0;text-transform:uppercase;text-align:center;color:rgba(255,255,255,.5);left:67px;font-size:12px;line-height:36px;width:67px;padding:0 12px}.can-toggle label .can-toggle__switch:after{content:attr(data-unchecked);position:absolute;z-index:5;text-transform:uppercase;text-align:center;background:#fff;transform:translate3d(0,0,0);transition:transform .3s cubic-bezier(0, 1, .5, 1);color:#777;top:2px;left:2px;border-radius:2px;width:65px;line-height:32px;font-size:12px}.can-toggle input[type=checkbox]:focus~label .can-toggle__switch,.can-toggle input[type=checkbox]:hover~label .can-toggle__switch{background-color:#777}.can-toggle input[type=checkbox]:focus~label .can-toggle__switch:after,.can-toggle input[type=checkbox]:hover~label .can-toggle__switch:after{color:#5e5e5e;box-shadow:0 3px 3px rgba(0,0,0,.4)}.can-toggle input[type=checkbox]:hover~label{color:#6a6a6a}.can-toggle input[type=checkbox]:checked~label:hover{color:#55bc49}.can-toggle input[type=checkbox]:checked~label .can-toggle__switch{background-color:#70c767}.can-toggle input[type=checkbox]:checked~label .can-toggle__switch:after{content:attr(data-checked);color:#4fb743;transform:translate3d(65px,0,0)}.can-toggle input[type=checkbox]:checked:focus~label .can-toggle__switch,.can-toggle input[type=checkbox]:checked:hover~label .can-toggle__switch{background-color:#5fc054}.can-toggle input[type=checkbox]:checked:focus~label .can-toggle__switch:after,.can-toggle input[type=checkbox]:checked:hover~label .can-toggle__switch:after{color:#47a43d;box-shadow:0 3px 3px rgba(0,0,0,.4)}.can-toggle label .can-toggle__switch:hover:after{box-shadow:0 3px 3px rgba(0,0,0,.4)}@media all and (max-width:40em){#tabs{flex-wrap:wrap}#tabs .mr-1{margin-bottom:15px}}#cimg{max-width:100%;max-height:25em;object-fit:scale-down;object-position:center center}h2.social-rodape{font-weight:700;margin-top:20px}' . "\r\n" . '</style>' . "\r\n" . '<main class="h-full pb-16 overflow-y-auto">' . "\r\n\t" . '<div class="container px-6 mx-auto grid">' . "\r\n\t\t" . '<h2' . "\t" . 'class="my-6 text-2xl font-semibold text-gray-700 dark:text-gray-200">Configuração</h2>' . "\r\n\r\n\t" . '<div class="px-4 py-3 mb-8 bg-white rounded-lg shadow-md dark:bg-gray-800">' . "\r\n\t\t" . '<div class="flex">' . "\r\n\t\t\t" . '<ul class="flex" id="tabs">' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab1" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700 active-tab">Configurações</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab2" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Cadastro</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab3" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Social</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab4" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Rodapé</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab6" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Ocultar Cotas</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab7" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">WhatsApp</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab8" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Email</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab9" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">FAQ</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab10" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Termos</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab5" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Facebook</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\t\t\t\t" . '<li class="mr-1">' . "\r\n\t\t\t\t\t" . '<a href="#tab11" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Google</a>' . "\r\n\t\t\t\t" . '</li>' . "\r\n\r\n\t\t\t" . '</ul>' . "\r\n\t\t" . '</div>' . "\r\n\r\n\r\n\r\n\t\t" . '<form action="" id="manage-system">' . "\r\n\r\n\t\t\t" . '<div class="mt-4">' . "\t\r\n\r\n\r\n\t\t\t\t" . '<div id="tab1" class="tabcontent text-gray-700 dark:text-gray-400">' . "\r\n\r\n\t\t\t\t\t" . '<label class="block text-sm">' . "\r\n\t\t\t\t\t\t" . '<span class="text-gray-700 dark:text-gray-400">Titulo do site</span>' . "\r\n\t\t\t\t\t\t" . '<input name="name" id="name" class="block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input"' . "\r\n\t\t\t\t\t\t" . 'placeholder="Titulo" value="';
@@ -227,7 +393,23 @@ echo '"/>' . "\r\n\t\t\t\t\t" . '</label>';
 echo '<input type="hidden" name="theme" value="1">';
 echo '<section class="theme-editor" id="theme-editor">';
 echo '<h3 class="theme-editor__heading">Cores do tema do site</h3>';
-echo '<p class="theme-editor__help">Escolha as cores principais. Tons de foco, bordas e contraste são calculados automaticamente para manter a leitura.</p>';
+echo '<p class="theme-editor__help">Clique em uma cor para editá-la. Use o seletor visual, digite um código HEX exato ou faça o ajuste fino pelos controles de matiz, saturação e luminosidade.</p>';
+echo '<div class="theme-preset-bar" aria-label="Cores rápidas">';
+echo '<span class="theme-preset-bar__label">Cores rápidas</span>';
+$themePresets = [
+	'#b42c63' => 'Rosa',
+	'#7c3aed' => 'Roxo',
+	'#2563eb' => 'Azul',
+	'#0891b2' => 'Ciano',
+	'#059669' => 'Verde',
+	'#ea580c' => 'Laranja',
+	'#dc2626' => 'Vermelho',
+	'#334155' => 'Grafite',
+];
+foreach ($themePresets as $presetColor => $presetLabel) {
+	echo '<button type="button" class="theme-preset" data-color="' . $presetColor . '" style="--preset-color:' . $presetColor . '" aria-label="Aplicar ' . htmlspecialchars($presetLabel, ENT_QUOTES, 'UTF-8') . ' à cor selecionada" title="' . htmlspecialchars($presetLabel, ENT_QUOTES, 'UTF-8') . '"></button>';
+}
+echo '</div>';
 echo '<div class="theme-color-grid">';
 $themeFieldLabels = [
 	'primary' => 'Cor principal',
@@ -239,13 +421,32 @@ $themeFieldLabels = [
 ];
 foreach ($themeFieldLabels as $themeField => $themeLabel) {
 	$themeInputId = 'theme_' . $themeField . '_color';
-	echo '<label class="theme-color-field" for="' . $themeInputId . '">';
-	echo '<span>' . htmlspecialchars($themeLabel, ENT_QUOTES, 'UTF-8') . '</span>';
-	echo '<span class="theme-color-control"><input type="color" id="' . $themeInputId . '" name="' . $themeInputId . '" value="' . htmlspecialchars($themeColors[$themeField], ENT_QUOTES, 'UTF-8') . '"><small class="theme-color-value" data-for="' . $themeInputId . '">' . strtoupper($themeColors[$themeField]) . '</small></span>';
-	echo '</label>';
+	$themeColorValue = htmlspecialchars($themeColors[$themeField], ENT_QUOTES, 'UTF-8');
+	echo '<div class="theme-color-field" data-color-field data-color-input="' . $themeInputId . '" data-label="' . htmlspecialchars($themeLabel, ENT_QUOTES, 'UTF-8') . '">';
+	echo '<div class="theme-color-field__top"><label class="theme-color-field__label" for="' . $themeInputId . '">' . htmlspecialchars($themeLabel, ENT_QUOTES, 'UTF-8') . '</label><span class="theme-color-swatch" aria-hidden="true" style="background:' . $themeColorValue . '"></span></div>';
+	echo '<div class="theme-color-control">';
+	echo '<input type="color" id="' . $themeInputId . '" name="' . $themeInputId . '" value="' . $themeColorValue . '" aria-label="Abrir seletor para ' . htmlspecialchars($themeLabel, ENT_QUOTES, 'UTF-8') . '">';
+	echo '<label class="theme-hex-control" for="' . $themeInputId . '_hex"><span class="theme-hex-prefix">#</span><input type="text" id="' . $themeInputId . '_hex" class="theme-hex-input" data-for="' . $themeInputId . '" value="' . strtoupper(ltrim($themeColors[$themeField], '#')) . '" maxlength="7" spellcheck="false" inputmode="text" aria-label="Código hexadecimal de ' . htmlspecialchars($themeLabel, ENT_QUOTES, 'UTF-8') . '"></label>';
+	echo '</div></div>';
 }
 echo '</div>';
-echo '<div class="theme-preview" aria-label="Prévia das cores"><div class="theme-preview__header">Prévia do cabeçalho</div><div class="theme-preview__body"><div class="theme-preview__card"><strong>Cartão de campanha</strong><br><small>Texto de apoio do site</small><br><span class="theme-preview__button">Botão principal</span><span class="theme-preview__link">Link secundário</span></div></div></div>';
+echo '<div class="theme-fine-tuning" aria-label="Ajuste fino da cor selecionada">';
+echo '<div class="theme-fine-tuning__head"><span class="theme-fine-tuning__title">Ajuste fino</span><span class="theme-fine-tuning__active" id="theme-active-color-name">Cor principal</span></div>';
+echo '<div class="theme-slider-grid">';
+echo '<div class="theme-slider theme-slider--hue"><label for="theme_hue">Matiz</label><output id="theme_hue_value">0°</output><input class="theme-hsl-range" id="theme_hue" type="range" min="0" max="359" step="1" value="0"></div>';
+echo '<div class="theme-slider"><label for="theme_saturation">Saturação</label><output id="theme_saturation_value">0%</output><input class="theme-hsl-range" id="theme_saturation" type="range" min="0" max="100" step="1" value="0"></div>';
+echo '<div class="theme-slider"><label for="theme_lightness">Luminosidade</label><output id="theme_lightness_value">0%</output><input class="theme-hsl-range" id="theme_lightness" type="range" min="0" max="100" step="1" value="0"></div>';
+echo '</div></div>';
+echo '<div class="theme-preview-title"><strong>Prévia ao vivo</strong><span>A logo e as cores abaixo mudam antes de você salvar.</span></div>';
+echo '<div class="theme-preview-grid" aria-label="Prévia da página principal e da logo">';
+echo '<div class="theme-site-preview">';
+echo '<div class="theme-browser-bar"><div class="theme-browser-tab"><img class="js-brand-preview" src="' . htmlspecialchars($brandImageUrl, ENT_QUOTES, 'UTF-8') . '" alt=""><span>' . htmlspecialchars((string) $_settings->info('name'), ENT_QUOTES, 'UTF-8') . '</span></div></div>';
+echo '<div class="theme-browser-accent"></div>';
+echo '<div class="theme-site-header"><img class="js-brand-preview" src="' . htmlspecialchars($brandImageUrl, ENT_QUOTES, 'UTF-8') . '" alt="Logo aplicada no cabeçalho"><span class="theme-site-menu">☰</span></div>';
+echo '<div class="theme-site-body"><span class="theme-site-kicker">Sua sorte começa aqui</span><div class="theme-site-hero">Campanhas transparentes,<br>participação simples.</div><div class="theme-site-card"><span class="theme-site-card__image"></span><span><strong>Campanha em destaque</strong><small>Escolha suas cotas e participe.</small></span><span class="theme-preview__button">Participar</span></div></div>';
+echo '</div>';
+echo '<div class="theme-logo-preview"><div class="theme-logo-preview__label">Logo nos fundos reais</div><div class="theme-logo-stage theme-logo-stage--header"><img class="js-brand-preview" src="' . htmlspecialchars($brandImageUrl, ENT_QUOTES, 'UTF-8') . '" alt="Logo sobre a cor do cabeçalho"></div><div class="theme-logo-stage theme-logo-stage--surface"><img class="js-brand-preview" src="' . htmlspecialchars($brandImageUrl, ENT_QUOTES, 'UTF-8') . '" alt="Logo sobre a cor dos cartões"></div></div>';
+echo '</div>';
 echo '<div class="theme-editor__actions"><button type="button" class="theme-reset" id="reset-theme-colors" data-defaults="' . htmlspecialchars(json_encode(jnsalles_theme_defaults()), ENT_QUOTES, 'UTF-8') . '">Restaurar rosa padrão</button></div>';
 echo '</section>';
 echo '<label class="block mt-4 text-sm">' . "\r\n\t\t\t\t\t\t" . '<span class="text-gray-700 dark:text-gray-400">Logo do site e favicon:</span>' . "\r\n\t\t\t\t\t\t" . '<p class="mb-2" style="font-size:13px;color: orange;font-style:italic;">A mesma imagem ser&aacute; aplicada no cabe&ccedil;alho e no &iacute;cone da aba do navegador. Use PNG ou JPG de at&eacute; 4 MB. A transpar&ecirc;ncia de arquivos PNG ser&aacute; preservada.</p>' . "\r\n\t\t\t\t\t\t" . '<input id="customFile1" name="img" onchange="displayImg(this,$(this))" type="file" class="block w-full mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input" accept="image/png, image/jpeg">' . "\r\n\t\t\t\t\t" . '</label>' . "\r\n\r\n\t\t\t\t\t" . '<label class="block mt-4 text-sm">' . "\r\n\t\t\t\t\t\t" . '<img src="';
