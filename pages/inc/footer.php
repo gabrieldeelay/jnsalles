@@ -549,6 +549,7 @@ if (!$user_id) { ?>
 						#newCheckoutModal .checkout-flow{padding:20px 22px 24px;background:var(--theme-surface,#fff)}
 						#newCheckoutModal .steps-header{margin:0 0 20px!important;padding:0!important}
 						#newCheckoutModal .step-header{min-width:0}
+						#newCheckoutModal #step4-header{flex:0 0 42px}
 						#newCheckoutModal .step-header i{z-index:1;display:grid;width:42px;height:42px;flex:0 0 42px;place-items:center;padding:0!important;border:2px solid var(--theme-surface,#fff)!important;border-radius:50%!important;background:var(--theme-soft,#f1f5f9)!important;color:var(--theme-secondary,#64748b)!important;font-size:17px!important;box-shadow:0 0 0 1px var(--theme-border,#e2e8f0)}
 						#newCheckoutModal .step-header i.active,#newCheckoutModal .step-header i.bi-check{background:var(--theme-primary,#b42c63)!important;color:var(--theme-on-primary,#fff)!important;box-shadow:0 0 0 1px var(--theme-primary,#b42c63),0 7px 16px rgba(var(--bs-primary-rgb,180,44,99),.18)}
 						#newCheckoutModal .step1-progress,#newCheckoutModal .step2-progress,#newCheckoutModal .step3-progress{height:3px;border-radius:999px;background:var(--theme-border,#e2e8f0)}
@@ -577,8 +578,8 @@ if (!$user_id) { ?>
 						#newCheckoutModal .checkout-session-note{margin-top:.4rem;color:var(--theme-muted,#64748b)!important;opacity:1}
 						#newCheckoutModal #step4{text-align:center}
 						#newCheckoutModal #step4 img{display:block;max-width:min(260px,100%);height:auto;margin:14px auto;border-radius:12px}
-						@media(max-width:767.98px){#newCheckoutModal .modal-dialog{max-width:none}#newCheckoutModal .checkout-modal-content{border:0;border-radius:0}#newCheckoutModal .modal-header{padding:15px 16px}#newCheckoutModal .checkout-flow{padding:17px 16px 22px}#newCheckoutModal .checkout-modal-icon{width:40px;height:40px;flex-basis:40px}#newCheckoutModal .checkout-modal-heading strong{font-size:16px}#newCheckoutModal .checkout-modal-heading small{max-width:230px}#newCheckoutModal .step-header i{width:38px;height:38px;flex-basis:38px;font-size:15px!important}#newCheckoutModal .checkout-order-summary .card-body{grid-template-columns:1fr;padding:14px}#newCheckoutModal .checkout-summary-label{grid-column:auto}#newCheckoutModal .checkout-order-summary .total{justify-self:start}}
-						@media(max-width:420px){#newCheckoutModal .checkout-modal-heading small{max-width:180px}#newCheckoutModal .checkout-flow{padding-inline:13px}#newCheckoutModal .step-header i{width:34px;height:34px;flex-basis:34px;font-size:14px!important}}
+						@media(max-width:767.98px){#newCheckoutModal .modal-dialog{max-width:none}#newCheckoutModal .checkout-modal-content{border:0;border-radius:0}#newCheckoutModal .modal-header{padding:15px 16px}#newCheckoutModal .checkout-flow{padding:17px 16px 22px}#newCheckoutModal .checkout-modal-icon{width:40px;height:40px;flex-basis:40px}#newCheckoutModal .checkout-modal-heading strong{font-size:16px}#newCheckoutModal .checkout-modal-heading small{max-width:230px}#newCheckoutModal .step-header i{width:38px;height:38px;flex-basis:38px;font-size:15px!important}#newCheckoutModal #step4-header{flex-basis:38px}#newCheckoutModal .checkout-order-summary .card-body{grid-template-columns:1fr;padding:14px}#newCheckoutModal .checkout-summary-label{grid-column:auto}#newCheckoutModal .checkout-order-summary .total{justify-self:start}}
+						@media(max-width:420px){#newCheckoutModal .checkout-modal-heading small{max-width:180px}#newCheckoutModal .checkout-flow{padding-inline:13px}#newCheckoutModal .step-header i{width:34px;height:34px;flex-basis:34px;font-size:14px!important}#newCheckoutModal #step4-header{flex-basis:34px}}
 					</style>
 
 					<!-- Etapa 4 -->
