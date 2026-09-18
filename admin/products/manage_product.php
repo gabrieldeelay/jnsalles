@@ -595,7 +595,7 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
                                 </label>
                                 <div class="image-container__box dark:bg-gray-800 add-logo"><svg width="35" height="30" viewBox="0 0 35 30" xmlns="http://www.w3.org/2000/svg" class="box__icon">
                                         <path d="M3.502 3.4h5.11L12.02.09h10.222l3.407 3.31h5.111c1.882 0 3.408 1.481 3.408 3.309v19.856c0 1.828-1.526 3.31-3.408 3.31H3.502c-1.882 0-3.408-1.482-3.408-3.31V6.709c0-1.828 1.526-3.31 3.408-3.31zM17.13 8.364c-4.705 0-8.518 3.704-8.518 8.273 0 4.57 3.813 8.273 8.518 8.273 4.704 0 8.518-3.704 8.518-8.273 0-4.57-3.814-8.273-8.518-8.273zm0 3.309c2.823 0 5.11 2.222 5.11 4.964 0 2.741-2.287 4.964-5.11 4.964-2.823 0-5.111-2.223-5.111-4.964 0-2.742 2.288-4.964 5.11-4.964z" fill="#9027B0" fill-rule="evenodd"></path>
-                                    </svg><span class="box__main-text">Adicionar Imagem</span><span class="box__info-text"> JPG, PNG, GIF ou WebP </span></div><input id="customFile1" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" type="file" name="img" style="display:none;">
+                                    </svg><span class="box__main-text">Adicionar Imagem</span><span class="box__info-text"> JPG, PNG, GIF ou WebP · arquivo original preservado </span></div><input id="customFile1" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" type="file" name="img" style="display:none;">
                                 <div class="show_logo" style="display:inline-block;"><img id="loadlogo" src="<?= validate_image(isset($image_path) ? $image_path : '') ?>" width="150" alt="Logo" /><span class="remove-logo"><svg width='25' height='25' viewBox='0 0 25 25' xmlns='http://www.w3.org/2000/svg' class='s'>
                                             <g transform='translate(.317)' fill='none' fill-rule='evenodd'>
                                                 <rect fill='#323232' opacity='.99' width='24.503' height='24.33' rx='12.165'></rect>
@@ -616,7 +616,7 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
                                             <svg width="35" height="30" viewBox="0 0 35 30" xmlns="http://www.w3.org/2000/svg" class="box__icon">
                                                 '<path d="M3.502 3.4h5.11L12.02.09h10.222l3.407 3.31h5.111c1.882 0 3.408 1.481 3.408 3.309v19.856c0 1.828-1.526 3.31-3.408 3.31H3.502c-1.882 0-3.408-1.482-3.408-3.31V6.709c0-1.828 1.526-3.31 3.408-3.31zM17.13 8.364c-4.705 0-8.518 3.704-8.518 8.273 0 4.57 3.813 8.273 8.518 8.273 4.704 0 8.518-3.704 8.518-8.273 0-4.57-3.814-8.273-8.518-8.273zm0 3.309c2.823 0 5.11 2.222 5.11 4.964 0 2.741-2.287 4.964-5.11 4.964-2.823 0-5.111-2.223-5.111-4.964 0-2.742 2.288-4.964 5.11-4.964z" fill="#9027B0" fill-rule="evenodd"></path></svg>
                                             <span class="box__main-text">Adicionar fotos</span>
-                                            <span class="box__info-text"> JPG, PNG, GIF ou WebP </span>
+                                            <span class="box__info-text"> JPG, PNG, GIF ou WebP · sem recorte ou compressão </span>
                                         </div>
                                         <input style="display:none;" type="file" accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp" id="image_gallery" name="image_gallery[]" multiple />
                                     </span>
@@ -2174,16 +2174,7 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
             });
         }
 
-        function canvasToJpeg(canvas, quality) {
-            return new Promise(function(resolve, reject) {
-                canvas.toBlob(function(blob) {
-                    if (blob) resolve(blob);
-                    else reject(new Error('Não foi possível otimizar uma das imagens.'));
-                }, 'image/jpeg', quality);
-            });
-        }
-
-        async function compressCampaignImage(file) {
+        async function prepareCampaignImage(file) {
             var validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
             var extensionIsValid = /\.(jpe?g|png|gif|webp)$/i.test(file.name || '');
             if (file.type && validTypes.indexOf(file.type) === -1 && !extensionIsValid) {
@@ -2195,33 +2186,8 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
                 decoded.cleanup();
                 throw new Error('A resolução de "' + file.name + '" é muito alta.');
             }
-
-            var maxDimension = 1200;
-            var ratio = Math.min(1, maxDimension / Math.max(decoded.width, decoded.height));
-            var width = Math.max(1, Math.round(decoded.width * ratio));
-            var height = Math.max(1, Math.round(decoded.height * ratio));
-            var canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            var context = canvas.getContext('2d', { alpha: false });
-            if (!context) {
-                decoded.cleanup();
-                throw new Error('Seu navegador não conseguiu preparar a imagem.');
-            }
-            context.fillStyle = '#ffffff';
-            context.fillRect(0, 0, width, height);
-            context.drawImage(decoded.source, 0, 0, width, height);
             decoded.cleanup();
-
-            var quality = .84;
-            var blob = await canvasToJpeg(canvas, quality);
-            while (blob.size > 440 * 1024 && quality > .60) {
-                quality -= .08;
-                blob = await canvasToJpeg(canvas, quality);
-            }
-
-            var safeName = (file.name || 'campanha').replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]+/gi, '-');
-            return new File([blob], (safeName || 'campanha') + '.jpg', { type: 'image/jpeg', lastModified: Date.now() });
+            return file;
         }
 
         async function buildCampaignFormData(form) {
@@ -2232,7 +2198,7 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
 
             if (mainInput && mainInput.files.length) {
                 data.delete('img');
-                var mainImage = await compressCampaignImage(mainInput.files[0]);
+                var mainImage = await prepareCampaignImage(mainInput.files[0]);
                 data.append('img', mainImage, mainImage.name);
                 files.push(mainImage);
             }
@@ -2240,15 +2206,15 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
             if (galleryInput && galleryInput.files.length) {
                 data.delete('image_gallery[]');
                 for (var index = 0; index < galleryInput.files.length; index++) {
-                    var galleryImage = await compressCampaignImage(galleryInput.files[index]);
+                    var galleryImage = await prepareCampaignImage(galleryInput.files[index]);
                     data.append('image_gallery[]', galleryImage, galleryImage.name);
                     files.push(galleryImage);
                 }
             }
 
             var totalSize = files.reduce(function(total, file) { return total + file.size; }, 0);
-            if (totalSize > 3.5 * 1024 * 1024) {
-                throw new Error('As imagens selecionadas ainda ultrapassam o limite. Envie menos imagens por vez.');
+            if (totalSize > 24 * 1024 * 1024) {
+                throw new Error('As imagens selecionadas ultrapassam 24 MB no total. Envie menos imagens por vez.');
             }
             return data;
         }
