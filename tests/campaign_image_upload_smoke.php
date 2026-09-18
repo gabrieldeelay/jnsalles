@@ -38,6 +38,23 @@ $valid = $relativePath
     && getimagesize($savedPath)[0] === 2
     && getimagesize($savedPath)[1] === 1;
 
+$activeBackend = file_get_contents(dirname(__DIR__) . '/class/Main.php');
+$activeUploadStart = strpos($activeBackend, 'private function save_campaign_main_image');
+$activeUploadEnd = strpos($activeBackend, 'public function save_product', $activeUploadStart);
+$activeUpload = ($activeUploadStart !== false && $activeUploadEnd !== false)
+    ? substr($activeBackend, $activeUploadStart, $activeUploadEnd - $activeUploadStart)
+    : '';
+$adminSource = file_get_contents(dirname(__DIR__) . '/admin/products/manage_product.php');
+$valid = $valid
+    && str_contains($activeUpload, '$imageBytes = $contents;')
+    && !str_contains($activeUpload, 'imagecrop(')
+    && !str_contains($activeUpload, 'imagecopyresampled(')
+    && !str_contains($activeUpload, 'imagejpeg(')
+    && str_contains($adminSource, 'async function prepareCampaignImage(file)')
+    && str_contains($adminSource, 'return file;')
+    && !str_contains($adminSource, 'compressCampaignImage(')
+    && !str_contains($adminSource, 'canvasToJpeg(');
+
 if (is_file($savedPath)) {
     unlink($savedPath);
 }

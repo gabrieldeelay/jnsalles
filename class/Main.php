@@ -210,48 +210,6 @@ class Main extends DBConnection
             'image/webp' => 'webp',
         ];
 
-        $hasImageEditor = function_exists('imagecreatefromstring')
-            && function_exists('imagecreatetruecolor')
-            && function_exists('imagecopyresampled')
-            && function_exists('imagecrop')
-            && function_exists('imagejpeg');
-
-        if ($hasImageEditor) {
-            $source = @imagecreatefromstring($contents);
-            if (!$source) {
-                return ['ok' => false, 'message' => 'A imagem está corrompida ou não pôde ser aberta.'];
-            }
-
-            $targetSize = 600;
-            $scale = max($targetSize / $width, $targetSize / $height);
-            $resizedWidth = max($targetSize, (int) ceil($width * $scale));
-            $resizedHeight = max($targetSize, (int) ceil($height * $scale));
-            $resized = imagecreatetruecolor($resizedWidth, $resizedHeight);
-            $white = imagecolorallocate($resized, 255, 255, 255);
-            imagefill($resized, 0, 0, $white);
-            imagecopyresampled($resized, $source, 0, 0, 0, 0, $resizedWidth, $resizedHeight, $width, $height);
-
-            $cropped = imagecrop($resized, [
-                'x' => max(0, (int) floor(($resizedWidth - $targetSize) / 2)),
-                'y' => max(0, (int) floor(($resizedHeight - $targetSize) / 2)),
-                'width' => $targetSize,
-                'height' => $targetSize,
-            ]);
-            if (!$cropped) {
-                return ['ok' => false, 'message' => 'Não foi possível ajustar a imagem para o formato da campanha.'];
-            }
-
-            ob_start();
-            $saved = imagejpeg($cropped, null, 88);
-            $imageBytes = ob_get_clean();
-
-            if (!$saved || !is_string($imageBytes) || $imageBytes === '') {
-                return ['ok' => false, 'message' => 'Não foi possível salvar a nova imagem da campanha.'];
-            }
-
-            $outputMime = 'image/jpeg';
-        }
-
         $extension = $extensions[$outputMime] ?? 'jpg';
         $pathname = 'campanhas/' . (int) $productId . '/campanha-' . bin2hex(random_bytes(8)) . '.' . $extension;
 
