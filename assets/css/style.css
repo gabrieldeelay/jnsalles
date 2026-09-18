@@ -13955,6 +13955,34 @@ drope-tab .drope-content p {
   z-index: 50;
 }
 
+/* Mantem as artes das campanhas proporcionais em todos os tipos de sorteio. */
+.campanha-header .SorteioTpl_imagemContainer__2-pl4 {
+  height: auto !important;
+  aspect-ratio: 1 / 1;
+  background: #f7f7f7;
+}
+
+.campanha-header .SorteioTpl_imagemContainer__2-pl4 .carousel,
+.campanha-header .SorteioTpl_imagemContainer__2-pl4 .carousel-inner {
+  height: 100% !important;
+}
+
+.campanha-header .carousel-inner .custom-image {
+  width: 100%;
+  height: auto !important;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: #f7f7f7;
+}
+
+.campanha-header .carousel-inner .custom-image .SorteioTpl_imagem__2GXxI {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+}
+
 .custom-content-wrapper {
   position: absolute;
   bottom: 0;
