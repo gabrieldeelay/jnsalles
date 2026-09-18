@@ -13958,7 +13958,7 @@ drope-tab .drope-content p {
 /* Mantem as artes das campanhas proporcionais em todos os tipos de sorteio. */
 .campanha-header .SorteioTpl_imagemContainer__2-pl4 {
   height: auto !important;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 3;
   background: #f7f7f7;
 }
 
@@ -13970,7 +13970,7 @@ drope-tab .drope-content p {
 .campanha-header .carousel-inner .custom-image {
   width: 100%;
   height: auto !important;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 3;
   overflow: hidden;
   background: #f7f7f7;
 }
