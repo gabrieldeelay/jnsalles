@@ -62,6 +62,8 @@ $valid = $html !== ''
 if ($target === 'home') {
 	$valid = $valid
 		&& str_contains($html, 'home-campaign-card')
+		&& str_contains($html, 'Termo informativo da ação promocional')
+		&& str_contains($html, 'A participação é permitida apenas para maiores de 18')
 		&& str_contains($html, $campaignName)
 		&& str_contains($html, $finalCampaignName)
 		&& str_contains($html, 'Finalizada')

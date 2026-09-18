@@ -4,6 +4,17 @@
 }
 .home-shell{padding-top:16px;padding-bottom:28px}.home-hero{position:relative;overflow:hidden;margin-bottom:18px;padding:18px 20px;border-radius:14px;background:linear-gradient(135deg,#3b2330 0%,#632945 100%);color:#fff;box-shadow:0 3px 12px rgba(52,36,44,.1)}.home-hero:after{content:"";position:absolute;width:130px;height:130px;right:-65px;top:-72px;border-radius:50%;background:rgba(255,255,255,.055)}.home-hero__eyebrow{display:inline-flex;margin-bottom:6px;color:#f4dce7;font-size:.62rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.home-hero h1{max-width:620px;margin:0 0 6px;font-size:1.32rem;font-weight:820;letter-spacing:-.03em}.home-hero p{max-width:700px;margin:0;color:rgba(255,255,255,.8);font-size:.73rem;line-height:1.5}.home-trust{display:flex;gap:7px;margin-top:12px}.home-trust span{flex:1;padding:7px;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:rgba(255,255,255,.045);font-size:.61rem;text-align:center}.home-campaign-grid{display:grid;gap:14px}.home-info-card{margin:16px 0;padding:16px 18px;border:1px solid rgba(52,36,44,.1);border-radius:14px;background:#fff;box-shadow:0 1px 4px rgba(52,36,44,.04)}.home-info-card h2{margin:0 0 6px;color:#34242c;font-size:.98rem;font-weight:800}.home-info-card p{margin:0;color:#806976;font-size:.7rem;line-height:1.6}.home-info-actions{display:flex;gap:8px;margin-top:12px}.home-info-actions a{flex:1;padding:9px 10px;border-radius:9px;background:#b42c63;color:#fff!important;font-size:.67rem;font-weight:750;text-align:center}.home-featured{height:360px!important}.home-shell .SorteioTpl_sorteioTpl__home{overflow:hidden;border:1px solid rgba(52,36,44,.1)!important;border-radius:14px!important;box-shadow:0 1px 5px rgba(52,36,44,.05)!important}.home-shell .SorteioTpl_info__t1BZr{padding:14px!important}.home-shell .app-title{margin:12px 0}.home-campaign-card{min-height:280px!important;padding:0!important;display:flex!important;flex-direction:column!important;align-items:stretch!important}.home-campaign-card .SorteioTpl_imagemContainer__2-pl4{width:100%!important;height:210px!important;margin:0!important;border-radius:13px 13px 0 0}.home-campaign-card .SorteioTpl_imagem__2GXxI{width:100%!important;height:100%!important;object-fit:cover!important;border-radius:13px 13px 0 0!important}.home-campaign-card .SorteioTpl_info__t1BZr{position:relative;flex:1;min-height:78px;background:#fff}.home-campaign-card .SorteioTpl_title__3RLtu{font-size:1rem!important;font-weight:750!important}.home-campaign-card:after{display:none}.home-campaign-grid>.col-12{margin:0!important}@media(min-width:760px){.home-shell{max-width:900px!important}.home-campaign-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.home-campaign-grid>.col-12:only-child{grid-column:1/-1;max-width:none;width:100%}.home-campaign-grid>.col-12:only-child .home-campaign-card{min-height:340px!important}.home-campaign-grid>.col-12:only-child .SorteioTpl_imagemContainer__2-pl4{height:260px!important}}@media(max-width:520px){.home-hero{padding:15px}.home-hero h1{font-size:1.16rem}.home-trust{display:grid;grid-template-columns:1fr 1fr}.home-trust span:last-child{grid-column:1/-1}.home-featured{height:320px!important}.home-campaign-card{min-height:260px!important}.home-campaign-card .SorteioTpl_imagemContainer__2-pl4{height:185px!important}.home-info-actions{flex-direction:column}}
 </style>
+<style>
+.home-legal-card{display:grid;grid-template-columns:94px minmax(0,1fr);overflow:hidden;margin:16px 0;border:1px solid var(--theme-border,#e2e8f0);border-radius:14px;background:linear-gradient(135deg,var(--theme-surface,#fff),var(--theme-soft,#f8fafc));box-shadow:0 1px 5px rgba(52,36,44,.05)}
+.home-legal-card__brand{display:flex;align-items:center;justify-content:center;padding:16px;background:linear-gradient(145deg,var(--theme-header,#472536),var(--theme-secondary,#6f2445))}
+.home-legal-card__brand img{width:74px;height:74px;object-fit:contain;filter:drop-shadow(0 5px 9px rgba(0,0,0,.18))}
+.home-legal-card__content{padding:16px 18px}
+.home-legal-card__eyebrow{display:inline-flex;margin-bottom:4px;color:var(--theme-secondary,#6f2445);font-size:.58rem;font-weight:850;letter-spacing:.1em;text-transform:uppercase}
+.home-legal-card h2{margin:0 0 8px;color:var(--theme-text,#34242c);font-size:.96rem;font-weight:820}
+.home-legal-card p{margin:0 0 7px;color:var(--theme-muted,#806976);font-size:.68rem;line-height:1.62;text-align:left}
+.home-legal-card p:last-child{margin-bottom:0}
+@media(max-width:520px){.home-legal-card{grid-template-columns:1fr}.home-legal-card__brand{min-height:82px;padding:10px}.home-legal-card__brand img{width:68px;height:68px}.home-legal-card__content{padding:15px}.home-legal-card p{font-size:.7rem;line-height:1.58}}
+</style>
 <script>
   // Oculta o loader apenas depois de 2 segundos ao carregar a nova página
   window.addEventListener("load", function () {
@@ -170,6 +181,19 @@ if ($qry->num_rows > 0) {
 		<h2>Como funciona e quais são as regras?</h2>
 		<p>Escolha uma campanha, selecione a quantidade de cotas e finalize o pagamento. A participação entra no sorteio somente depois da confirmação. Cada campanha informa seu prêmio, suas cotas premiadas e o critério de apuração.</p>
 		<div class="home-info-actions"><a href="/termos-de-uso">Ler regulamento completo</a><a href="/campanhas">Ver todas as campanhas</a></div>
+	</section>
+
+	<section class="home-legal-card" aria-labelledby="home-legal-title">
+		<div class="home-legal-card__brand">
+			<img src="<?= htmlspecialchars($logo ?: BASE_URL . 'assets/img/logo.png', ENT_QUOTES, 'UTF-8') ?>" alt="NXP Salles">
+		</div>
+		<div class="home-legal-card__content">
+			<span class="home-legal-card__eyebrow">Informação importante</span>
+			<h2 id="home-legal-title">Termo informativo da ação promocional</h2>
+			<p>Rifa promocional realizada por NXP Salles, inscrita no CNPJ 64.895.043/0001-65. Ao adquirir um número ou cota desta rifa, o participante declara estar ciente e de acordo com as regras da ação promocional. A participação é permitida apenas para maiores de 18 (dezoito) anos.</p>
+			<p>O pagamento da cota garante a participação no sorteio correspondente à campanha divulgada pela organização. Não haverá reembolso após a confirmação do pagamento, salvo nos casos previstos em lei ou em eventual cancelamento da ação pela organização.</p>
+			<p>O sorteio, a apuração do ganhador e a entrega do prêmio seguirão os critérios informados na divulgação oficial da campanha. Ao participar, o cliente autoriza a divulgação do resultado e do nome do ganhador nos canais da organização, sem ônus adicional. Em caso de dúvidas, o participante deve entrar em contato diretamente com a organização responsável.</p>
+		</div>
 	</section>
 
 	<?php

@@ -321,22 +321,19 @@ if (!$user_id) { ?>
 	?>
 	<div class="modal fade" id="newCheckoutModal">
 		<div class="modal-dialog modal-lg modal-fullscreen-md-down modal-dialog-centered">
-			<div class="modal-content bg-dark">
+			<div class="modal-content checkout-modal-content">
 				<div class="modal-header">
-					<div class="modal-title  text-white">
-						<div class="d-flex align-items-center gap-2">
-							<button class="btn btn-lg btn-outline-secondary">
-								<i class="bi bi-cart text-white"></i>
-							</button>
-							<div class="text-start text-white">
-								<span>Compra referente a participação no sorteio</span>
-								<div><?php echo isset($name) ? $name : ''; ?></div>
-							</div>
+					<div class="modal-title checkout-modal-title">
+						<span class="checkout-modal-icon"><i class="bi bi-shield-check"></i></span>
+						<div class="checkout-modal-heading">
+							<span>Finalização segura</span>
+							<strong>Concluir participação</strong>
+							<small><?php echo isset($name) ? htmlspecialchars((string) $name, ENT_QUOTES, 'UTF-8') : ''; ?></small>
 						</div>
 					</div>
-					<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar checkout"></button>
 				</div>
-				<div class="modal-body app-form">
+				<div class="modal-body app-form checkout-flow">
 					<div class="mb-3 steps-header d-flex justify-content-between align-items-center px-3">
 						<div id="step1-header" class="step-header d-flex align-items-center w-100">
 							<i class="active btn btn-secondary rounded-circle fs-3 p-3 bi bi-search"></i>
@@ -357,8 +354,9 @@ if (!$user_id) { ?>
 					<!-- Etapa 1 -->
 					<div class="step" id="step1">
 						<form id="loginModal">
-							<div class="card mb-3" style="background-color: #c4c4c4;">
+							<div class="card mb-3 checkout-order-summary">
 								<div class="card-body text-center">
+									<span class="checkout-summary-label">Resumo da participação</span>
 									<div class="mb-2 d-flex justify-content-center align-items-center gap-2">
 										<i class="bi bi-ticket-perforated fs-3 "></i>
 										<div class="fs-5 fw-bold"><span class="qtd"><?= isset($min_purchase) ? $min_purchase : '' ?></span> x <span class="preco">R$ <?= $price ?></span> =</div>
@@ -374,8 +372,7 @@ if (!$user_id) { ?>
 									</span>
 								</div>
 							</div>
-							<hr>
-							<p class="text-muted font-xs">Por favor, entre com seus dados ou faça um cadastro.</p>
+							<div class="checkout-step-intro"><h3>Identifique-se para continuar</h3><p>Digite seu telefone. Se ainda não tiver cadastro, você poderá criá-lo na próxima etapa.</p></div>
 							<span id="aviso-login"></span>
 							<div class="mb-3">
 								<label for="phone" class="form-label text-white">Telefone</label>
@@ -539,10 +536,49 @@ if (!$user_id) { ?>
 						</div>
 					</div>
 					<style>
-						.checkout-summary-card { background: linear-gradient(135deg, #f8fafc, #eef2f4); color: #172029; }
-						.checkout-summary-card .card-body { min-height: 0; padding: 1.25rem 1rem; }
-						.checkout-summary-card hr { margin: .75rem auto; max-width: 360px; opacity: .18; }
-						.checkout-session-note { margin-top: .25rem; opacity: .8; }
+						#newCheckoutModal .modal-dialog{max-width:760px}
+						#newCheckoutModal .checkout-modal-content{overflow:hidden;border:1px solid var(--theme-border,#e2e8f0);border-radius:22px;background:var(--theme-surface,#fff)!important;color:var(--theme-text,#1f2937)!important;box-shadow:0 28px 80px rgba(15,23,42,.28)}
+						#newCheckoutModal .modal-header{align-items:center;padding:20px 22px;border-bottom:1px solid var(--theme-border,#e2e8f0);background:linear-gradient(135deg,var(--theme-soft,#f8fafc),var(--theme-surface,#fff))}
+						#newCheckoutModal .checkout-modal-title{display:flex;min-width:0;align-items:center;gap:12px}
+						#newCheckoutModal .checkout-modal-icon{display:grid;width:44px;height:44px;flex:0 0 44px;place-items:center;border-radius:13px;background:var(--theme-primary,#b42c63);color:var(--theme-on-primary,#fff);font-size:20px;box-shadow:0 8px 18px rgba(var(--bs-primary-rgb,180,44,99),.18)}
+						#newCheckoutModal .checkout-modal-heading{display:flex;min-width:0;flex-direction:column;text-align:left}
+						#newCheckoutModal .checkout-modal-heading>span{color:var(--theme-secondary,#6f2445);font-size:10px;font-weight:850;letter-spacing:.1em;text-transform:uppercase}
+						#newCheckoutModal .checkout-modal-heading strong{color:var(--theme-text,#1f2937);font-size:18px;line-height:1.2}
+						#newCheckoutModal .checkout-modal-heading small{overflow:hidden;max-width:560px;margin-top:2px;color:var(--theme-muted,#64748b);font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+						#newCheckoutModal .btn-close{width:36px;height:36px;margin:0;padding:0;border-radius:10px;background-color:var(--theme-soft,#f1f5f9);opacity:.78}
+						#newCheckoutModal .checkout-flow{padding:20px 22px 24px;background:var(--theme-surface,#fff)}
+						#newCheckoutModal .steps-header{margin:0 0 20px!important;padding:0!important}
+						#newCheckoutModal .step-header{min-width:0}
+						#newCheckoutModal .step-header i{z-index:1;display:grid;width:42px;height:42px;flex:0 0 42px;place-items:center;padding:0!important;border:2px solid var(--theme-surface,#fff)!important;border-radius:50%!important;background:var(--theme-soft,#f1f5f9)!important;color:var(--theme-secondary,#64748b)!important;font-size:17px!important;box-shadow:0 0 0 1px var(--theme-border,#e2e8f0)}
+						#newCheckoutModal .step-header i.active,#newCheckoutModal .step-header i.bi-check{background:var(--theme-primary,#b42c63)!important;color:var(--theme-on-primary,#fff)!important;box-shadow:0 0 0 1px var(--theme-primary,#b42c63),0 7px 16px rgba(var(--bs-primary-rgb,180,44,99),.18)}
+						#newCheckoutModal .step1-progress,#newCheckoutModal .step2-progress,#newCheckoutModal .step3-progress{height:3px;border-radius:999px;background:var(--theme-border,#e2e8f0)}
+						#newCheckoutModal .step1-progress.active,#newCheckoutModal .step2-progress.active,#newCheckoutModal .step3-progress.active{background:var(--theme-primary,#b42c63)}
+						#newCheckoutModal .checkout-order-summary,#newCheckoutModal .checkout-summary-card{overflow:hidden;border:1px solid var(--theme-border,#e2e8f0)!important;border-radius:15px;background:linear-gradient(135deg,var(--theme-soft,#f8fafc),var(--theme-surface,#fff))!important;color:var(--theme-text,#1f2937)!important;box-shadow:none}
+						#newCheckoutModal .checkout-order-summary .card-body{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 18px;min-height:0;padding:16px 18px;text-align:left!important}
+						#newCheckoutModal .checkout-summary-label{grid-column:1/-1;color:var(--theme-secondary,#6f2445);font-size:10px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+						#newCheckoutModal .checkout-order-summary .card-body>.d-flex{justify-content:flex-start!important;margin:0!important}
+						#newCheckoutModal .checkout-order-summary .bi-ticket-perforated{color:var(--theme-primary,#b42c63)}
+						#newCheckoutModal .checkout-order-summary .total{min-width:100px;padding:10px 14px;border:0;border-radius:10px;background:var(--theme-primary,#b42c63)!important;color:var(--theme-on-primary,#fff)!important;font-weight:850}
+						#newCheckoutModal .checkout-step-intro{margin:0 0 15px;padding-top:1px}
+						#newCheckoutModal .checkout-step-intro h3{margin:0 0 4px;color:var(--theme-text,#1f2937);font-size:16px;font-weight:800}
+						#newCheckoutModal .checkout-step-intro p{margin:0;color:var(--theme-muted,#64748b);font-size:12px;line-height:1.5}
+						#newCheckoutModal .form-label,#newCheckoutModal .form-floating>label{color:var(--theme-text,#1f2937)!important;font-size:12px;font-weight:750}
+						#newCheckoutModal .form-control{min-height:48px;border:1px solid var(--theme-border,#d1d5db)!important;border-radius:11px;background:var(--theme-surface,#fff)!important;color:var(--theme-text,#1f2937)!important;font-size:14px}
+						#newCheckoutModal .form-control:focus{border-color:var(--theme-primary,#b42c63)!important;box-shadow:0 0 0 3px rgba(var(--bs-primary-rgb,180,44,99),.12)!important}
+						#newCheckoutModal .text-muted{color:var(--theme-muted,#64748b)!important}
+						#newCheckoutModal #next1,#newCheckoutModal #next2,#newCheckoutModal #submitFormNew{min-height:48px;border:0!important;border-radius:11px!important;background:var(--theme-primary,#b42c63)!important;color:var(--theme-on-primary,#fff)!important;font-size:13px;font-weight:850;box-shadow:0 9px 20px rgba(var(--bs-primary-rgb,180,44,99),.16)}
+						#newCheckoutModal #prev1{min-height:48px;border:1px solid var(--theme-border,#d1d5db)!important;border-radius:11px!important;background:var(--theme-soft,#f1f5f9)!important;color:var(--theme-text,#1f2937)!important}
+						#newCheckoutModal #step2>.modal-header{padding:0 0 14px;border:0;background:transparent}
+						#newCheckoutModal #step2>.modal-header .modal-title{color:var(--theme-text,#1f2937)!important;font-size:16px;font-weight:800}
+						#newCheckoutModal #step2>.modal-header .btn-close{display:none}
+						#newCheckoutModal #step2>.modal-body{padding:0;background:transparent}
+						#newCheckoutModal .checkout-summary-card .card-body{min-height:0;padding:1.15rem 1rem}
+						#newCheckoutModal .checkout-summary-card hr{margin:.75rem auto;max-width:360px;opacity:.18}
+						#newCheckoutModal .checkout-session-note{margin-top:.4rem;color:var(--theme-muted,#64748b)!important;opacity:1}
+						#newCheckoutModal #step4{text-align:center}
+						#newCheckoutModal #step4 img{display:block;max-width:min(260px,100%);height:auto;margin:14px auto;border-radius:12px}
+						@media(max-width:767.98px){#newCheckoutModal .modal-dialog{max-width:none}#newCheckoutModal .checkout-modal-content{border:0;border-radius:0}#newCheckoutModal .modal-header{padding:15px 16px}#newCheckoutModal .checkout-flow{padding:17px 16px 22px}#newCheckoutModal .checkout-modal-icon{width:40px;height:40px;flex-basis:40px}#newCheckoutModal .checkout-modal-heading strong{font-size:16px}#newCheckoutModal .checkout-modal-heading small{max-width:230px}#newCheckoutModal .step-header i{width:38px;height:38px;flex-basis:38px;font-size:15px!important}#newCheckoutModal .checkout-order-summary .card-body{grid-template-columns:1fr;padding:14px}#newCheckoutModal .checkout-summary-label{grid-column:auto}#newCheckoutModal .checkout-order-summary .total{justify-self:start}}
+						@media(max-width:420px){#newCheckoutModal .checkout-modal-heading small{max-width:180px}#newCheckoutModal .checkout-flow{padding-inline:13px}#newCheckoutModal .step-header i{width:34px;height:34px;flex-basis:34px;font-size:14px!important}}
 					</style>
 
 					<!-- Etapa 4 -->
