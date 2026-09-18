@@ -50,6 +50,7 @@ $valid = $valid
     && !str_contains($activeUpload, 'imagecrop(')
     && !str_contains($activeUpload, 'imagecopyresampled(')
     && !str_contains($activeUpload, 'imagejpeg(')
+	&& str_contains($activeBackend, "AND `id` <> ")
     && str_contains($adminSource, 'async function prepareCampaignImage(file)')
     && str_contains($adminSource, 'return file;')
     && !str_contains($adminSource, 'compressCampaignImage(')

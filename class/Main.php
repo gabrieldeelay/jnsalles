@@ -539,8 +539,10 @@ class Main extends DBConnection
 
         $valor_base_auto = intval($_POST["valor_base_auto"]);
         $slug = slugify($name);
+		$currentProductId = (int) $id;
         $check_slug = $this->conn->query(
-            'SELECT * FROM `product_list` where `slug` LIKE \'' . $slug . '%\''
+			'SELECT `id` FROM `product_list` WHERE `slug` LIKE \'' . $slug . '%\''
+			. ($currentProductId > 0 ? ' AND `id` <> ' . $currentProductId : '')
         )->num_rows;
 
         if (0 < $check_slug) {
