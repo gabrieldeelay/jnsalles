@@ -36,7 +36,7 @@ $adminPageGuides = [
 	'affiliates' => ['Afiliados', 'Gerencie parceiros, links e pagamentos de comissão.', ['Cada afiliado possui um identificador próprio.', 'Confira o período antes de registrar um pagamento.', 'Excluir um acesso não altera pedidos existentes.']],
 	'gateway' => ['Gateway de pagamento', 'Escolha somente um provedor ativo e salve as credenciais fornecidas por ele.', ['Desativar interrompe novas cobranças sem apagar as credenciais.', 'Mostrar/ocultar permite revisar os tokens salvos.', 'O webhook confirma o PIX e libera as cotas automaticamente.']],
 	'system_info' => ['Configurações do site', 'Altere identidade, logo, textos públicos e informações de contato.', ['A logo também pode ser usada no painel.', 'Revise a prévia antes de salvar.', 'Campos públicos nunca devem conter senhas ou tokens.']],
-	'admin_accounts' => ['Administradores', 'Controle quem pode entrar no painel.', ['A conta principal não pode ser excluída.', 'Cada pessoa deve usar seu próprio acesso.', 'A alteração de senha afeta somente a conta indicada.']],
+	'admin_accounts' => ['Administradores', 'Controle quem pode entrar no painel.', ['A conta usada na sessão atual não pode ser excluída.', 'Cada pessoa deve usar seu próprio acesso.', 'A alteração de senha afeta somente a conta indicada.']],
 	'user/list' => ['Usuários do painel', 'Consulte os acessos administrativos cadastrados.', ['Crie acessos individuais.', 'Revogue contas que não são mais usadas.', 'Não compartilhe a conta principal.']],
 ];
 if (isset($adminPageGuides[$adminRoute])) {
