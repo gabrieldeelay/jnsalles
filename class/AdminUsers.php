@@ -16,8 +16,6 @@ if ((int) $_settings->userdata('login_type') !== 1 || (int) $_settings->userdata
 
 $action = $_GET['action'] ?? '';
 $currentId = (int) $_settings->userdata('id');
-$primaryRow = $conn->query('SELECT MIN(id) AS id FROM users WHERE type = 1')->fetch_assoc();
-$primaryId = (int) ($primaryRow['id'] ?? 0);
 
 if ($action === 'password') {
     $currentPassword = (string) ($_POST['current_password'] ?? '');
@@ -110,8 +108,8 @@ if ($action === 'save') {
 
 if ($action === 'delete') {
     $id = (int) ($_POST['id'] ?? 0);
-    if ($id <= 0 || $id === $primaryId) {
-        admin_users_reply('failed', 'A conta principal não pode ser excluída.');
+    if ($id <= 0) {
+        admin_users_reply('failed', 'Administrador inválido.');
     }
     if ($id === $currentId) {
         admin_users_reply('failed', 'Você não pode excluir o administrador usado nesta sessão.');

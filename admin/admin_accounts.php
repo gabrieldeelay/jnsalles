@@ -5,8 +5,6 @@ if ((int) $_settings->userdata('type') !== 1) {
 }
 
 $currentId = (int) $_settings->userdata('id');
-$primaryRow = $conn->query('SELECT MIN(id) AS id FROM users WHERE type = 1')->fetch_assoc();
-$primaryId = (int) ($primaryRow['id'] ?? 0);
 $adminsResult = $conn->query('SELECT id, firstname, lastname, username, date_added FROM users WHERE type = 1 ORDER BY id ASC');
 $admins = [];
 while ($row = $adminsResult->fetch_assoc()) {
@@ -68,7 +66,7 @@ function admin_icon($name)
     <section class="admins-stats">
       <div class="admins-stat"><span class="admins-stat__icon"><?= admin_icon('users') ?></span><div><small>Contas ativas</small><strong><?= count($admins) ?> administradores</strong></div></div>
       <div class="admins-stat"><span class="admins-stat__icon"><?= admin_icon('user') ?></span><div><small>Sessão atual</small><strong><?= htmlspecialchars(trim(($currentAdmin['firstname'] ?? '') . ' ' . ($currentAdmin['lastname'] ?? '')), ENT_QUOTES, 'UTF-8') ?></strong></div></div>
-      <div class="admins-stat"><span class="admins-stat__icon"><?= admin_icon('shield') ?></span><div><small>Conta principal</small><strong>Protegida contra exclusão</strong></div></div>
+      <div class="admins-stat"><span class="admins-stat__icon"><?= admin_icon('shield') ?></span><div><small>Proteção de acesso</small><strong>Sessão atual protegida</strong></div></div>
     </section>
 
     <div class="admins-grid">
@@ -102,7 +100,6 @@ function admin_icon($name)
       <div class="admins-list">
         <?php foreach ($admins as $admin):
           $adminId = (int) $admin['id'];
-          $isPrimary = $adminId === $primaryId;
           $isCurrent = $adminId === $currentId;
           $fullName = trim($admin['firstname'] . ' ' . $admin['lastname']);
           $created = !empty($admin['date_added']) ? date('d/m/Y', strtotime($admin['date_added'])) : 'Data não informada';
@@ -111,8 +108,8 @@ function admin_icon($name)
             <div class="admin-row__summary">
               <div class="admin-identity"><span class="admin-avatar"><?= htmlspecialchars(admin_initials($admin['firstname'], $admin['lastname']), ENT_QUOTES, 'UTF-8') ?></span><div><strong><?= htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8') ?></strong><small>@<?= htmlspecialchars($admin['username'], ENT_QUOTES, 'UTF-8') ?></small></div></div>
               <div class="admin-meta"><small>Criada em</small><span><?= htmlspecialchars($created, ENT_QUOTES, 'UTF-8') ?></span></div>
-              <div class="admin-badges"><?php if ($isPrimary): ?><span class="admin-badge primary">Principal</span><?php endif; ?><?php if ($isCurrent): ?><span class="admin-badge session">Sua sessão</span><?php endif; ?></div>
-              <div class="admin-actions"><button type="button" class="admin-action admin-edit"><?= admin_icon('edit') ?> Editar</button><button type="button" class="admin-action admin-delete" <?= ($isPrimary || $isCurrent) ? 'disabled title="Esta conta é protegida contra exclusão"' : '' ?>><?= admin_icon('trash') ?> Excluir</button></div>
+              <div class="admin-badges"><?php if ($isCurrent): ?><span class="admin-badge session">Sua sessão</span><?php endif; ?></div>
+              <div class="admin-actions"><button type="button" class="admin-action admin-edit"><?= admin_icon('edit') ?> Editar</button><button type="button" class="admin-action admin-delete" <?= $isCurrent ? 'disabled title="A conta usada nesta sessão é protegida contra exclusão"' : '' ?>><?= admin_icon('trash') ?> Excluir</button></div>
             </div>
             <form class="admin-account-form admin-edit-form admins-form-grid" data-id="<?= $adminId ?>" autocomplete="off">
               <div class="admins-field"><label>Nome completo</label><input class="admins-input" name="name" required minlength="2" value="<?= htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8') ?>"></div>
