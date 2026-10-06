@@ -1722,6 +1722,32 @@ class Main extends DBConnection
         return json_encode($this->biggest_buyer_snapshot($productId), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
+    public function biggest_buyer_customer()
+    {
+        if (!$this->biggest_buyer_authorized() || !$this->biggest_buyer_csrf_is_valid()) {
+            http_response_code(403);
+            return json_encode(['status' => 'failed', 'msg' => 'Sessão inválida. Atualize a página.']);
+        }
+
+        try {
+            $customer = $this->biggest_buyer_resolve_customer(
+                (int) ($_POST['customer_id'] ?? 0),
+                (string) ($_POST['customer_name'] ?? '')
+            );
+            return json_encode([
+                'status' => 'success',
+                'customer_created' => (bool) $customer['created'],
+                'customer' => [
+                    'id' => (int) $customer['id'],
+                    'name' => (string) $customer['name'],
+                    'phone' => (string) $customer['phone'],
+                ],
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } catch (Throwable $error) {
+            return json_encode(['status' => 'failed', 'msg' => $error->getMessage()]);
+        }
+    }
+
     public function biggest_buyer_start()
     {
         if (!$this->biggest_buyer_authorized() || !$this->biggest_buyer_csrf_is_valid()) {
@@ -7413,6 +7439,10 @@ switch ($action) {
     case "biggest_buyer_state":
         header('Content-Type: application/json; charset=UTF-8');
         echo $Main->biggest_buyer_state();
+        break;
+    case "biggest_buyer_customer":
+        header('Content-Type: application/json; charset=UTF-8');
+        echo $Main->biggest_buyer_customer();
         break;
     case "biggest_buyer_start":
         header('Content-Type: application/json; charset=UTF-8');
