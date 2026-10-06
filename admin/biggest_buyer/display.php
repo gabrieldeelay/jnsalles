@@ -18,7 +18,7 @@ $productId = isset($_GET['product_id']) ? (int) $_GET['product_id'] : 0;
 </head>
 <body>
   <main class="display-shell">
-    <header class="display-head"><div><p class="display-eyebrow">Classificação ao vivo</p><h1 id="display-title">Maior Comprador</h1><p>Atualização automática a cada segundo.</p></div><span class="display-live">AO VIVO</span></header>
+    <header class="display-head"><div><p class="display-eyebrow">Top 5 ao vivo</p><h1 id="display-title">Maior Comprador</h1><p>As cinco primeiras posições, atualizadas a cada segundo.</p></div><span class="display-live">AO VIVO</span></header>
     <div id="display-error" class="display-error" hidden></div>
     <section class="display-card"><table><thead><tr><th>Posição</th><th>Participante</th><th style="text-align:right">Cotas</th></tr></thead><tbody id="display-ranking"><tr><td colspan="3" class="empty">Carregando ranking...</td></tr></tbody></table></section>
     <footer class="display-footer"><span id="display-updated">Aguardando atualização</span><span>Somente pedidos confirmados entram na classificação</span></footer>
@@ -41,7 +41,7 @@ $productId = isset($_GET['product_id']) ? (int) $_GET['product_id'] : 0;
       if (state.product) { productId = state.product.id; title.textContent = state.product.name; }
       ranking.innerHTML = '';
       if (!state.ranking || !state.ranking.length) { var empty = document.createElement('tr'); empty.innerHTML = '<td colspan="3" class="empty">Ainda não há participantes neste período.</td>'; ranking.appendChild(empty); }
-      else state.ranking.forEach(function (row, index) {
+      else state.ranking.slice(0, 5).forEach(function (row, index) {
         var tr = document.createElement('tr'); if (state.action && Number(row.customer_id) === Number(state.action.customer_id) && state.action.status === 'active') tr.className = 'target';
         var pos = document.createElement('td'); pos.className = 'position'; pos.textContent = (index + 1) + 'º';
         var name = document.createElement('td'); name.className = 'name'; name.textContent = row.name;

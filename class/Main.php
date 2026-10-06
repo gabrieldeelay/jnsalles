@@ -1468,7 +1468,7 @@ class Main extends DBConnection
             . 'o.payment_method, c.firstname, c.lastname FROM order_list o '
             . 'INNER JOIN customer_list c ON c.id = o.customer_id '
             . 'WHERE ' . implode(' AND ', $conditions) . ' '
-            . 'ORDER BY o.id DESC LIMIT 60'
+            . 'ORDER BY o.id DESC LIMIT 5'
         );
         $rows = [];
         while ($query && ($row = $query->fetch_assoc())) {
@@ -1484,6 +1484,102 @@ class Main extends DBConnection
             ];
         }
         return $rows;
+    }
+
+    private function biggest_buyer_create_manual_order($productId, $customerId, $quantity, $difference, $margin, DateTimeImmutable $now)
+    {
+        if ($quantity <= 0 || $quantity > 50000) {
+            throw new RuntimeException('A movimentação calculada ultrapassa o limite de 50.000 cotas por pedido.');
+        }
+
+        $productStatement = $this->conn->prepare(
+            'SELECT name, price, limit_order_remove, qty_numbers, paid_numbers, pending_numbers '
+            . 'FROM product_list WHERE id = ? LIMIT 1 FOR UPDATE'
+        );
+        $productStatement->bind_param('i', $productId);
+        $productStatement->execute();
+        $productInfo = $productStatement->get_result()->fetch_assoc();
+        $productStatement->close();
+        if (!$productInfo) {
+            throw new RuntimeException('Campanha não encontrada.');
+        }
+
+        $available = max(
+            0,
+            (int) $productInfo['qty_numbers'] - (int) $productInfo['paid_numbers'] - (int) $productInfo['pending_numbers']
+        );
+        if ($quantity > $available) {
+            throw new RuntimeException('A campanha não possui cotas livres suficientes para a movimentação calculada.');
+        }
+
+        $numbers = $this->generate_manual_free_numbers($productId, (int) $productInfo['qty_numbers'], $quantity);
+        if (count($numbers) !== $quantity || !$this->manual_numbers_are_free($productId, $numbers)) {
+            throw new RuntimeException('Não foi possível separar as cotas manuais com segurança.');
+        }
+
+        $code = 'MC-' . uniqidReal();
+        $orderToken = md5(date('Ymdhis.u') . $code);
+        $productName = (string) $productInfo['name'];
+        $totalAmount = round((float) $productInfo['price'] * $quantity, 2);
+        $orderNumbers = implode(',', $numbers);
+        $paymentMethod = 'Manual';
+        $expiration = (string) $productInfo['limit_order_remove'];
+        $createdAt = $now->format('Y-m-d H:i:s');
+        $paidStatus = 2;
+        $insertOrder = $this->conn->prepare(
+            'INSERT INTO order_list (code, customer_id, product_name, quantity, status, total_amount, order_token, '
+            . 'order_numbers, product_id, payment_method, order_expiration, date_created, date_updated) '
+            . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $insertOrder->bind_param(
+            'sisiidssissss',
+            $code,
+            $customerId,
+            $productName,
+            $quantity,
+            $paidStatus,
+            $totalAmount,
+            $orderToken,
+            $orderNumbers,
+            $productId,
+            $paymentMethod,
+            $expiration,
+            $createdAt,
+            $createdAt
+        );
+        if (!$insertOrder->execute()) {
+            throw new RuntimeException('Não foi possível gravar a movimentação manual.');
+        }
+        $orderId = (int) $this->conn->insert_id;
+        $insertOrder->close();
+
+        $insertItem = $this->conn->prepare(
+            'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)'
+        );
+        $insertItem->bind_param('iiid', $orderId, $productId, $quantity, $totalAmount);
+        if (!$insertItem->execute()) {
+            throw new RuntimeException('Não foi possível gravar os itens da movimentação.');
+        }
+        $insertItem->close();
+
+        $updateProduct = $this->conn->prepare(
+            'UPDATE product_list SET paid_numbers = CAST(paid_numbers AS UNSIGNED) + ? WHERE id = ?'
+        );
+        $updateProduct->bind_param('ii', $quantity, $productId);
+        if (!$updateProduct->execute()) {
+            throw new RuntimeException('Não foi possível atualizar a campanha.');
+        }
+        $updateProduct->close();
+
+        $adminName = trim((string) $this->settings->userdata('firstname'));
+        $description = 'Maior Comprador: pedido manual ' . $orderId . ' com ' . $quantity
+            . ' cotas (diferença ' . $difference . ' + margem ' . $margin . ') criado por ' . $adminName;
+        $log = $this->conn->prepare("INSERT INTO logs (origin, description) VALUES ('ORDER', ?)");
+        $log->bind_param('s', $description);
+        $log->execute();
+        $log->close();
+
+        return $orderId;
     }
 
     private function biggest_buyer_snapshot($requestedProductId = 0, array $action = null)
@@ -1572,7 +1668,7 @@ class Main extends DBConnection
         $duration = (int) ($_POST['duration_seconds'] ?? 0);
         $marginMin = (int) ($_POST['margin_min'] ?? 2);
         $marginMax = (int) ($_POST['margin_max'] ?? 320);
-        if ($productId <= 0 || $customerId <= 0 || !in_array($duration, [180, 300], true)) {
+        if ($productId <= 0 || $customerId <= 0 || !in_array($duration, [60, 120, 180, 240, 300], true)) {
             return json_encode(['status' => 'failed', 'msg' => 'Escolha a campanha, a pessoa e um timer válido.']);
         }
         if ($marginMin < 1 || $marginMax < $marginMin || $marginMax > 100000) {
@@ -1688,62 +1784,14 @@ class Main extends DBConnection
                             $difference = max(0, $competitorTotal - $targetTotal);
                             $margin = random_int((int) $action['margin_min'], (int) $action['margin_max']);
                             $quantity = $difference + $margin;
-                            if ($quantity <= 0 || $quantity > 50000) {
-                                throw new RuntimeException('A movimentação calculada ultrapassa o limite de 50.000 cotas por pedido.');
-                            }
-
-                            $productStatement = $this->conn->prepare('SELECT name, price, limit_order_remove, qty_numbers, paid_numbers, pending_numbers FROM product_list WHERE id = ? LIMIT 1 FOR UPDATE');
-                            $productStatement->bind_param('i', $productId);
-                            $productStatement->execute();
-                            $productInfo = $productStatement->get_result()->fetch_assoc();
-                            $productStatement->close();
-                            if (!$productInfo) {
-                                throw new RuntimeException('Campanha não encontrada.');
-                            }
-                            $available = max(0, (int) $productInfo['qty_numbers'] - (int) $productInfo['paid_numbers'] - (int) $productInfo['pending_numbers']);
-                            if ($quantity > $available) {
-                                throw new RuntimeException('A campanha não possui cotas livres suficientes para a movimentação calculada.');
-                            }
-                            $numbers = $this->generate_manual_free_numbers($productId, (int) $productInfo['qty_numbers'], $quantity);
-                            if (count($numbers) !== $quantity || !$this->manual_numbers_are_free($productId, $numbers)) {
-                                throw new RuntimeException('Não foi possível separar as cotas manuais com segurança.');
-                            }
-
-                            $code = 'MC-' . uniqidReal();
-                            $orderToken = md5(date('Ymdhis.u') . $code);
-                            $productName = (string) $productInfo['name'];
-                            $totalAmount = round((float) $productInfo['price'] * $quantity, 2);
-                            $orderNumbers = implode(',', $numbers);
-                            $paymentMethod = 'Manual';
-                            $expiration = (string) $productInfo['limit_order_remove'];
-                            $createdAt = $now->format('Y-m-d H:i:s');
-                            $paidStatus = 2;
-                            $insertOrder = $this->conn->prepare('INSERT INTO order_list (code, customer_id, product_name, quantity, status, total_amount, order_token, order_numbers, product_id, payment_method, order_expiration, date_created, date_updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-                            $insertOrder->bind_param('sisiidssissss', $code, $targetCustomerId, $productName, $quantity, $paidStatus, $totalAmount, $orderToken, $orderNumbers, $productId, $paymentMethod, $expiration, $createdAt, $createdAt);
-                            if (!$insertOrder->execute()) {
-                                throw new RuntimeException('Não foi possível gravar a movimentação manual.');
-                            }
-                            $orderId = (int) $this->conn->insert_id;
-                            $insertOrder->close();
-                            $insertItem = $this->conn->prepare('INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)');
-                            $insertItem->bind_param('iiid', $orderId, $productId, $quantity, $totalAmount);
-                            if (!$insertItem->execute()) {
-                                throw new RuntimeException('Não foi possível gravar os itens da movimentação.');
-                            }
-                            $insertItem->close();
-                            $updateProduct = $this->conn->prepare('UPDATE product_list SET paid_numbers = CAST(paid_numbers AS UNSIGNED) + ? WHERE id = ?');
-                            $updateProduct->bind_param('ii', $quantity, $productId);
-                            if (!$updateProduct->execute()) {
-                                throw new RuntimeException('Não foi possível atualizar a campanha.');
-                            }
-                            $updateProduct->close();
-
-                            $adminName = trim((string) $this->settings->userdata('firstname'));
-                            $description = 'Maior Comprador: pedido manual ' . $orderId . ' com ' . $quantity . ' cotas (diferença ' . $difference . ' + margem ' . $margin . ') criado por ' . $adminName;
-                            $log = $this->conn->prepare("INSERT INTO logs (origin, description) VALUES ('ORDER', ?)");
-                            $log->bind_param('s', $description);
-                            $log->execute();
-                            $log->close();
+                            $orderId = $this->biggest_buyer_create_manual_order(
+                                $productId,
+                                $targetCustomerId,
+                                $quantity,
+                                $difference,
+                                $margin,
+                                $now
+                            );
 
                             $action['overtaken_at'] = '';
                             $action['last_order_id'] = $orderId;
@@ -1770,6 +1818,94 @@ class Main extends DBConnection
         }
 
         return json_encode($this->biggest_buyer_snapshot($requestedProductId, $action), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    public function biggest_buyer_pass()
+    {
+        if (!$this->biggest_buyer_authorized() || !$this->biggest_buyer_csrf_is_valid()) {
+            http_response_code(403);
+            return json_encode(['status' => 'failed', 'msg' => 'Sessão inválida. Atualize a página.']);
+        }
+
+        $productId = (int) ($_POST['product_id'] ?? 0);
+        $customerId = (int) ($_POST['customer_id'] ?? 0);
+        $marginMin = (int) ($_POST['margin_min'] ?? 2);
+        $marginMax = (int) ($_POST['margin_max'] ?? 320);
+        if ($productId <= 0 || $customerId <= 0) {
+            return json_encode(['status' => 'failed', 'msg' => 'Escolha a campanha e a pessoa antes de usar Passar.']);
+        }
+        if ($marginMin < 1 || $marginMax < $marginMin || $marginMax > 100000) {
+            return json_encode(['status' => 'failed', 'msg' => 'Confira as margens mínima e máxima.']);
+        }
+
+        $product = $this->biggest_buyer_product($productId);
+        $now = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
+        $timer = $product ? ranking_timer_configuration($productId, $now) : null;
+        if (!$product || !$timer || $timer['state'] !== 'running') {
+            return json_encode(['status' => 'failed', 'msg' => 'O contador desta campanha precisa estar em andamento.']);
+        }
+
+        $customer = $this->conn->prepare('SELECT id FROM customer_list WHERE id = ? LIMIT 1');
+        $customer->bind_param('i', $customerId);
+        $customer->execute();
+        $customerExists = $customer->get_result()->num_rows === 1;
+        $customer->close();
+        if (!$customerExists) {
+            return json_encode(['status' => 'failed', 'msg' => 'Pessoa não encontrada.']);
+        }
+
+        $lockResult = $this->conn->query("SELECT GET_LOCK('jnsalles_biggest_buyer', 3) acquired");
+        $lockRow = $lockResult ? $lockResult->fetch_assoc() : null;
+        if ((int) ($lockRow['acquired'] ?? 0) !== 1) {
+            return json_encode(['status' => 'failed', 'msg' => 'Já existe outra movimentação em andamento. Tente novamente.']);
+        }
+
+        try {
+            $this->conn->begin_transaction();
+            $ranking = $this->biggest_buyer_ranking_rows($productId, $timer);
+            $targetTotal = 0;
+            $competitorTotal = 0;
+            foreach ($ranking as $row) {
+                if ((int) $row['customer_id'] === $customerId) {
+                    $targetTotal = (int) $row['quantity'];
+                } else {
+                    $competitorTotal = max($competitorTotal, (int) $row['quantity']);
+                }
+            }
+
+            if ($targetTotal > $competitorTotal) {
+                $this->conn->commit();
+                return json_encode(['status' => 'failed', 'msg' => 'A pessoa selecionada já está em primeiro lugar.']);
+            }
+
+            $difference = max(0, $competitorTotal - $targetTotal);
+            $margin = random_int($marginMin, $marginMax);
+            $quantity = $difference + $margin;
+            $orderId = $this->biggest_buyer_create_manual_order(
+                $productId,
+                $customerId,
+                $quantity,
+                $difference,
+                $margin,
+                $now
+            );
+            $this->conn->commit();
+
+            $snapshot = $this->biggest_buyer_snapshot($productId);
+            $snapshot['manual_pass'] = [
+                'order_id' => $orderId,
+                'quantity' => $quantity,
+                'difference' => $difference,
+                'margin' => $margin,
+            ];
+            return json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } catch (Throwable $error) {
+            $this->conn->rollback();
+            error_log('[biggest-buyer] manual pass failed: ' . $error->getMessage());
+            return json_encode(['status' => 'failed', 'msg' => $error->getMessage()]);
+        } finally {
+            $this->conn->query("SELECT RELEASE_LOCK('jnsalles_biggest_buyer')");
+        }
     }
 
     public function preview_manual_order_numbers()
@@ -7218,6 +7354,10 @@ switch ($action) {
     case "biggest_buyer_tick":
         header('Content-Type: application/json; charset=UTF-8');
         echo $Main->biggest_buyer_tick();
+        break;
+    case "biggest_buyer_pass":
+        header('Content-Type: application/json; charset=UTF-8');
+        echo $Main->biggest_buyer_pass();
         break;
     case "create_payment_affiliate":
         echo $Main->create_payment_affiliate();
