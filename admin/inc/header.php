@@ -11,6 +11,13 @@ $user_name = trim((string) $_settings->userdata('firstname') . ' ' . (string) $_
 if ($user_name === '') {
     $user_name = (string) $_settings->userdata('username');
 }
+$biggestBuyerAvailable = false;
+$biggestBuyerAvailability = $conn->query(
+    "SELECT 1 FROM system_info WHERE meta_field REGEXP '^ranking_timer_[0-9]+_enabled$' AND meta_value = '1' LIMIT 1"
+);
+if ($biggestBuyerAvailability && $biggestBuyerAvailability->num_rows > 0) {
+    $biggestBuyerAvailable = true;
+}
 
 switch ($pageTitle) {
     case 'products':
@@ -36,6 +43,9 @@ switch ($pageTitle) {
         break;
     case 'ranking':
         echo 'Ranking de compradores - ' . $siteName;
+        break;
+    case 'biggest_buyer':
+        echo 'Maior Comprador - ' . $siteName;
         break;
     case 'customers':
         echo 'Clientes - ' . $siteName;
@@ -228,6 +238,9 @@ echo "\r\n" .
     "\r\n" .
     '            </li>' .
     "\r\n" .
+    ($biggestBuyerAvailable
+        ? '            <li class="relative px-6 py-3"><a target="_parent" class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200" href="./?page=biggest_buyer"><i class="fa-duotone w-6 fa-crown text-lg"></i><span class="ml-4">Maior Comprador</span></a></li>' . "\r\n"
+        : '') .
     '            <li class="relative px-6 py-3">' .
     "\r\n" .
     '              <a target="_parent" class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200"' .
@@ -539,6 +552,9 @@ echo '        </a>' .
     "\r\n" .
     '          </li>' .
     "\r\n" .
+    ($biggestBuyerAvailable
+        ? '          <li class="relative px-6 py-3"><a class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200" href="./?page=biggest_buyer"><i class="fa-duotone w-6 fa-crown text-lg"></i><span class="ml-4">Maior Comprador</span></a></li>' . "\r\n"
+        : '') .
     '          <li class="relative px-6 py-3">' .
     "\r\n" .
     '            <a class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200"' .

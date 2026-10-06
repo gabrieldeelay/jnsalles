@@ -1351,6 +1351,427 @@ class Main extends DBConnection
         return true;
     }
 
+    private function biggest_buyer_authorized()
+    {
+        return !empty($this->settings->userdata('firstname'))
+            && (int) $this->settings->userdata('type') === 1;
+    }
+
+    private function biggest_buyer_default_action()
+    {
+        return [
+            'status' => 'idle',
+            'product_id' => 0,
+            'customer_id' => 0,
+            'duration_seconds' => 180,
+            'margin_min' => 2,
+            'margin_max' => 320,
+            'started_at' => '',
+            'expires_at' => '',
+            'ended_at' => '',
+            'overtaken_at' => '',
+            'last_order_id' => 0,
+            'last_added_quantity' => 0,
+            'last_margin' => 0,
+            'last_error' => '',
+            'updated_at' => '',
+        ];
+    }
+
+    private function biggest_buyer_load_action($forUpdate = false)
+    {
+        $sql = "SELECT meta_value FROM system_info WHERE meta_field = 'biggest_buyer_action' LIMIT 1";
+        if ($forUpdate) {
+            $sql .= ' FOR UPDATE';
+        }
+        $result = $this->conn->query($sql);
+        $row = $result ? $result->fetch_assoc() : null;
+        $decoded = $row ? json_decode((string) $row['meta_value'], true) : null;
+        return array_merge($this->biggest_buyer_default_action(), is_array($decoded) ? $decoded : []);
+    }
+
+    private function biggest_buyer_save_action(array $action)
+    {
+        $action = array_merge($this->biggest_buyer_default_action(), $action);
+        $action['updated_at'] = payment_local_datetime();
+        $encoded = json_encode($action, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $field = 'biggest_buyer_action';
+        $statement = $this->conn->prepare(
+            'INSERT INTO system_info (meta_field, meta_value) VALUES (?, ?) '
+            . 'ON DUPLICATE KEY UPDATE meta_value = VALUES(meta_value)'
+        );
+        $statement->bind_param('ss', $field, $encoded);
+        $saved = $statement->execute();
+        $statement->close();
+        if ($saved) {
+            $_SESSION['system_info'][$field] = $encoded;
+        }
+        return $saved;
+    }
+
+    private function biggest_buyer_csrf_is_valid()
+    {
+        $stored = (string) ($_SESSION['biggest_buyer_csrf'] ?? '');
+        $received = (string) ($_POST['csrf_token'] ?? '');
+        return $stored !== '' && $received !== '' && hash_equals($stored, $received);
+    }
+
+    private function biggest_buyer_product($productId)
+    {
+        $statement = $this->conn->prepare(
+            "SELECT p.id, p.name, p.price FROM product_list p "
+            . "INNER JOIN system_info s ON s.meta_field = CONCAT('ranking_timer_', p.id, '_enabled') "
+            . "AND s.meta_value = '1' WHERE p.id = ? AND p.delete_flag = 0 LIMIT 1"
+        );
+        $statement->bind_param('i', $productId);
+        $statement->execute();
+        $product = $statement->get_result()->fetch_assoc();
+        $statement->close();
+        return $product ?: null;
+    }
+
+    private function biggest_buyer_ranking_rows($productId, array $timer)
+    {
+        $conditions = ['o.product_id = ' . (int) $productId, 'o.status = 2'];
+        if (!empty($timer['configured'])) {
+            $conditions = array_merge($conditions, ranking_timer_sql_conditions('o', $timer, $this->conn));
+        }
+        $query = $this->conn->query(
+            'SELECT c.id customer_id, c.firstname, c.lastname, c.phone, '
+            . 'SUM(o.quantity) total_quantity, SUM(o.total_amount) total_amount '
+            . 'FROM order_list o INNER JOIN customer_list c ON c.id = o.customer_id '
+            . 'WHERE ' . implode(' AND ', $conditions) . ' '
+            . 'GROUP BY c.id, c.firstname, c.lastname, c.phone '
+            . 'ORDER BY total_quantity DESC, total_amount DESC, c.firstname ASC, c.lastname ASC'
+        );
+        $rows = [];
+        while ($query && ($row = $query->fetch_assoc())) {
+            $rows[] = [
+                'customer_id' => (int) $row['customer_id'],
+                'name' => trim((string) $row['firstname'] . ' ' . (string) $row['lastname']),
+                'phone' => (string) $row['phone'],
+                'quantity' => (int) $row['total_quantity'],
+                'amount' => (float) $row['total_amount'],
+            ];
+        }
+        return $rows;
+    }
+
+    private function biggest_buyer_order_rows($productId, array $timer)
+    {
+        $conditions = ['o.product_id = ' . (int) $productId, "o.payment_method IN ('VenoPag', 'Manual')"];
+        if (!empty($timer['configured'])) {
+            $conditions = array_merge($conditions, ranking_timer_sql_conditions('o', $timer, $this->conn));
+        }
+        $query = $this->conn->query(
+            'SELECT o.id, o.date_created, o.date_updated, o.status, o.total_amount, o.quantity, '
+            . 'o.payment_method, c.firstname, c.lastname FROM order_list o '
+            . 'INNER JOIN customer_list c ON c.id = o.customer_id '
+            . 'WHERE ' . implode(' AND ', $conditions) . ' '
+            . 'ORDER BY o.id DESC LIMIT 60'
+        );
+        $rows = [];
+        while ($query && ($row = $query->fetch_assoc())) {
+            $rows[] = [
+                'id' => (int) $row['id'],
+                'name' => trim((string) $row['firstname'] . ' ' . (string) $row['lastname']),
+                'created_at' => (string) $row['date_created'],
+                'updated_at' => (string) $row['date_updated'],
+                'status' => (int) $row['status'],
+                'amount' => (float) $row['total_amount'],
+                'quantity' => (int) $row['quantity'],
+                'origin' => (string) $row['payment_method'] === 'Manual' ? 'Manual' : 'VenoPag',
+            ];
+        }
+        return $rows;
+    }
+
+    private function biggest_buyer_snapshot($requestedProductId = 0, array $action = null)
+    {
+        $action = $action ?: $this->biggest_buyer_load_action();
+        $productId = (int) ($action['status'] === 'active' ? $action['product_id'] : $requestedProductId);
+        if ($productId <= 0) {
+            $productId = (int) $action['product_id'];
+        }
+        $product = $productId > 0 ? $this->biggest_buyer_product($productId) : null;
+        $timer = $product ? ranking_timer_configuration($productId) : [
+            'enabled' => false, 'configured' => false, 'state' => 'disabled',
+            'window_start' => '', 'window_end' => '', 'pause_intervals' => [],
+        ];
+        $ranking = $product ? $this->biggest_buyer_ranking_rows($productId, $timer) : [];
+        $orders = $product ? $this->biggest_buyer_order_rows($productId, $timer) : [];
+        $targetName = '';
+        foreach ($ranking as $row) {
+            if ((int) $row['customer_id'] === (int) $action['customer_id']) {
+                $targetName = $row['name'];
+                break;
+            }
+        }
+        if ($targetName === '' && (int) $action['customer_id'] > 0) {
+            $customer = $this->conn->prepare('SELECT firstname, lastname FROM customer_list WHERE id = ? LIMIT 1');
+            $customerId = (int) $action['customer_id'];
+            $customer->bind_param('i', $customerId);
+            $customer->execute();
+            $row = $customer->get_result()->fetch_assoc();
+            $customer->close();
+            if ($row) {
+                $targetName = trim((string) $row['firstname'] . ' ' . (string) $row['lastname']);
+            }
+        }
+        $remaining = 0;
+        if ($action['status'] === 'active' && strtotime((string) $action['expires_at'])) {
+            $remaining = max(0, strtotime((string) $action['expires_at']) - time());
+        }
+        return [
+            'status' => 'success',
+            'available' => (bool) $product,
+            'can_start' => $product && ($timer['state'] ?? '') === 'running',
+            'product' => $product ? ['id' => (int) $product['id'], 'name' => (string) $product['name']] : null,
+            'timer_state' => (string) ($timer['state'] ?? 'disabled'),
+            'server_time' => payment_local_datetime(),
+            'action' => [
+                'status' => (string) $action['status'],
+                'product_id' => (int) $action['product_id'],
+                'customer_id' => (int) $action['customer_id'],
+                'customer_name' => $targetName,
+                'duration_seconds' => (int) $action['duration_seconds'],
+                'margin_min' => (int) $action['margin_min'],
+                'margin_max' => (int) $action['margin_max'],
+                'started_at' => (string) $action['started_at'],
+                'expires_at' => (string) $action['expires_at'],
+                'remaining_seconds' => $remaining,
+                'overtaken_at' => (string) $action['overtaken_at'],
+                'last_order_id' => (int) $action['last_order_id'],
+                'last_added_quantity' => (int) $action['last_added_quantity'],
+                'last_margin' => (int) $action['last_margin'],
+                'last_error' => (string) $action['last_error'],
+            ],
+            'ranking' => $ranking,
+            'orders' => $orders,
+        ];
+    }
+
+    public function biggest_buyer_state()
+    {
+        if (!$this->biggest_buyer_authorized()) {
+            http_response_code(403);
+            return json_encode(['status' => 'failed', 'msg' => 'Não autorizado.']);
+        }
+        $productId = (int) ($_REQUEST['product_id'] ?? 0);
+        return json_encode($this->biggest_buyer_snapshot($productId), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    public function biggest_buyer_start()
+    {
+        if (!$this->biggest_buyer_authorized() || !$this->biggest_buyer_csrf_is_valid()) {
+            http_response_code(403);
+            return json_encode(['status' => 'failed', 'msg' => 'Sessão inválida. Atualize a página.']);
+        }
+        $productId = (int) ($_POST['product_id'] ?? 0);
+        $customerId = (int) ($_POST['customer_id'] ?? 0);
+        $duration = (int) ($_POST['duration_seconds'] ?? 0);
+        $marginMin = (int) ($_POST['margin_min'] ?? 2);
+        $marginMax = (int) ($_POST['margin_max'] ?? 320);
+        if ($productId <= 0 || $customerId <= 0 || !in_array($duration, [180, 300], true)) {
+            return json_encode(['status' => 'failed', 'msg' => 'Escolha a campanha, a pessoa e um timer válido.']);
+        }
+        if ($marginMin < 1 || $marginMax < $marginMin || $marginMax > 100000) {
+            return json_encode(['status' => 'failed', 'msg' => 'Use uma margem mínima de 1 e máxima de até 100.000 cotas.']);
+        }
+        $product = $this->biggest_buyer_product($productId);
+        $timer = $product ? ranking_timer_configuration($productId) : null;
+        if (!$product || !$timer || $timer['state'] !== 'running') {
+            return json_encode(['status' => 'failed', 'msg' => 'O contador desta campanha precisa estar ativo e em andamento.']);
+        }
+        $customer = $this->conn->prepare('SELECT id FROM customer_list WHERE id = ? LIMIT 1');
+        $customer->bind_param('i', $customerId);
+        $customer->execute();
+        $customerExists = $customer->get_result()->num_rows === 1;
+        $customer->close();
+        if (!$customerExists) {
+            return json_encode(['status' => 'failed', 'msg' => 'Pessoa não encontrada.']);
+        }
+        $now = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
+        $action = array_merge($this->biggest_buyer_default_action(), [
+            'status' => 'active',
+            'product_id' => $productId,
+            'customer_id' => $customerId,
+            'duration_seconds' => $duration,
+            'margin_min' => $marginMin,
+            'margin_max' => $marginMax,
+            'started_at' => $now->format('Y-m-d H:i:s'),
+            'expires_at' => $now->modify('+' . $duration . ' seconds')->format('Y-m-d H:i:s'),
+        ]);
+        if (!$this->biggest_buyer_save_action($action)) {
+            return json_encode(['status' => 'failed', 'msg' => 'Não foi possível iniciar a ação.']);
+        }
+        return json_encode($this->biggest_buyer_snapshot($productId, $action), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    public function biggest_buyer_stop()
+    {
+        if (!$this->biggest_buyer_authorized() || !$this->biggest_buyer_csrf_is_valid()) {
+            http_response_code(403);
+            return json_encode(['status' => 'failed', 'msg' => 'Sessão inválida. Atualize a página.']);
+        }
+        $action = $this->biggest_buyer_load_action();
+        $action['status'] = 'stopped';
+        $action['ended_at'] = payment_local_datetime();
+        $action['overtaken_at'] = '';
+        $this->biggest_buyer_save_action($action);
+        return json_encode($this->biggest_buyer_snapshot((int) $action['product_id'], $action), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    public function biggest_buyer_tick()
+    {
+        if (!$this->biggest_buyer_authorized() || !$this->biggest_buyer_csrf_is_valid()) {
+            http_response_code(403);
+            return json_encode(['status' => 'failed', 'msg' => 'Sessão inválida. Atualize a página.']);
+        }
+        $requestedProductId = (int) ($_POST['product_id'] ?? 0);
+        $lockResult = $this->conn->query("SELECT GET_LOCK('jnsalles_biggest_buyer', 0) acquired");
+        $lockRow = $lockResult ? $lockResult->fetch_assoc() : null;
+        if ((int) ($lockRow['acquired'] ?? 0) !== 1) {
+            return json_encode($this->biggest_buyer_snapshot($requestedProductId), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
+        $action = null;
+        try {
+            $this->conn->begin_transaction();
+            $action = $this->biggest_buyer_load_action(true);
+            if ($action['status'] !== 'active') {
+                $this->conn->commit();
+            } else {
+                $now = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
+                $expiresAt = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', (string) $action['expires_at'], new DateTimeZone('America/Sao_Paulo'));
+                if (!$expiresAt || $now >= $expiresAt) {
+                    $action['status'] = 'expired';
+                    $action['ended_at'] = $now->format('Y-m-d H:i:s');
+                    $action['overtaken_at'] = '';
+                    $this->biggest_buyer_save_action($action);
+                    $this->conn->commit();
+                } else {
+                    $productId = (int) $action['product_id'];
+                    $targetCustomerId = (int) $action['customer_id'];
+                    $timer = ranking_timer_configuration($productId, $now);
+                    if ($timer['state'] !== 'running') {
+                        $action['status'] = 'stopped';
+                        $action['ended_at'] = $now->format('Y-m-d H:i:s');
+                        $action['overtaken_at'] = '';
+                        $action['last_error'] = 'O contador deixou de estar em andamento.';
+                        $this->biggest_buyer_save_action($action);
+                        $this->conn->commit();
+                    } else {
+                        $ranking = $this->biggest_buyer_ranking_rows($productId, $timer);
+                        $targetTotal = 0;
+                        $competitorTotal = 0;
+                        foreach ($ranking as $row) {
+                            if ((int) $row['customer_id'] === $targetCustomerId) {
+                                $targetTotal = (int) $row['quantity'];
+                            } else {
+                                $competitorTotal = max($competitorTotal, (int) $row['quantity']);
+                            }
+                        }
+
+                        if ($competitorTotal <= $targetTotal) {
+                            $action['overtaken_at'] = '';
+                            $action['last_error'] = '';
+                            $this->biggest_buyer_save_action($action);
+                            $this->conn->commit();
+                        } elseif ($action['overtaken_at'] === '') {
+                            $action['overtaken_at'] = $now->format('Y-m-d H:i:s');
+                            $this->biggest_buyer_save_action($action);
+                            $this->conn->commit();
+                        } elseif ($now->getTimestamp() - strtotime((string) $action['overtaken_at']) < 2) {
+                            $this->conn->commit();
+                        } else {
+                            $difference = max(0, $competitorTotal - $targetTotal);
+                            $margin = random_int((int) $action['margin_min'], (int) $action['margin_max']);
+                            $quantity = $difference + $margin;
+                            if ($quantity <= 0 || $quantity > 50000) {
+                                throw new RuntimeException('A movimentação calculada ultrapassa o limite de 50.000 cotas por pedido.');
+                            }
+
+                            $productStatement = $this->conn->prepare('SELECT name, price, limit_order_remove, qty_numbers, paid_numbers, pending_numbers FROM product_list WHERE id = ? LIMIT 1 FOR UPDATE');
+                            $productStatement->bind_param('i', $productId);
+                            $productStatement->execute();
+                            $productInfo = $productStatement->get_result()->fetch_assoc();
+                            $productStatement->close();
+                            if (!$productInfo) {
+                                throw new RuntimeException('Campanha não encontrada.');
+                            }
+                            $available = max(0, (int) $productInfo['qty_numbers'] - (int) $productInfo['paid_numbers'] - (int) $productInfo['pending_numbers']);
+                            if ($quantity > $available) {
+                                throw new RuntimeException('A campanha não possui cotas livres suficientes para a movimentação calculada.');
+                            }
+                            $numbers = $this->generate_manual_free_numbers($productId, (int) $productInfo['qty_numbers'], $quantity);
+                            if (count($numbers) !== $quantity || !$this->manual_numbers_are_free($productId, $numbers)) {
+                                throw new RuntimeException('Não foi possível separar as cotas manuais com segurança.');
+                            }
+
+                            $code = 'MC-' . uniqidReal();
+                            $orderToken = md5(date('Ymdhis.u') . $code);
+                            $productName = (string) $productInfo['name'];
+                            $totalAmount = round((float) $productInfo['price'] * $quantity, 2);
+                            $orderNumbers = implode(',', $numbers);
+                            $paymentMethod = 'Manual';
+                            $expiration = (string) $productInfo['limit_order_remove'];
+                            $createdAt = $now->format('Y-m-d H:i:s');
+                            $paidStatus = 2;
+                            $insertOrder = $this->conn->prepare('INSERT INTO order_list (code, customer_id, product_name, quantity, status, total_amount, order_token, order_numbers, product_id, payment_method, order_expiration, date_created, date_updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                            $insertOrder->bind_param('sisiidssissss', $code, $targetCustomerId, $productName, $quantity, $paidStatus, $totalAmount, $orderToken, $orderNumbers, $productId, $paymentMethod, $expiration, $createdAt, $createdAt);
+                            if (!$insertOrder->execute()) {
+                                throw new RuntimeException('Não foi possível gravar a movimentação manual.');
+                            }
+                            $orderId = (int) $this->conn->insert_id;
+                            $insertOrder->close();
+                            $insertItem = $this->conn->prepare('INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)');
+                            $insertItem->bind_param('iiid', $orderId, $productId, $quantity, $totalAmount);
+                            if (!$insertItem->execute()) {
+                                throw new RuntimeException('Não foi possível gravar os itens da movimentação.');
+                            }
+                            $insertItem->close();
+                            $updateProduct = $this->conn->prepare('UPDATE product_list SET paid_numbers = CAST(paid_numbers AS UNSIGNED) + ? WHERE id = ?');
+                            $updateProduct->bind_param('ii', $quantity, $productId);
+                            if (!$updateProduct->execute()) {
+                                throw new RuntimeException('Não foi possível atualizar a campanha.');
+                            }
+                            $updateProduct->close();
+
+                            $adminName = trim((string) $this->settings->userdata('firstname'));
+                            $description = 'Maior Comprador: pedido manual ' . $orderId . ' com ' . $quantity . ' cotas (diferença ' . $difference . ' + margem ' . $margin . ') criado por ' . $adminName;
+                            $log = $this->conn->prepare("INSERT INTO logs (origin, description) VALUES ('ORDER', ?)");
+                            $log->bind_param('s', $description);
+                            $log->execute();
+                            $log->close();
+
+                            $action['overtaken_at'] = '';
+                            $action['last_order_id'] = $orderId;
+                            $action['last_added_quantity'] = $quantity;
+                            $action['last_margin'] = $margin;
+                            $action['last_error'] = '';
+                            $this->biggest_buyer_save_action($action);
+                            $this->conn->commit();
+                        }
+                    }
+                }
+            }
+        } catch (Throwable $error) {
+            $this->conn->rollback();
+            $action = $action ?: $this->biggest_buyer_load_action();
+            $action['status'] = 'stopped';
+            $action['ended_at'] = payment_local_datetime();
+            $action['overtaken_at'] = '';
+            $action['last_error'] = $error->getMessage();
+            $this->biggest_buyer_save_action($action);
+            error_log('[biggest-buyer] automation stopped: ' . $error->getMessage());
+        } finally {
+            $this->conn->query("SELECT RELEASE_LOCK('jnsalles_biggest_buyer')");
+        }
+
+        return json_encode($this->biggest_buyer_snapshot($requestedProductId, $action), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
     public function preview_manual_order_numbers()
     {
         if (empty($this->settings->userdata('firstname')) || (int) $this->settings->userdata('type') !== 1) {
@@ -6781,6 +7202,22 @@ switch ($action) {
         break;
     case "preview_manual_order_numbers":
         echo $Main->preview_manual_order_numbers();
+        break;
+    case "biggest_buyer_state":
+        header('Content-Type: application/json; charset=UTF-8');
+        echo $Main->biggest_buyer_state();
+        break;
+    case "biggest_buyer_start":
+        header('Content-Type: application/json; charset=UTF-8');
+        echo $Main->biggest_buyer_start();
+        break;
+    case "biggest_buyer_stop":
+        header('Content-Type: application/json; charset=UTF-8');
+        echo $Main->biggest_buyer_stop();
+        break;
+    case "biggest_buyer_tick":
+        header('Content-Type: application/json; charset=UTF-8');
+        echo $Main->biggest_buyer_tick();
         break;
     case "create_payment_affiliate":
         echo $Main->create_payment_affiliate();
