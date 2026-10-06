@@ -111,6 +111,7 @@ if ($selectedProductId <= 0 && $products) {
 (function () {
   var endpoint = _base_url_ + 'class/Main.php?action=';
   var csrfToken = <?= json_encode($csrfToken) ?>;
+  var preferenceKey = 'jnsalles.biggestBuyer.preferences.' + <?= json_encode((string) $_settings->userdata('id')) ?>;
   var customers = <?= json_encode($customers, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
   var product = document.getElementById('buyer-product');
   var customerId = document.getElementById('buyer-customer-id');
@@ -121,6 +122,8 @@ if ($selectedProductId <= 0 && $products) {
   var searchIcon = document.getElementById('buyer-search-icon');
   var customDurationBox = document.getElementById('buyer-custom-duration');
   var customMinutes = document.getElementById('buyer-custom-minutes');
+  var marginMinInput = document.getElementById('buyer-margin-min');
+  var marginMaxInput = document.getElementById('buyer-margin-max');
   var toastStack = document.getElementById('buyer-toast-stack');
   var overviewPerson = document.getElementById('buyer-overview-person');
   var form = document.getElementById('buyer-action-form');
@@ -152,6 +155,7 @@ if ($selectedProductId <= 0 && $products) {
   var lastActionName = '';
   var customerResolveTimer = null;
   var customerResolveSequence = 0;
+  var restoringPreferences = false;
 
   function normalize(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
   function money(value) { return Number(value || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}); }
@@ -169,6 +173,38 @@ if ($selectedProductId <= 0 && $products) {
   function rememberCustomer(customer) { if (!customer || !customer.id) return; var found = findCustomer(customer.id); if (found) { found.name = customer.name; found.phone = customer.phone || ''; } else { customers.push({id:Number(customer.id),name:customer.name,phone:customer.phone || ''}); } }
   function customerName() { return customerSearch.value.replace(/\s+/g, ' ').trim(); }
   function customerIsReady() { return Boolean(customerId.value || customerName().length >= 2); }
+  function savePreferences() {
+    if (restoringPreferences) return;
+    try {
+      window.localStorage.setItem(preferenceKey, JSON.stringify({
+        productId: product.value || '',
+        customerId: customerId.value || '',
+        customerName: customerName(),
+        durationSeconds: selectedDuration(),
+        marginMin: marginMinInput.value,
+        marginMax: marginMaxInput.value
+      }));
+    } catch (error) {}
+  }
+  function restorePreferences() {
+    var saved;
+    try { saved = JSON.parse(window.localStorage.getItem(preferenceKey) || 'null'); } catch (error) { saved = null; }
+    if (!saved || typeof saved !== 'object') return;
+    restoringPreferences = true;
+    var savedProductExists = Array.prototype.some.call(product.options, function (option) { return option.value === String(saved.productId || ''); });
+    if (savedProductExists) product.value = String(saved.productId);
+    if (Number(saved.durationSeconds) >= 60) setDurationChoice(Number(saved.durationSeconds));
+    if (saved.marginMin !== undefined && saved.marginMin !== '') marginMinInput.value = String(saved.marginMin);
+    if (saved.marginMax !== undefined && saved.marginMax !== '') marginMaxInput.value = String(saved.marginMax);
+    var storedCustomer = saved.customerId ? findCustomer(saved.customerId) : null;
+    if (storedCustomer) setCustomer(storedCustomer.id, storedCustomer.name);
+    else if (String(saved.customerName || '').trim()) {
+      var sameName = customers.find(function (item) { return normalize(item.name) === normalize(saved.customerName); });
+      if (sameName) setCustomer(sameName.id, sameName.name); else setPendingCustomer(saved.customerName);
+    }
+    restoringPreferences = false;
+    savePreferences();
+  }
   function cancelCustomerResolution() { if (customerResolveTimer) window.clearTimeout(customerResolveTimer); customerResolveTimer = null; customerResolveSequence += 1; }
   function scheduleCustomerResolution() {
     cancelCustomerResolution();
@@ -187,7 +223,7 @@ if ($selectedProductId <= 0 && $products) {
       }).catch(function (error) { if (sequence === customerResolveSequence) showFeedback(error.message, 'error'); });
     }, 2000);
   }
-  function updateCustomDuration() { var checked = form.querySelector('input[name="duration_choice"]:checked'); var custom = Boolean(checked && checked.value === 'custom'); customDurationBox.hidden = !custom; customMinutes.required = custom; if (custom && document.activeElement && document.activeElement.name === 'duration_choice') customMinutes.focus(); updateTimes(); }
+  function updateCustomDuration() { var checked = form.querySelector('input[name="duration_choice"]:checked'); var custom = Boolean(checked && checked.value === 'custom'); customDurationBox.hidden = !custom; customMinutes.required = custom; if (custom && document.activeElement && document.activeElement.name === 'duration_choice') customMinutes.focus(); updateTimes(); savePreferences(); }
   function setDurationChoice(seconds) { seconds = Number(seconds || 180); var quick = form.querySelector('input[name="duration_choice"][value="' + seconds + '"]'); if (quick) { quick.checked = true; } else { var custom = form.querySelector('input[name="duration_choice"][value="custom"]'); custom.checked = true; customMinutes.value = Math.max(1, Math.round(seconds / 60)); } updateCustomDuration(); }
   function actionData(includeDuration) { var data = new FormData(form); data.set('customer_name', customerName()); data.delete('duration_choice'); if (includeDuration) { var duration = selectedDuration(); if (duration < 60 || duration > 86400 || duration % 60 !== 0) throw new Error('Informe uma duração personalizada entre 1 e 1.440 minutos.'); data.set('duration_seconds', String(duration)); } return data; }
 
@@ -204,6 +240,7 @@ if ($selectedProductId <= 0 && $products) {
     overviewPerson.textContent = name || 'Nenhuma pessoa';
     suggestions.hidden = true;
     updateButtons();
+    savePreferences();
   }
   function setPendingCustomer(name) {
     name = String(name || '').replace(/\s+/g, ' ').trim();
@@ -217,6 +254,7 @@ if ($selectedProductId <= 0 && $products) {
     suggestions.hidden = true;
     updateButtons();
     scheduleCustomerResolution();
+    savePreferences();
   }
   function renderSuggestions(query) {
     var term = normalize(query);
@@ -289,7 +327,16 @@ if ($selectedProductId <= 0 && $products) {
     var action = state.action || {}; var active = action.status === 'active'; remainingSeconds = Number(action.remaining_seconds || 0);
     liveBadge.textContent = state.timer_state === 'running' ? 'Contador em andamento' : 'Contador ' + String(state.timer_state || 'indisponível'); liveBadge.className = 'buyer-live-badge' + (state.timer_state === 'running' ? ' running' : '');
     if (state.product && !active) product.value = String(state.product.id);
-    if (active) { product.value = String(action.product_id); if (Number(customerId.value) !== Number(action.customer_id)) setCustomer(action.customer_id, action.customer_name); if (lastActionStatus !== 'active') setDurationChoice(action.duration_seconds); }
+    if (active) {
+      product.value = String(action.product_id);
+      if (Number(customerId.value) !== Number(action.customer_id)) setCustomer(action.customer_id, action.customer_name);
+      if (lastActionStatus !== 'active') {
+        setDurationChoice(action.duration_seconds);
+        marginMinInput.value = String(action.margin_min || 2);
+        marginMaxInput.value = String(action.margin_max || 100);
+        savePreferences();
+      }
+    }
     product.disabled = active; customerSearch.disabled = active; customerClear.disabled = active;
     form.querySelectorAll('input[type="radio"],input[type="number"]').forEach(function (input) { input.disabled = active; });
     clock.className = 'buyer-clock' + (active ? ' running' : ''); clockLabel.textContent = active ? 'Prioridade automática ativa' : (action.status === 'expired' ? 'Timer encerrado' : 'Automação inativa'); clockTime.textContent = formatClock(remainingSeconds); clockPerson.textContent = active ? (action.customer_name || 'Participante selecionado') : (customerSearch.value || 'Nenhuma pessoa selecionada');
@@ -304,19 +351,21 @@ if ($selectedProductId <= 0 && $products) {
   function poll() { if (pollBusy) return; pollBusy = true; var data = new FormData(); data.set('product_id', product.value || '0'); post('biggest_buyer_tick', data).then(render).catch(function () { showFeedback('Falha ao atualizar em tempo real.', 'error'); }).finally(function () { pollBusy = false; }); }
 
   customerSearch.addEventListener('focus', function () { if (!customerSearch.disabled) renderSuggestions(customerSearch.value); });
-  customerSearch.addEventListener('input', function () { customerId.value = ''; customerSearch.classList.remove('selected'); selectedCheck.hidden = true; searchIcon.hidden = false; customerClear.hidden = !customerSearch.value; overviewPerson.textContent = customerSearch.value || 'Nenhuma pessoa'; renderSuggestions(customerSearch.value); updateButtons(); scheduleCustomerResolution(); });
+  customerSearch.addEventListener('input', function () { customerId.value = ''; customerSearch.classList.remove('selected'); selectedCheck.hidden = true; searchIcon.hidden = false; customerClear.hidden = !customerSearch.value; overviewPerson.textContent = customerSearch.value || 'Nenhuma pessoa'; renderSuggestions(customerSearch.value); updateButtons(); scheduleCustomerResolution(); savePreferences(); });
   customerSearch.addEventListener('keydown', function (event) { var items = Array.prototype.slice.call(suggestions.querySelectorAll('.buyer-suggestion')); if (!items.length) return; if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); activeSuggestion = event.key === 'ArrowDown' ? Math.min(activeSuggestion + 1, items.length - 1) : Math.max(activeSuggestion - 1, 0); items.forEach(function (item, index) { item.classList.toggle('active', index === activeSuggestion); }); items[activeSuggestion].scrollIntoView({block:'nearest'}); } else if (event.key === 'Enter' && activeSuggestion >= 0) { event.preventDefault(); items[activeSuggestion].click(); } else if (event.key === 'Escape') suggestions.hidden = true; });
   customerClear.addEventListener('click', function () { setCustomer('', ''); customerSearch.focus(); renderSuggestions(''); });
   document.addEventListener('click', function (event) { if (!event.target.closest('.buyer-customer-picker')) suggestions.hidden = true; });
   form.querySelectorAll('input[name="duration_choice"]').forEach(function (input) { input.addEventListener('change', updateCustomDuration); });
-  customMinutes.addEventListener('input', updateTimes);
+  customMinutes.addEventListener('input', function () { updateTimes(); savePreferences(); });
+  marginMinInput.addEventListener('input', savePreferences);
+  marginMaxInput.addEventListener('input', savePreferences);
   form.addEventListener('submit', function (event) { event.preventDefault(); if (!customerIsReady()) { showFeedback('Escolha uma pessoa ou informe o nome de um novo cliente.', 'error'); customerSearch.focus(); return; } var data; try { data = actionData(true); } catch (error) { showFeedback(error.message, 'error'); return; } startButton.disabled = true; post('biggest_buyer_start', data).then(function (state) { if (state.status !== 'success') throw new Error(state.msg || 'Não foi possível iniciar.'); render(state); if (state.customer) setCustomer(state.customer.id, state.customer.name); if (state.customer_created) showToast('Não existe esse cliente, mas criamos ele para você!', 'success'); showToast('Agora, durante o tempo abaixo, ninguém passará de ' + (state.action.customer_name || customerName()) + '.', 'success'); showFeedback('', ''); }).catch(function (error) { showFeedback(error.message, 'error'); updateButtons(); }); });
   passButton.addEventListener('click', function () { if (!customerIsReady()) { showFeedback('Escolha uma pessoa ou informe o nome de um novo cliente antes de usar Passar.', 'error'); customerSearch.focus(); return; } var data; try { data = actionData(false); } catch (error) { showFeedback(error.message, 'error'); return; } passButton.disabled = true; post('biggest_buyer_pass', data).then(function (state) { if (state.status !== 'success') throw new Error(state.msg || 'Não foi possível passar a pessoa.'); var info = state.manual_pass || {}; render(state); if (state.customer) setCustomer(state.customer.id, state.customer.name); if (state.customer_created) showToast('Não existe esse cliente, mas criamos ele para você!', 'success'); showFeedback('Passagem concluída: ' + integer(info.quantity) + ' cotas adicionadas (diferença ' + integer(info.difference) + ' + margem ' + integer(info.margin) + '). Pedido Manual #' + info.order_id + '.', 'success'); }).catch(function (error) { showFeedback(error.message, 'error'); updateButtons(); }); });
   stopButton.addEventListener('click', function () { var data = new FormData(); data.set('product_id', product.value || '0'); post('biggest_buyer_stop', data).then(function (state) { if (state.status !== 'success') throw new Error(state.msg || 'Não foi possível encerrar a ação.'); render(state); showFeedback('', ''); }).catch(function (error) { showFeedback(error.message || 'Não foi possível encerrar a ação.', 'error'); }); });
-  product.addEventListener('change', function () { fetch(endpoint + 'biggest_buyer_state&product_id=' + encodeURIComponent(product.value), {credentials:'same-origin'}).then(function (response) { return response.json(); }).then(render); });
+  product.addEventListener('change', function () { savePreferences(); fetch(endpoint + 'biggest_buyer_state&product_id=' + encodeURIComponent(product.value), {credentials:'same-origin'}).then(function (response) { return response.json(); }).then(render); });
   document.getElementById('buyer-open-ranking').addEventListener('click', function () { window.open('biggest_buyer/display.php?product_id=' + encodeURIComponent(product.value), 'jnsalles-ranking', 'popup=yes,width=980,height=760,resizable=yes,scrollbars=yes'); });
   window.setInterval(function () { if (remainingSeconds > 0) { remainingSeconds -= 1; clockTime.textContent = formatClock(remainingSeconds); } updateTimes(); }, 1000);
-  poll(); window.setInterval(poll, 1000);
+  restorePreferences(); poll(); window.setInterval(poll, 1000);
 })();
 </script>
 <?php endif; ?>
