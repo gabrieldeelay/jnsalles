@@ -1365,7 +1365,7 @@ class Main extends DBConnection
             'customer_id' => 0,
             'duration_seconds' => 180,
             'margin_min' => 2,
-            'margin_max' => 320,
+            'margin_max' => 100,
             'started_at' => '',
             'expires_at' => '',
             'ended_at' => '',
@@ -1430,6 +1430,74 @@ class Main extends DBConnection
         return $product ?: null;
     }
 
+    private function biggest_buyer_resolve_customer($customerId, $customerName)
+    {
+        $customerId = (int) $customerId;
+        if ($customerId > 0) {
+            $statement = $this->conn->prepare(
+                "SELECT id, firstname, lastname, phone FROM customer_list WHERE id = ? LIMIT 1"
+            );
+            $statement->bind_param('i', $customerId);
+            $statement->execute();
+            $customer = $statement->get_result()->fetch_assoc();
+            $statement->close();
+            if (!$customer) {
+                throw new RuntimeException('Pessoa não encontrada.');
+            }
+            return [
+                'id' => (int) $customer['id'],
+                'name' => trim((string) $customer['firstname'] . ' ' . (string) $customer['lastname']),
+                'phone' => (string) $customer['phone'],
+                'created' => false,
+            ];
+        }
+
+        $customerName = preg_replace('/\s+/u', ' ', trim((string) $customerName));
+        $nameLength = function_exists('mb_strlen') ? mb_strlen($customerName, 'UTF-8') : strlen($customerName);
+        if ($nameLength < 2 || $nameLength > 120) {
+            throw new RuntimeException('Informe um nome válido com até 120 caracteres.');
+        }
+
+        $statement = $this->conn->prepare(
+            "SELECT id, firstname, lastname, phone FROM customer_list "
+            . "WHERE TRIM(CONCAT(firstname, ' ', lastname)) = ? ORDER BY id ASC LIMIT 1"
+        );
+        $statement->bind_param('s', $customerName);
+        $statement->execute();
+        $customer = $statement->get_result()->fetch_assoc();
+        $statement->close();
+        if ($customer) {
+            return [
+                'id' => (int) $customer['id'],
+                'name' => trim((string) $customer['firstname'] . ' ' . (string) $customer['lastname']),
+                'phone' => (string) $customer['phone'],
+                'created' => false,
+            ];
+        }
+
+        $parts = explode(' ', $customerName, 2);
+        $firstName = (string) $parts[0];
+        $lastName = isset($parts[1]) ? (string) $parts[1] : '';
+        $phone = '';
+        $insert = $this->conn->prepare(
+            'INSERT INTO customer_list (firstname, lastname, phone) VALUES (?, ?, ?)'
+        );
+        $insert->bind_param('sss', $firstName, $lastName, $phone);
+        if (!$insert->execute()) {
+            $insert->close();
+            throw new RuntimeException('Não foi possível criar o novo cliente.');
+        }
+        $newCustomerId = (int) $this->conn->insert_id;
+        $insert->close();
+
+        return [
+            'id' => $newCustomerId,
+            'name' => trim($firstName . ' ' . $lastName),
+            'phone' => '',
+            'created' => true,
+        ];
+    }
+
     private function biggest_buyer_ranking_rows($productId, array $timer)
     {
         $conditions = ['o.product_id = ' . (int) $productId, 'o.status = 2'];
@@ -1457,12 +1525,9 @@ class Main extends DBConnection
         return $rows;
     }
 
-    private function biggest_buyer_order_rows($productId, array $timer)
+    private function biggest_buyer_order_rows()
     {
-        $conditions = ['o.product_id = ' . (int) $productId, "o.payment_method IN ('VenoPag', 'Manual')"];
-        if (!empty($timer['configured'])) {
-            $conditions = array_merge($conditions, ranking_timer_sql_conditions('o', $timer, $this->conn));
-        }
+        $conditions = ['o.id > 0'];
         $query = $this->conn->query(
             'SELECT o.id, o.date_created, o.date_updated, o.status, o.total_amount, o.quantity, '
             . 'o.payment_method, c.firstname, c.lastname FROM order_list o '
@@ -1480,7 +1545,7 @@ class Main extends DBConnection
                 'status' => (int) $row['status'],
                 'amount' => (float) $row['total_amount'],
                 'quantity' => (int) $row['quantity'],
-                'origin' => (string) $row['payment_method'] === 'Manual' ? 'Manual' : 'VenoPag',
+                'origin' => trim((string) $row['payment_method']) ?: 'Não informado',
             ];
         }
         return $rows;
@@ -1595,7 +1660,7 @@ class Main extends DBConnection
             'window_start' => '', 'window_end' => '', 'pause_intervals' => [],
         ];
         $ranking = $product ? $this->biggest_buyer_ranking_rows($productId, $timer) : [];
-        $orders = $product ? $this->biggest_buyer_order_rows($productId, $timer) : [];
+        $orders = $product ? $this->biggest_buyer_order_rows() : [];
         $targetName = '';
         foreach ($ranking as $row) {
             if ((int) $row['customer_id'] === (int) $action['customer_id']) {
@@ -1665,10 +1730,11 @@ class Main extends DBConnection
         }
         $productId = (int) ($_POST['product_id'] ?? 0);
         $customerId = (int) ($_POST['customer_id'] ?? 0);
+        $customerName = (string) ($_POST['customer_name'] ?? '');
         $duration = (int) ($_POST['duration_seconds'] ?? 0);
         $marginMin = (int) ($_POST['margin_min'] ?? 2);
-        $marginMax = (int) ($_POST['margin_max'] ?? 320);
-        if ($productId <= 0 || $customerId <= 0 || !in_array($duration, [60, 120, 180, 240, 300], true)) {
+        $marginMax = (int) ($_POST['margin_max'] ?? 100);
+        if ($productId <= 0 || ($customerId <= 0 && trim($customerName) === '') || $duration < 60 || $duration > 86400 || $duration % 60 !== 0) {
             return json_encode(['status' => 'failed', 'msg' => 'Escolha a campanha, a pessoa e um timer válido.']);
         }
         if ($marginMin < 1 || $marginMax < $marginMin || $marginMax > 100000) {
@@ -1679,14 +1745,12 @@ class Main extends DBConnection
         if (!$product || !$timer || $timer['state'] !== 'running') {
             return json_encode(['status' => 'failed', 'msg' => 'O contador desta campanha precisa estar ativo e em andamento.']);
         }
-        $customer = $this->conn->prepare('SELECT id FROM customer_list WHERE id = ? LIMIT 1');
-        $customer->bind_param('i', $customerId);
-        $customer->execute();
-        $customerExists = $customer->get_result()->num_rows === 1;
-        $customer->close();
-        if (!$customerExists) {
-            return json_encode(['status' => 'failed', 'msg' => 'Pessoa não encontrada.']);
+        try {
+            $resolvedCustomer = $this->biggest_buyer_resolve_customer($customerId, $customerName);
+        } catch (Throwable $error) {
+            return json_encode(['status' => 'failed', 'msg' => $error->getMessage()]);
         }
+        $customerId = (int) $resolvedCustomer['id'];
         $now = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
         $action = array_merge($this->biggest_buyer_default_action(), [
             'status' => 'active',
@@ -1701,7 +1765,14 @@ class Main extends DBConnection
         if (!$this->biggest_buyer_save_action($action)) {
             return json_encode(['status' => 'failed', 'msg' => 'Não foi possível iniciar a ação.']);
         }
-        return json_encode($this->biggest_buyer_snapshot($productId, $action), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $snapshot = $this->biggest_buyer_snapshot($productId, $action);
+        $snapshot['customer_created'] = (bool) $resolvedCustomer['created'];
+        $snapshot['customer'] = [
+            'id' => $customerId,
+            'name' => (string) $resolvedCustomer['name'],
+            'phone' => (string) $resolvedCustomer['phone'],
+        ];
+        return json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
     public function biggest_buyer_stop()
@@ -1829,9 +1900,10 @@ class Main extends DBConnection
 
         $productId = (int) ($_POST['product_id'] ?? 0);
         $customerId = (int) ($_POST['customer_id'] ?? 0);
+        $customerName = (string) ($_POST['customer_name'] ?? '');
         $marginMin = (int) ($_POST['margin_min'] ?? 2);
-        $marginMax = (int) ($_POST['margin_max'] ?? 320);
-        if ($productId <= 0 || $customerId <= 0) {
+        $marginMax = (int) ($_POST['margin_max'] ?? 100);
+        if ($productId <= 0 || ($customerId <= 0 && trim($customerName) === '')) {
             return json_encode(['status' => 'failed', 'msg' => 'Escolha a campanha e a pessoa antes de usar Passar.']);
         }
         if ($marginMin < 1 || $marginMax < $marginMin || $marginMax > 100000) {
@@ -1845,15 +1917,6 @@ class Main extends DBConnection
             return json_encode(['status' => 'failed', 'msg' => 'O contador desta campanha precisa estar em andamento.']);
         }
 
-        $customer = $this->conn->prepare('SELECT id FROM customer_list WHERE id = ? LIMIT 1');
-        $customer->bind_param('i', $customerId);
-        $customer->execute();
-        $customerExists = $customer->get_result()->num_rows === 1;
-        $customer->close();
-        if (!$customerExists) {
-            return json_encode(['status' => 'failed', 'msg' => 'Pessoa não encontrada.']);
-        }
-
         $lockResult = $this->conn->query("SELECT GET_LOCK('jnsalles_biggest_buyer', 3) acquired");
         $lockRow = $lockResult ? $lockResult->fetch_assoc() : null;
         if ((int) ($lockRow['acquired'] ?? 0) !== 1) {
@@ -1862,6 +1925,8 @@ class Main extends DBConnection
 
         try {
             $this->conn->begin_transaction();
+            $resolvedCustomer = $this->biggest_buyer_resolve_customer($customerId, $customerName);
+            $customerId = (int) $resolvedCustomer['id'];
             $ranking = $this->biggest_buyer_ranking_rows($productId, $timer);
             $targetTotal = 0;
             $competitorTotal = 0;
@@ -1897,6 +1962,12 @@ class Main extends DBConnection
                 'quantity' => $quantity,
                 'difference' => $difference,
                 'margin' => $margin,
+            ];
+            $snapshot['customer_created'] = (bool) $resolvedCustomer['created'];
+            $snapshot['customer'] = [
+                'id' => $customerId,
+                'name' => (string) $resolvedCustomer['name'],
+                'phone' => (string) $resolvedCustomer['phone'],
             ];
             return json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         } catch (Throwable $error) {
