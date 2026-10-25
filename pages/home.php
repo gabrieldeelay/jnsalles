@@ -2,7 +2,58 @@
 .bg-azul-personalizado {
   background-color: #198754;
 }
-.home-shell{padding-top:16px;padding-bottom:28px}.home-hero{position:relative;overflow:hidden;margin-bottom:18px;padding:18px 20px;border-radius:14px;background:linear-gradient(135deg,#3b2330 0%,#632945 100%);color:#fff;box-shadow:0 3px 12px rgba(52,36,44,.1)}.home-hero:after{content:"";position:absolute;width:130px;height:130px;right:-65px;top:-72px;border-radius:50%;background:rgba(255,255,255,.055)}.home-hero__eyebrow{display:inline-flex;margin-bottom:6px;color:#f4dce7;font-size:.62rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.home-hero h1{max-width:620px;margin:0 0 6px;font-size:1.32rem;font-weight:820;letter-spacing:-.03em}.home-hero p{max-width:700px;margin:0;color:rgba(255,255,255,.8);font-size:.73rem;line-height:1.5}.home-trust{display:flex;gap:7px;margin-top:12px}.home-trust span{flex:1;padding:7px;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:rgba(255,255,255,.045);font-size:.61rem;text-align:center}.home-campaign-grid{display:grid;gap:14px}.home-info-card{margin:16px 0;padding:16px 18px;border:1px solid rgba(52,36,44,.1);border-radius:14px;background:#fff;box-shadow:0 1px 4px rgba(52,36,44,.04)}.home-info-card h2{margin:0 0 6px;color:#34242c;font-size:.98rem;font-weight:800}.home-info-card p{margin:0;color:#806976;font-size:.7rem;line-height:1.6}.home-info-actions{display:flex;gap:8px;margin-top:12px}.home-info-actions a{flex:1;padding:9px 10px;border-radius:9px;background:#b42c63;color:#fff!important;font-size:.67rem;font-weight:750;text-align:center}.home-featured{height:360px!important}.home-shell .SorteioTpl_sorteioTpl__home{overflow:hidden;border:1px solid rgba(52,36,44,.1)!important;border-radius:14px!important;box-shadow:0 1px 5px rgba(52,36,44,.05)!important}.home-shell .SorteioTpl_info__t1BZr{padding:14px!important}.home-shell .app-title{margin:12px 0}.home-campaign-card{min-height:280px!important;padding:0!important;display:flex!important;flex-direction:column!important;align-items:stretch!important}.home-campaign-card .SorteioTpl_imagemContainer__2-pl4{width:100%!important;height:210px!important;margin:0!important;border-radius:13px 13px 0 0}.home-campaign-card .SorteioTpl_imagem__2GXxI{width:100%!important;height:100%!important;object-fit:cover!important;border-radius:13px 13px 0 0!important}.home-campaign-card .SorteioTpl_info__t1BZr{position:relative;flex:1;min-height:78px;background:#fff}.home-campaign-card .SorteioTpl_title__3RLtu{font-size:1rem!important;font-weight:750!important}.home-campaign-card:after{display:none}.home-campaign-grid>.col-12{margin:0!important}@media(min-width:760px){.home-shell{max-width:900px!important}.home-campaign-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.home-campaign-grid>.col-12:only-child{grid-column:1/-1;max-width:none;width:100%}.home-campaign-grid>.col-12:only-child .home-campaign-card{min-height:340px!important}.home-campaign-grid>.col-12:only-child .SorteioTpl_imagemContainer__2-pl4{height:260px!important}}@media(max-width:520px){.home-hero{padding:15px}.home-hero h1{font-size:1.16rem}.home-trust{display:grid;grid-template-columns:1fr 1fr}.home-trust span:last-child{grid-column:1/-1}.home-featured{height:320px!important}.home-campaign-card{min-height:260px!important}.home-campaign-card .SorteioTpl_imagemContainer__2-pl4{height:185px!important}.home-info-actions{flex-direction:column}}
+.home-shell{padding-top:16px;padding-bottom:28px}
+.home-hero{position:relative;overflow:hidden;margin-bottom:18px;padding:18px 20px;border-radius:14px;background:linear-gradient(135deg,#3b2330 0%,#632945 100%);color:#fff;box-shadow:0 3px 12px rgba(52,36,44,.1)}
+.home-hero:after{content:"";position:absolute;width:130px;height:130px;right:-65px;top:-72px;border-radius:50%;background:rgba(255,255,255,.055)}
+.home-hero__eyebrow{display:inline-flex;margin-bottom:6px;color:#f4dce7;font-size:.62rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.home-hero h1{max-width:620px;margin:0 0 6px;font-size:1.32rem;font-weight:820;letter-spacing:-.03em}
+.home-hero p{max-width:700px;margin:0;color:rgba(255,255,255,.8);font-size:.73rem;line-height:1.5}
+.home-trust{display:flex;gap:7px;margin-top:12px}
+.home-trust span{flex:1;padding:7px;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:rgba(255,255,255,.045);font-size:.61rem;text-align:center}
+.home-section-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:20px 0 11px}
+.home-section-heading__eyebrow{display:block;margin-bottom:2px;color:var(--theme-primary,#b42c63);font-size:.58rem;font-weight:850;letter-spacing:.13em;text-transform:uppercase}
+.home-section-heading h2{margin:0;color:var(--theme-text,#34242c);font-size:1.16rem;font-weight:850;letter-spacing:-.025em}
+.home-section-heading p{max-width:310px;margin:0;color:var(--theme-muted,#806976);font-size:.66rem;line-height:1.45;text-align:right}
+.home-active-card{display:block;overflow:hidden;border:1px solid rgba(52,36,44,.1);border-radius:18px;background:var(--theme-surface,#fff);box-shadow:0 10px 28px rgba(52,36,44,.1);color:inherit!important;transition:transform .2s ease,box-shadow .2s ease}
+.home-active-card:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(52,36,44,.14)}
+.home-active-card__media{position:relative;width:100%;aspect-ratio:16/9;min-height:280px;max-height:520px;overflow:hidden;background:linear-gradient(145deg,#f8f8f8,#ececef)}
+.home-active-card__media img{display:block;width:100%;height:100%;object-fit:contain;object-position:center}
+.home-active-card__media:after{content:"";position:absolute;inset:auto 0 0;height:26%;background:linear-gradient(180deg,transparent,rgba(0,0,0,.1));pointer-events:none}
+.home-active-card__badge{position:absolute;z-index:2;top:14px;left:14px;display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border-radius:999px;background:#15803d;color:#fff;font-size:.61rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 5px 16px rgba(21,128,61,.25)}
+.home-active-card__badge:before{content:"";width:7px;height:7px;border-radius:50%;background:#b7f7ca;box-shadow:0 0 0 4px rgba(183,247,202,.16);animation:homePulse 1.7s ease-in-out infinite}
+@keyframes homePulse{50%{transform:scale(.75);opacity:.7}}
+.home-active-card__body{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px 20px 20px}
+.home-active-card__copy{min-width:0}
+.home-active-card__copy h3{margin:0 0 4px;color:var(--theme-text,#242027);font-size:1.15rem;font-weight:850;line-height:1.25;letter-spacing:-.02em}
+.home-active-card__copy p{margin:0;color:var(--theme-muted,#776b73);font-size:.72rem;line-height:1.45}
+.home-active-card__date{display:inline-flex;align-items:center;gap:5px;margin-top:8px;color:var(--theme-muted,#776b73);font-size:.63rem;font-weight:700}
+.home-active-card__cta{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;padding:11px 15px;border-radius:11px;background:var(--theme-primary,#b42c63);color:#fff;font-size:.68rem;font-weight:850;white-space:nowrap;box-shadow:0 6px 16px rgba(180,44,99,.22)}
+.home-finished-section{margin-top:22px}
+.home-finished-list{display:flex;flex-direction:column;gap:10px}
+.home-finished-card{display:grid;grid-template-columns:148px minmax(0,1fr);overflow:hidden;border:1px solid rgba(52,36,44,.09);border-radius:13px;background:rgba(255,255,255,.82);color:inherit!important;box-shadow:0 2px 8px rgba(52,36,44,.045);transition:border-color .2s ease,background .2s ease}
+.home-finished-card:hover{border-color:rgba(52,36,44,.17);background:#fff}
+.home-finished-card__media{position:relative;min-height:108px;overflow:hidden;background:#e9e9eb}
+.home-finished-card__media img{display:block;width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(.88);opacity:.72}
+.home-finished-card__status{position:absolute;left:9px;bottom:9px;padding:5px 8px;border:1px solid rgba(255,255,255,.32);border-radius:6px;background:rgba(16,16,18,.82);color:#fff;font-size:.52rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;backdrop-filter:blur(5px)}
+.home-finished-card__body{display:grid;grid-template-columns:minmax(0,1fr) minmax(210px,.75fr);align-items:center;gap:16px;padding:13px 15px}
+.home-finished-card__title{min-width:0}
+.home-finished-card__title h3{display:-webkit-box;overflow:hidden;margin:0 0 4px;color:#39343a;font-size:.78rem;font-weight:800;line-height:1.35;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.home-finished-card__title p{margin:0;color:#928991;font-size:.6rem;line-height:1.4}
+.home-finished-card__results{display:flex;flex-direction:column;gap:5px}
+.home-winner-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:9px;padding:7px 9px;border-radius:9px;background:#f4f2f3}
+.home-winner-row__person small,.home-winner-row__number small{display:block;margin-bottom:1px;color:#9a9298;font-size:.48rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.home-winner-row__person strong{display:block;overflow:hidden;color:#373137;font-size:.65rem;font-weight:850;text-overflow:ellipsis;white-space:nowrap}
+.home-winner-row__number{text-align:right}
+.home-winner-row__number strong{display:block;color:#151316;font-size:.68rem;font-weight:900;white-space:nowrap}
+.home-info-card{margin:16px 0;padding:16px 18px;border:1px solid rgba(52,36,44,.1);border-radius:14px;background:#fff;box-shadow:0 1px 4px rgba(52,36,44,.04)}
+.home-info-card h2{margin:0 0 6px;color:#34242c;font-size:.98rem;font-weight:800}
+.home-info-card p{margin:0;color:#806976;font-size:.7rem;line-height:1.6}
+.home-info-actions{display:flex;gap:8px;margin-top:12px}
+.home-info-actions a{flex:1;padding:9px 10px;border-radius:9px;background:#b42c63;color:#fff!important;font-size:.67rem;font-weight:750;text-align:center}
+.home-shell .app-title{margin:12px 0}
+@media(min-width:760px){.home-shell{max-width:900px!important}}
+@media(max-width:700px){.home-section-heading{align-items:flex-start;flex-direction:column;gap:3px}.home-section-heading p{text-align:left}.home-active-card__media{min-height:0;aspect-ratio:4/3}.home-active-card__body{align-items:flex-start;flex-direction:column;padding:15px}.home-active-card__cta{width:100%;justify-content:center}.home-finished-card{grid-template-columns:112px minmax(0,1fr)}.home-finished-card__body{grid-template-columns:1fr;gap:9px;padding:11px}.home-finished-card__media{min-height:142px}}
+@media(max-width:520px){.home-hero{padding:15px}.home-hero h1{font-size:1.16rem}.home-trust{display:grid;grid-template-columns:1fr 1fr}.home-trust span:last-child{grid-column:1/-1}.home-active-card__media{aspect-ratio:1.08/1}.home-active-card__copy h3{font-size:1rem}.home-finished-card{grid-template-columns:96px minmax(0,1fr)}.home-finished-card__media{min-height:152px}.home-finished-card__title h3{-webkit-line-clamp:3}.home-winner-row{grid-template-columns:1fr}.home-winner-row__number{text-align:left}.home-info-actions{flex-direction:column}}
 </style>
 <style>
 .home-legal-card{display:grid;grid-template-columns:94px minmax(0,1fr);overflow:hidden;margin:16px 0;border:1px solid var(--theme-border,#e2e8f0);border-radius:14px;background:linear-gradient(135deg,var(--theme-surface,#fff),var(--theme-soft,#f8fafc));box-shadow:0 1px 5px rgba(52,36,44,.05)}
@@ -45,137 +96,148 @@ if ($siteDescription === '') {
 		<p><?= htmlspecialchars($siteDescription, ENT_QUOTES, 'UTF-8') ?></p>
 		<div class="home-trust"><span>✓ Escolha sua campanha</span><span>✓ Confirme o PIX</span><span>✓ Acompanhe suas cotas</span></div>
 	</section>
-	<div class="row">
-		<div class="col-12">
-			<div class="app-title">
-				<h1>⚡ Campanhas</h1>
-				<div class="app-title-desc">Escolha sua sorte</div>
-			</div>
-		</div>
-	</div>
-	
 	<?php
-	$featuredProductId = 0;
-	$qry = $conn->query("SELECT * FROM `product_list` WHERE delete_flag = '0' AND featured_draw = '1' AND private_draw = '0' ORDER BY CASE status WHEN 1 THEN 0 WHEN 2 THEN 1 ELSE 2 END, id DESC LIMIT 1");
-	while ($row = $qry->fetch_assoc()) { ?>
-		<?php $featuredProductId = (int) $row['id']; ?>
-		<div class="col-12 mb-2 home-featured">
-			<a href="/campanha/<?php echo $row['slug']; ?>" class="h-100 SorteioTpl_sorteioTpl__home SorteioTpl_destaque__3vnWR pointer custom-highlight-card">
-			    
-			    <div style="bottom: 68px !important;" class="custom-badge-display">
-				
-			<?php
-$status = (int) $row['status'] === 3 ? 4 : (int) $row['status_display'];
-switch ($status) {
-    case 1:
-        echo '<span class="badge bg-azul-personalizado blink font-xsss text-white">Adquira já!</span>';
-        break;
-    case 2:
-        echo '<span class="badge bg-dark blink font-xsss mobile badge-status-1">Corre que está acabando!</span>';
-        break;
-    case 3:
-        echo '<span class="badge bg-dark font-xsss mobile badge-status-3">Aguarde a campanha!</span>';
-        break;
-    case 4:
-        echo '<span class="badge bg-dark font-xsss">Finalizada</span>';
-        break;
-    case 5:
-        echo '<span class="badge bg-dark font-xsss">Em breve!</span>';
-        break;
-    case 6:
-        echo '<span class="badge bg-dark font-xsss">Aguarde o sorteio!</span>';
-        break;
-}
+	$decodeDrawList = static function ($value) {
+		$value = trim((string) $value);
+		if ($value === '') {
+			return [];
+		}
 
-if (!empty($row['date_of_draw'])) {
-    $dataHora = date('d/m/Y', strtotime($row['date_of_draw'])) . ' às ' . date('H:i', strtotime($row['date_of_draw']));
-    echo '<div class="SorteioTpl_dtSorteio__2mfSc custom-calendar-display mt-1">';
-    echo '<i class="bi bi-calendar2-check me-1"></i>' . $dataHora;
-    echo '</div>';
-}
-?>
+		$decoded = json_decode($value, true);
+		if (is_array($decoded)) {
+			return array_values($decoded);
+		}
 
+		return [$value];
+	};
+
+	$activeCampaign = null;
+	$activeQuery = $conn->query("SELECT * FROM `product_list` WHERE delete_flag = '0' AND private_draw = '0' AND status <> '3' ORDER BY featured_draw DESC, CASE status WHEN 1 THEN 0 WHEN 2 THEN 1 ELSE 2 END, id DESC LIMIT 1");
+	if ($activeQuery && $activeQuery->num_rows > 0) {
+		$activeCampaign = $activeQuery->fetch_assoc();
+	}
+	$activeDrawTimestamp = $activeCampaign && !empty($activeCampaign['date_of_draw'])
+		? strtotime((string) $activeCampaign['date_of_draw'])
+		: false;
+	?>
+
+	<?php if ($activeCampaign): ?>
+		<section aria-labelledby="active-campaign-title">
+			<div class="home-section-heading">
+				<div>
+					<span class="home-section-heading__eyebrow">Em destaque</span>
+					<h2 id="active-campaign-title">Campanha em andamento</h2>
 				</div>
-				<div class="SorteioTpl_imagemContainer__2-pl4 col-auto">
-					<div id="carouselSorteio640d0a84b1fef407920230311" class="carousel slide carousel-dark carousel-fade" data-bs-ride="carousel">
-						<div class="carousel-inner">
-							<div class="carousel-item active" style="width:100%;height:420px">
-								<div style="display:block;overflow:hidden;position:absolute;top:0;left:0;bottom:0;right:0;box-sizing:border-box;margin:0">
-									<img alt="<?php echo $row['name']; ?>" src="<?php echo validate_image($row['image_path']); ?>" decoding="async" data-nimg="fill" class="SorteioTpl_imagem__2GXxI" style="object-fit:cover;position:absolute;top:0;left:0;bottom:0;right:0;box-sizing:border-box;padding:0;border:none;margin:auto;display:block;width:0;height:0;min-width:100%;max-width:100%;min-height:100%;max-height:100%">
-									<noscript>
-										<img alt="<?php echo $row['name']; ?>" src="<?php echo validate_image($row['image_path']); ?>" decoding="async" data-nimg="fill" style="object-fit:cover;position:absolute;top:0;left:0;bottom:0;right:0;box-sizing:border-box;padding:0;border:none;margin:auto;display:block;width:0;height:0;min-width:100%;max-width:100%;min-height:100%;max-height:100%" class="SorteioTpl_imagem__2GXxI" loading="lazy" />
-									</noscript>
-								</div>
+				<p>Participe da campanha atual e acompanhe suas cotas em tempo real.</p>
+			</div>
+
+			<a href="/campanha/<?= htmlspecialchars((string) $activeCampaign['slug'], ENT_QUOTES, 'UTF-8') ?>" class="home-active-card">
+				<div class="home-active-card__media">
+					<span class="home-active-card__badge">Em andamento</span>
+					<img
+						src="<?= htmlspecialchars(validate_image($activeCampaign['image_path']), ENT_QUOTES, 'UTF-8') ?>"
+						alt="<?= htmlspecialchars((string) $activeCampaign['name'], ENT_QUOTES, 'UTF-8') ?>"
+						decoding="async"
+						fetchpriority="high"
+					>
+				</div>
+				<div class="home-active-card__body">
+					<div class="home-active-card__copy">
+						<h3><?= htmlspecialchars((string) $activeCampaign['name'], ENT_QUOTES, 'UTF-8') ?></h3>
+						<?php if (!empty($activeCampaign['subtitle'])): ?>
+							<p><?= htmlspecialchars((string) $activeCampaign['subtitle'], ENT_QUOTES, 'UTF-8') ?></p>
+						<?php endif; ?>
+						<?php if ($activeDrawTimestamp && (int) date('Y', $activeDrawTimestamp) > 1970): ?>
+							<span class="home-active-card__date"><i class="bi bi-calendar2-check"></i> Sorteio em <?= date('d/m/Y', $activeDrawTimestamp) ?></span>
+						<?php endif; ?>
+					</div>
+					<span class="home-active-card__cta">Participar agora <i class="bi bi-arrow-right"></i></span>
+				</div>
+			</a>
+		</section>
+	<?php endif; ?>
+
+	<?php
+	$finishedCampaigns = $conn->query("SELECT id, name, subtitle, slug, image_path, draw_number, draw_winner, date_of_draw FROM `product_list` WHERE delete_flag = '0' AND private_draw = '0' AND status = '3' AND TRIM(COALESCE(draw_number, '')) NOT IN ('', '[]', 'null') AND TRIM(COALESCE(draw_winner, '')) NOT IN ('', '[]', 'null') ORDER BY date_of_draw DESC, id DESC LIMIT 10");
+	?>
+
+	<?php if ($finishedCampaigns && $finishedCampaigns->num_rows > 0): ?>
+		<section class="home-finished-section" aria-labelledby="finished-campaigns-title">
+			<div class="home-section-heading">
+				<div>
+					<span class="home-section-heading__eyebrow">Resultados anteriores</span>
+					<h2 id="finished-campaigns-title">Campanhas finalizadas</h2>
+				</div>
+				<p>Consulte os ganhadores e as cotas premiadas das campanhas encerradas.</p>
+			</div>
+
+			<div class="home-finished-list">
+				<?php while ($finishedCampaign = $finishedCampaigns->fetch_assoc()): ?>
+					<?php
+					$winnerPhones = $decodeDrawList($finishedCampaign['draw_winner']);
+					$winningNumbers = $decodeDrawList($finishedCampaign['draw_number']);
+					$winnerRows = [];
+					$winnerTotal = max(count($winnerPhones), count($winningNumbers));
+					$finishedDrawTimestamp = !empty($finishedCampaign['date_of_draw'])
+						? strtotime((string) $finishedCampaign['date_of_draw'])
+						: false;
+
+					for ($winnerIndex = 0; $winnerIndex < $winnerTotal; $winnerIndex++) {
+						$winnerPhone = isset($winnerPhones[$winnerIndex]) ? trim((string) $winnerPhones[$winnerIndex]) : '';
+						$winningNumber = isset($winningNumbers[$winnerIndex]) ? trim((string) $winningNumbers[$winnerIndex]) : '';
+						$winnerName = 'Ganhador confirmado';
+
+						if ($winnerPhone !== '') {
+							$safeWinnerPhone = $conn->real_escape_string($winnerPhone);
+							$winnerQuery = $conn->query("SELECT TRIM(CONCAT(COALESCE(firstname, ''), ' ', COALESCE(lastname, ''))) AS name FROM customer_list WHERE phone = '{$safeWinnerPhone}' LIMIT 1");
+							if ($winnerQuery && ($winnerCustomer = $winnerQuery->fetch_assoc()) && trim((string) $winnerCustomer['name']) !== '') {
+								$winnerName = trim((string) $winnerCustomer['name']);
+							} elseif (!preg_match('/^\\d+$/', $winnerPhone)) {
+								$winnerName = $winnerPhone;
+							}
+						}
+
+						$winnerRows[] = [
+							'name' => $winnerName,
+							'number' => $winningNumber !== '' ? $winningNumber : '—',
+						];
+					}
+					?>
+
+					<a href="/campanha/<?= htmlspecialchars((string) $finishedCampaign['slug'], ENT_QUOTES, 'UTF-8') ?>" class="home-finished-card">
+						<div class="home-finished-card__media">
+							<img src="<?= htmlspecialchars(validate_image($finishedCampaign['image_path']), ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars((string) $finishedCampaign['name'], ENT_QUOTES, 'UTF-8') ?>" loading="lazy" decoding="async">
+							<span class="home-finished-card__status">Finalizada</span>
+						</div>
+						<div class="home-finished-card__body">
+							<div class="home-finished-card__title">
+								<h3><?= htmlspecialchars((string) $finishedCampaign['name'], ENT_QUOTES, 'UTF-8') ?></h3>
+								<?php if ($finishedDrawTimestamp && (int) date('Y', $finishedDrawTimestamp) > 1970): ?>
+									<p>Encerrada em <?= date('d/m/Y', $finishedDrawTimestamp) ?></p>
+								<?php else: ?>
+									<p>Resultado confirmado</p>
+								<?php endif; ?>
+							</div>
+							<div class="home-finished-card__results">
+								<?php foreach ($winnerRows as $winnerRow): ?>
+									<div class="home-winner-row">
+										<div class="home-winner-row__person">
+											<small>Ganhador</small>
+											<strong><?= htmlspecialchars($winnerRow['name'], ENT_QUOTES, 'UTF-8') ?></strong>
+										</div>
+										<div class="home-winner-row__number">
+											<small>Cota premiada</small>
+											<strong>#<?= htmlspecialchars($winnerRow['number'], ENT_QUOTES, 'UTF-8') ?></strong>
+										</div>
+									</div>
+								<?php endforeach; ?>
 							</div>
 						</div>
-					</div>
-				</div>
-
-			<div class="SorteioTpl_info__t1BZr custom-content-wrapper" style="background: linear-gradient(45deg, #fff, #ffffff) !important;">
-    <h2 class="SorteioTpl_title__3RLtu" style="font-weight: bold; color: #000000;"><?php echo $row['name']; ?></h2>
-<h6 class="SorteioTpl_descricao__1b7iL" style="margin-bottom:1px; color: #5d5d5d;"><?php echo (isset($row['subtitle']) ? $row['subtitle'] : ''); ?></h6>
-</div>
-
-			</a>
-	
-
-		</div>
-	<?php } ?>
-
-	<div class="home-campaign-grid">
-	<?php
-$excludeFeaturedProduct = $featuredProductId > 0 ? ' AND id <> ' . $featuredProductId : '';
-$qry = $conn->query("SELECT * FROM `product_list` WHERE delete_flag = '0' AND private_draw = '0'" . $excludeFeaturedProduct . " ORDER BY id DESC LIMIT 10");
-
-if ($qry->num_rows > 0) {
-	while ($row = $qry->fetch_assoc()) {
-?>
-		<div class="col-12 mb-2">
-			<a href="/campanha/<?php echo $row['slug']; ?>">
-				<div class="SorteioTpl_sorteioTpl__home pointer home-campaign-card">
-					<div class="SorteioTpl_imagemContainer__2-pl4 col-auto">
-						<div style="display:block;overflow:hidden;position:absolute;top:0;left:0;bottom:0;right:0;box-sizing:border-box;margin:0">
-							<img alt="<?php echo $row['name']; ?>" src="<?php echo validate_image($row['image_path']); ?>" class="SorteioTpl_imagem__2GXxI" style="position:absolute;top:0;left:0;bottom:0;right:0;margin:auto;display:block;min-width:100%;min-height:100%" />
-						</div>
-					</div>
-
-					<div class="SorteioTpl_info__t1BZr">
-						<h1 class="SorteioTpl_title__3RLtu"><?php echo $row['name']; ?></h1>
-						<p class="SorteioTpl_descricao__1b7iL" style="margin-bottom:1px"><?php echo isset($row['subtitle']) ? $row['subtitle'] : ''; ?></p>
-
-						<?php
-						$cardDisplayStatus = (int) $row['status'] === 3 ? 4 : (int) $row['status_display'];
-						if ($cardDisplayStatus == 1) {
-							echo '<span class="badge bg-success blink bg-opacity-75 font-xsss">Adquira já!</span>';
-						} elseif ($cardDisplayStatus == 2) {
-							echo '<span class="badge bg-dark blink font-xsss mobile badge-status-1">Corre que está acabando!</span>';
-						} elseif ($cardDisplayStatus == 3) {
-							echo '<span class="badge bg-dark font-xsss mobile badge-status-3">Aguarde a campanha!</span>';
-						} elseif ($cardDisplayStatus == 4) {
-							echo '<span class="badge bg-dark font-xsss">Finalizada</span>';
-						} elseif ($cardDisplayStatus == 5) {
-							echo '<span class="badge bg-dark font-xsss">Em breve!</span>';
-						} elseif ($cardDisplayStatus == 6) {
-							echo '<span class="badge bg-dark font-xsss">Aguarde o sorteio!</span>';
-						}
-						?>
-
-						<?php if (!empty($row['date_of_draw'])) { ?>
-                    	<div class="SorteioTpl_dtSorteio__2mfSc mt-1">
-	                	<i class="bi bi-calendar2-check"></i>
-	                	<?php echo date('d/m/Y', strtotime($row['date_of_draw'])) . ' às ' . date('H:i', strtotime($row['date_of_draw'])); ?>
-                    	</div>
-                       <?php } ?>
-
-					</div>
-				</div>
-			</a>
-		</div>
-<?php
-	}
-}
-?>
-	</div>
+					</a>
+				<?php endwhile; ?>
+			</div>
+		</section>
+	<?php endif; ?>
 
 	<section class="home-info-card">
 		<h2>Como funciona e quais são as regras?</h2>
@@ -196,99 +258,6 @@ if ($qry->num_rows > 0) {
 		</div>
 	</section>
 
-	<?php
-
-	$sql = 'SELECT name AS product_name, qty_numbers, draw_number, draw_winner, image_path, slug, date_of_draw FROM product_list WHERE delete_flag = 0 AND private_draw = 0 AND draw_number <> \'\' ORDER BY date_of_draw DESC LIMIT 5';
-	$products = $conn->query($sql);
-
-	if (0 < $products->num_rows) {
-	?>
-		<div class="app-ganhadores mb-2">
-			<div class="col-12">
-				<div class="app-title">
-					<h1>🎉 Ganhadores</h1>
-					<div class="app-title-desc">sortudos</div>
-				</div>
-			</div>
-
-			<div class="col-12">
-				<div class="row">
-					<?php
-					while ($row = $products->fetch_assoc()) {
-						$product_name = $row['product_name'];
-						$draw_number = $row['draw_number'];
-						$draw_name = $row['draw_winner'];
-						$draw_number_arr = json_decode(json_encode($draw_number));
-						$draw_winner_arr = json_decode(json_encode($draw_name));
-						$draw_number = $draw_number_arr[0];
-						$draw_name = $draw_winner_arr[0];
-						$date_of_draw = strtotime($row['date_of_draw']);
-						$date_of_draw = date('d/m/y', $date_of_draw);
-						$image_path = validate_image($row['image_path']);
-
-						if (!empty($draw_number_arr)) {
-							$draw_number_arr = (isset($draw_number_arr) ? $draw_number_arr : '');
-
-							if ($draw_number_arr) {
-								$draw_winner_arr = json_decode($draw_winner_arr, true);
-								$draw_number_arr = json_decode($draw_number_arr, true);
-								$winners = [];
-
-								foreach ($draw_winner_arr as $qty_index => $name) {
-									foreach ($draw_number_arr as $amount_index => $number) {
-									   $query = $conn->query("SELECT CONCAT(firstname, ' ', lastname) as name, avatar, phone FROM customer_list WHERE phone = '$name'");
-                                       $rowCustomer = $query->fetch_assoc();
-
-                                       $ddd = substr($rowCustomer['phone'], 0, 2);
-                                       $masked_phone = "($ddd)****-****";
-
-                                       $winners[$qty_index] = [
-                                    	'name' => $rowCustomer['name'],
-                                    	'number' => $number,
-                                    	'product' => $product_name,
-                                    	'date' => $date_of_draw,
-                                    	'image' => ($rowCustomer['avatar'] ? validate_image($rowCustomer['avatar']) : BASE_URL . 'assets/img/avatar.png'),
-                                      	'phone' => $masked_phone
-                                         ];
-
-										}
-									}
-								}
-							}
-
-							foreach ($winners as $winner) {
-					?>
-								
-									
-									<div href="">
-									<div class="ganhadorItem_ganhadorContainer__1Sbxm mb-2"style="cursor: pointer;">
-										<div class="ganhadorItem_ganhadorFoto__324kH box-shadow-08">
-											<div style="display:block;overflow:hidden;position:absolute;top:0;left:0;bottom:0;right:0;box-sizing:border-box;margin:0">
-												<img alt="<?php echo $winner['product']; ?> ganhador do prêmio <?php echo $winner['product']; ?>" src="<?php echo $winner['image']; ?>" decoding="async" data-nimg="fill" style="position:absolute;top:0;left:0;bottom:0;right:0;box-sizing:border-box;padding:0;border:none;margin:auto;display:block;width:0;height:0;min-width:100%;max-width:100%;min-height:100%;max-height:100%;object-fit: cover;">
-												<noscript>
-													<img alt="<?php echo $draw_name; ?> ganhador do prêmio <?php echo $winner['product']; ?>" src="<?php echo $winner['image']; ?>" decoding="async" data-nimg="fill" style="position:absolute;top:0;left:0;bottom:0;right:0;box-sizing:border-box;padding:0;border:none;margin:auto;display:block;width:0;height:0;min-width:100%;max-width:100%;min-height:100%;max-height:100%;object-fit: cover;" loading="lazy" />
-												</noscript>
-											</div>
-										</div>
-										<div class="undefined w-100">
-											<p class="mb-0"><b><?php echo $winner['name']; ?></b></p>
-											<div class="ganhadorItem_ganhadorDescricao__Z4kO2">
-                                            	<p class="mb-0">Prêmio:<b><?php echo $winner['product']; ?></b></p>
-                                            <p class="mb-0">Número da sorte <b><?php echo htmlspecialchars((string) $winner['number'], ENT_QUOTES, 'UTF-8'); ?></b></p>
-                                            	<p class="mb-0">Data da premiação <b><?php echo $winner['date']; ?></b></p>
-                                            	<p class="mb-0">Telefone <b><?php echo $winner['phone']; ?></b></p>
-                                           </div>
-
-										</div>
-									</div>
-								</div>
-						
-        	<?php
-	       	}
-					}
-	       	}
-	       	?>	
-        
 	<?php
 	
 	// Perguntas frequentes
