@@ -47,6 +47,9 @@ switch ($pageTitle) {
     case 'biggest_buyer':
         echo 'Maior Comprador - ' . $siteName;
         break;
+    case 'major_minor_ticket':
+        echo 'Maior/Menor Cota - ' . $siteName;
+        break;
     case 'customers':
         echo 'Clientes - ' . $siteName;
         break;
@@ -241,6 +244,7 @@ echo "\r\n" .
     ($biggestBuyerAvailable
         ? '            <li class="relative px-6 py-3"><a target="_parent" class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200" href="./?page=biggest_buyer"><i class="fa-duotone w-6 fa-crown text-lg"></i><span class="ml-4">Maior Comprador</span></a></li>' . "\r\n"
         : '') .
+    '            <li class="relative px-6 py-3"><a target="_parent" class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200" href="./?page=major_minor_ticket"><i class="fa-duotone w-6 fa-ticket text-lg"></i><span class="ml-4">Maior/Menor Cota</span></a></li>' . "\r\n" .
     '            <li class="relative px-6 py-3">' .
     "\r\n" .
     '              <a target="_parent" class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200"' .
@@ -555,6 +559,7 @@ echo '        </a>' .
     ($biggestBuyerAvailable
         ? '          <li class="relative px-6 py-3"><a class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200" href="./?page=biggest_buyer"><i class="fa-duotone w-6 fa-crown text-lg"></i><span class="ml-4">Maior Comprador</span></a></li>' . "\r\n"
         : '') .
+    '          <li class="relative px-6 py-3"><a class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200" href="./?page=major_minor_ticket"><i class="fa-duotone w-6 fa-ticket text-lg"></i><span class="ml-4">Maior/Menor Cota</span></a></li>' . "\r\n" .
     '          <li class="relative px-6 py-3">' .
     "\r\n" .
     '            <a class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200"' .

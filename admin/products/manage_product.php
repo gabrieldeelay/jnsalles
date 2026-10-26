@@ -464,10 +464,6 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
                         <a href="#tab7" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Premiadas</a>
                     </li>
                     <li class="mr-1">
-                        <a href="#tab11" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Maior/Menor</a>
-                    </li>
-
-                    <li class="mr-1">
                         <a href="#tab8" class="dark:text-gray-300 dark:border-gray-600 dark:bg-gray-800 inline-block py-2 px-4 font-semibold border rounded-t text-gray-700">Upsell</a>
                     </li>
                 </ul>
@@ -1389,58 +1385,6 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
 
                     </div>
                 </div>
-                <div id="tab11" class="tabcontent text-gray-700 dark:text-gray-400 hidden">
-                    <label class="block mt-4 text-sm">
-                        <span class="text-gray-700 dark:text-gray-400">Habilitar Maior/Menor Titulo?</span>
-                    </label>
-                    <div style="margin-top:4px" class="can-toggle">
-                        <input type="checkbox" name="quantidade_auto_cota" id="quantidade_auto_cota"
-                            <?php echo isset($quantidade_auto_cota) && $quantidade_auto_cota == 1 ? 'checked' : '' ?>
-                            value="<?php echo isset($quantidade_auto_cota) ? $quantidade_auto_cota : '' ?> ">
-                        <label for="quantidade_auto_cota">
-                            <div class="can-toggle__switch" data-checked="Sim" data-unchecked="Não"></div>
-                        </label>
-                    </div>
-                    <label class="block mt-4 text-sm">
-                        <span class="text-gray-700 dark:text-gray-400">Maior/Menor Titulo Diária?</span>
-                    </label>
-                    <div style="margin-top:4px" class="can-toggle">
-                        <input type="checkbox" name="quantidade_auto_cota_diario" id="quantidade_auto_cota_diario"
-                            <?php echo isset($quantidade_auto_cota_diario) && $quantidade_auto_cota_diario == 1 ? 'checked' : '' ?>
-                            value="<?php echo isset($quantidade_auto_cota_diario) ? $quantidade_auto_cota_diario : '' ?> ">
-                        <label for="quantidade_auto_cota_diario">
-                            <div class="can-toggle__switch" data-checked="Sim" data-unchecked="Não"></div>
-                        </label>
-                    </div>
-                     <div class="maiormenorcota">
-                        <label class="block mt-4 text-sm col-span-2">
-                            <span class="text-gray-700 dark:text-gray-400">Data e hora inicial bilhete diária</span>
-                            <input style="width:100%" type="datetime-local" name="cota_diaria_ini" id="cota_diaria_ini" class="block mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input" value="<?= isset($cota_diaria_ini) ? $cota_diaria_ini : '' ?>">
-                        </label>
-                        <label class="block mt-4 text-sm col-span-2">
-                            <span class="text-gray-700 dark:text-gray-400">Data e hora final bilhete diária</span>
-                            <input style="width:100%" type="datetime-local" name="cota_diaria_fim" id="cota_diaria_fim" class="block mt-1 text-sm dark:border-gray-600 dark:bg-gray-700 focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:text-gray-300 dark:focus:shadow-outline-gray form-input" value="<?= isset($cota_diaria_fim) ? $cota_diaria_fim : '' ?>">
-                        </label>
-                        <label class="block mt-4 text-sm col-span-2">
-                            <div class="text-gray-700 dark:text-gray-400">Probabilidade</div>
-                            <input type="range" class="win10-thumb" name="probabilidade" value="<?= $probabilidade ?>" id="probabilidadeRange" />
-                            <div id="probabilidadeValue"><?= $probabilidade ?></div> <!-- Aqui o valor será mostrado -->
-                        </label>
-
-                        <script>
-                            // Seleciona o input range e o elemento que irá exibir o valor
-                            const rangeInput = document.getElementById('probabilidadeRange');
-                            const valueDisplay = document.getElementById('probabilidadeValue');
-
-                            // Função para atualizar o valor mostrado
-                            rangeInput.addEventListener('input', function() {
-                                valueDisplay.textContent = rangeInput.value;
-                            });
-                        </script>
-
-                    </div>
-                </div>
-
                 <div class="campaign-save-row">
                     <button type="submit" id="save-product-button" form="product-form" class="px-5 py-3 font-medium leading-5 text-white transition-colors duration-150 bg-purple-600 border border-transparent rounded-lg active:bg-purple-600 hover:bg-purple-700 focus:outline-none focus:shadow-outline-purple"> Salvar
                     </button>
@@ -1719,7 +1663,6 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
             tab5: ['Barra de progresso', 'Mostre o avanço real das vendas ou, se desejar, uma porcentagem visual configurada manualmente.'],
             tab6: ['Ganhador', 'Depois do sorteio, informe o telefone e o número sorteado para publicar o resultado na campanha.'],
             tab7: ['Cotas premiadas', 'Cadastre cada número premiado e descreva exatamente o prêmio correspondente.'],
-            tab11: ['Maior e menor cota', 'Configure premiações extras ligadas à menor ou à maior cota comprada no período.'],
             tab8: ['Oferta adicional', 'Ofereça cotas extras com desconto depois que o comprador já escolheu a quantidade inicial.']
         };
         Object.keys(campaignTabGuides).forEach(function(tabId) {
@@ -2369,14 +2312,6 @@ foreach (explode(',', (string) ($cotas_premiadas ?? '')) as $winningTicketNumber
         removeSpaces();
 
 
-
-        $('#quantidade_auto_cota').on('change', function() {
-            if ($(this).is(':checked')) {
-                $(this).val(1);
-            } else {
-                $(this).val(0);
-            }
-        });
 
         $('#quantidade_auto_cota_roleta').on('change', function() {
             if ($(this).is(':checked')) {

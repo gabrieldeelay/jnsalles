@@ -47,6 +47,25 @@ $rankingWindowStart = $rankingTimerHasPeriod ? $rankingTimer['window_start'] : d
 $rankingWindowEnd = $rankingTimerHasPeriod ? $rankingTimer['window_end'] : date('Y-m-d 23:59:59');
 $rankingWindowUsesReset = $rankingTimerHasPeriod && $rankingTimer['uses_reset'];
 
+$majorMinorDefault = [
+    'enabled' => false,
+    'minor' => ['name' => '', 'ticket' => ''],
+    'major' => ['name' => '', 'ticket' => ''],
+];
+$majorMinorStored = json_decode((string) $_settings->info('major_minor_ticket_' . (int) $id), true);
+$majorMinorConfig = is_array($majorMinorStored)
+    ? array_replace_recursive($majorMinorDefault, $majorMinorStored)
+    : $majorMinorDefault;
+$majorMinorMinorName = trim((string) ($majorMinorConfig['minor']['name'] ?? ''));
+$majorMinorMinorTicket = trim((string) ($majorMinorConfig['minor']['ticket'] ?? ''));
+$majorMinorMajorName = trim((string) ($majorMinorConfig['major']['name'] ?? ''));
+$majorMinorMajorTicket = trim((string) ($majorMinorConfig['major']['ticket'] ?? ''));
+$showMajorMinor = !empty($majorMinorConfig['enabled'])
+    && $majorMinorMinorName !== ''
+    && $majorMinorMinorTicket !== ''
+    && $majorMinorMajorName !== ''
+    && $majorMinorMajorTicket !== '';
+
 $max_discount = 0;
 if ($available < $min_purchase) {
     $min_purchase = $available;
@@ -70,28 +89,130 @@ if ($enable_cpf == 1) {
         margin-block: 4px;
     }
 
-    .lessons__category {
-        margin-bottom: 16px;
-
-        background: green;
-
-        display: inline-block;
-        padding: 8px 8px 6px;
-        border-radius: 4px;
-        font-size: 1.2rem;
-        text-align: center;
-        line-height: 1;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: #FCFCFD;
+    .manual-ticket-spotlight {
+        overflow: hidden;
+        margin: 18px 0 24px;
+        border: 1px solid rgba(16, 185, 129, .32);
+        border-radius: 18px;
+        background:
+            radial-gradient(circle at 50% -35%, rgba(16, 185, 129, .13), transparent 48%),
+            linear-gradient(145deg, #ffffff, #f7faf9);
+        box-shadow: 0 14px 34px rgba(15, 23, 42, .08);
     }
 
-    .maior,
-    .menor {
+    .manual-ticket-spotlight__head {
         display: flex;
-        justify-content: center;
         align-items: center;
-        flex-direction: column
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border-bottom: 1px solid rgba(15, 23, 42, .08);
+    }
+
+    .manual-ticket-spotlight__title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .manual-ticket-spotlight__icon {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        flex: 0 0 36px;
+        place-items: center;
+        border-radius: 11px;
+        background: linear-gradient(145deg, #7c3aed, #5b21b6);
+        color: #fff;
+        box-shadow: 0 8px 18px rgba(91, 33, 182, .22);
+    }
+
+    .manual-ticket-spotlight__title strong {
+        display: block;
+        color: #1f2937;
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .manual-ticket-spotlight__title small {
+        display: block;
+        margin-top: 2px;
+        color: #64748b;
+        font-size: .72rem;
+    }
+
+    .manual-ticket-spotlight__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #047857;
+        font-size: .64rem;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .manual-ticket-spotlight__badge::before {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, .12);
+        content: "";
+    }
+
+    .manual-ticket-spotlight__items {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        padding: 16px;
+    }
+
+    .manual-ticket-spotlight__item {
+        min-width: 0;
+        padding: 16px 12px;
+        border: 1px solid rgba(100, 116, 139, .18);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, .78);
+        text-align: center;
+    }
+
+    .manual-ticket-spotlight__item:first-child { border-color: rgba(14, 165, 233, .24); }
+    .manual-ticket-spotlight__item:last-child { border-color: rgba(124, 58, 237, .24); }
+    .manual-ticket-spotlight__item small { display: block; color: #64748b; font-size: .7rem; font-weight: 800; text-transform: uppercase; }
+
+    .manual-ticket-spotlight__ticket {
+        display: inline-flex;
+        max-width: 100%;
+        margin: 10px 0 8px;
+        padding: 8px 13px;
+        border: 1px solid rgba(16, 185, 129, .45);
+        border-radius: 9px;
+        background: #07110e;
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 900;
+        letter-spacing: .025em;
+        overflow-wrap: anywhere;
+    }
+
+    .manual-ticket-spotlight__name {
+        display: block;
+        color: #334155;
+        font-size: .84rem;
+        font-weight: 700;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 480px) {
+        .manual-ticket-spotlight__head { align-items: flex-start; }
+        .manual-ticket-spotlight__badge { margin-top: 7px; font-size: .56rem; }
+        .manual-ticket-spotlight__items { gap: 8px; padding: 12px; }
+        .manual-ticket-spotlight__item { padding: 14px 8px; }
+        .manual-ticket-spotlight__ticket { padding-inline: 9px; font-size: .88rem; }
     }
 
     .hidden {
@@ -1662,101 +1783,29 @@ if ($available > 0 && $status == '1') {
 
                                         ?>
 
-          <?php 
-        if ($quantidade_auto_cota == 1 || $quantidade_auto_cota_diario == 1): ?>
-            <div class="app-title mb-2 gap-2" style="align-items: flex-start;">
-                <h1 style="font-size: 1.125rem; filter: blur(0px);">🔄  Bilhete Maior e Menor</h1>
-                <div class="app-title-desc" style="filter: blur(0px);">Instantâneos</div>
-            </div>
-
-            <div class="card <?= $bgTheme ?> sc-3f9a15f1-2 eAApiE bottom-container rounded-3xl w-full relative  mb-6 mt-6" style="border: 2px solid transparent;border-image: linear-gradient(90deg, #198754, #0a3420) 1; border-radius: 4px; 
-            overflow: hidden;
-            -webkit-mask-image: radial-gradient(#fff, #000);  mask-image: radial-gradient(#fff, #000);">
-                <div class="card-body ">
-                    <?php if ($quantidade_auto_cota == 1): ?>
-                        <div class="text-center">Geral</div>
-                        <div class="d-flex justify-content-evenly align-items-center gap-2 text-center">
-                            <div class="maior">
-                                
-                                <h4 style="text-align:center; font-size: 1em !important; margin-block:1rem"><strong>Menor Bilhete</strong></h4>
-                                <div class="category-green btn btn-success mb-2" id="minor-cota">
-                                    <div class="skeleton" style="width: 100%; display: inline-flex; height: 100%; border-radius: 10px; background-color: inherit !important;"></div>
-                                </div>
-                                <span class="mb-1" style="font-size: 16px" id="minor-winner">
-                                    <div class="skeleton" style="display: inline-flex; width:  100% !important; min-width:75px"></div>
-                                </span>
-                                <span class="" style="font-size: 12px; opacity:0.8" id="minor-date">
-                                    <div class="skeleton" style="display: inline-flex; width:  100% !important; min-width:75px"></div>
-                                </span>
-                            </div>
-                            <div class="menor">
-                                <h4 style="text-align:center; font-size: 1em !important; margin-block:1rem"><strong>Maior Bilhete</strong></h4>
-                                <div class="category-green btn btn-success mb-2" id="major-cota">
-                                    <div class="skeleton"
-                                        style="width: 100%; display: inline-flex; height: 100%; border-radius: 10px; background-color: inherit !important;"></div>
-                                </div>
-                                <span class="mb-1" style="font-size: 16px" id="major-winner">
-                                    <div class="skeleton" style="display: inline-flex; width:  100% !important; min-width:75px"></div>
-                                </span>
-                                <span class="" style="font-size: 12px; opacity:0.8" id="major-date">
-                                    <div class="skeleton" style="display: inline-flex; width:  100% !important; min-width:75px"></div>
-                                </span>
-                            </div>
-                        </div>
-                        <hr>
-                    <?php endif; ?>
-                    <?php if ($quantidade_auto_cota_diario == 1): ?>
-                        <!-- <div style="height: 1px !important" class="hr my-3"></div> -->
-                        <div class="text-center">Hoje</div>
-                        <?php if ($cota_diaria_ini != '0000-00-00 00:00:00' && $cota_diaria_fim != '0000-00-00 00:00:00') {
-
-                            // Converte a data para um objeto DateTime
-                            $data_ini = new DateTime($cota_diaria_ini);
-                            $data_fim = new DateTime($cota_diaria_fim);
-
-                            // Formata a data para o formato 'DD/MM/YYYY HH:MM:SS'
-                            $data_formatada_ini = $data_ini->format('d/m/Y H:i:s');
-                            $data_formatada_fim = $data_fim->format('d/m/Y H:i:s');
-
-                        ?>
-                            <div class="text-center  mb-1">Atenção esta geração de Maior e Menor Cota é contabilizado de <b><?= $data_formatada_ini ?></b> até <b><?= $data_formatada_fim ?></b></div>
-                            <div class="text-center  fw-bolder">Promoção acaba em <button class="btn btn-sm btn-warning px-2 py-0 contadorseg" id="contadorseg"></button></div>
-                        <?php } ?>
-                        <div class="d-flex justify-content-evenly align-items-center gap-2 text-center">
-                            <div class="maior ">
-                                <h4 style="text-align:center; font-size: 1em !important; margin-block:1rem"><strong>Menor Bilhete</strong></h4>
-                                <div class="category-green btn btn-success mb-2" id="minor-cota_today">
-                                    <div class="skeleton" style="width: 100%; display: inline-flex; height: 100%; border-radius: 10px; background-color: inherit !important;"></div>
-                                </div>
-                                <span class=" mb-1" style="font-size: 16px" id="minor-winner_today">
-                                    <div class="skeleton" style="display: inline-flex; width:  100% !important; min-width:75px"></div>
-                                </span>
-                                <span class="" style="font-size: 12px; opacity:0.8" id="minor-date_today">
-                                    <div class="skeleton" style="display: inline-flex; width:  100% !important; min-width:75px"></div>
-                                </span>
-                            </div>
-                            <div class="menor ">
-                                <h4 style="text-align:center; font-size: 1em !important; margin-block:1rem"><strong>Maior Bilhete</strong></h4>
-                                <div class="category-green btn btn-success mb-2" id="major-cota_today">
-                                    <div class="skeleton"
-                                        style="width: 100%; display: inline-flex; height: 100%; border-radius: 10px; background-color: inherit !important;"></div>
-                                </div>
-                                <span class=" mb-1" style="font-size: 16px" id="major-winner_today">
-                                    <div class="skeleton" style="display: inline-flex; width:  100% !important; min-width:75px"></div>
-                                </span>
-                                <span class="" style="font-size: 12px; opacity:0.8" id="major-date_today">
-                                    <div class="skeleton" style="display: inline-flex; width:  100% !important; min-width:75px"></div>
-                                </span>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-
+          <?php if ($showMajorMinor): ?>
+            <section class="manual-ticket-spotlight" aria-label="Maior e menor cota em destaque">
+                <header class="manual-ticket-spotlight__head">
+                    <div class="manual-ticket-spotlight__title">
+                        <span class="manual-ticket-spotlight__icon"><i class="bi bi-arrow-down-up" aria-hidden="true"></i></span>
+                        <span><strong>Maior/Menor Cota</strong><small>Destaques da ação</small></span>
+                    </div>
+                    <span class="manual-ticket-spotlight__badge">Em destaque</span>
+                </header>
+                <div class="manual-ticket-spotlight__items">
+                    <article class="manual-ticket-spotlight__item">
+                        <small>Menor Cota</small>
+                        <span class="manual-ticket-spotlight__ticket"><?= htmlspecialchars($majorMinorMinorTicket, ENT_QUOTES, 'UTF-8') ?></span>
+                        <strong class="manual-ticket-spotlight__name"><?= htmlspecialchars($majorMinorMinorName, ENT_QUOTES, 'UTF-8') ?></strong>
+                    </article>
+                    <article class="manual-ticket-spotlight__item">
+                        <small>Maior Cota</small>
+                        <span class="manual-ticket-spotlight__ticket"><?= htmlspecialchars($majorMinorMajorTicket, ENT_QUOTES, 'UTF-8') ?></span>
+                        <strong class="manual-ticket-spotlight__name"><?= htmlspecialchars($majorMinorMajorName, ENT_QUOTES, 'UTF-8') ?></strong>
+                    </article>
                 </div>
-
-            </div>
-
-        <?php endif;
-        ?>
+            </section>
+          <?php endif; ?>
         
                                      <?php if (false): ?><div class="mt-2 d-flex text-center justify-content-center mb-3">
     <div class="text-center">
@@ -2494,73 +2543,7 @@ if ($available > 0 && $status == '1') {
                                     });
                                 });
                             </script>
-                            <?php if ($quantidade_auto_cota == 1) {
-                            ?>
-                                <script>
-                                    $(document).ready(function() {
-                                        var raffle = parseInt("<?php echo isset($id) ? $id : ''; ?>");
-                                        $.ajax({
-                                            url: _base_url_ + "class/Main.php?action=search_raffle_smallest_and_largest_number",
-                                            method: 'POST',
-                                            data: {
-                                                raffle: raffle
-                                            },
-                                            success: function(response) {
-
-                                                var data = JSON.parse(response);
-                                                console.log(data)
-
-                                                if (data.status == 'success') {
-                                                    $('#major-cota').html(data.major.cota);
-                                                    $('#major-winner').html(data.major.name);
-                                                    $('#major-date').html(data.major.date);
-
-                                                    $('#minor-cota').html(data.minor.cota);
-                                                    $('#minor-winner').html(data.minor.name);
-                                                    $('#minor-date').html(data.minor.date);
-
-                                                }
-
-                                            },
-                                            error: function() {}
-                                        });
-                                    })
-                                </script>
-                            <?php
-                            } ?>
-                            <?php if ($quantidade_auto_cota_diario == 1) {
-                            ?>
-                                <script>
-                                    $(document).ready(function() {
-                                        var raffle = parseInt("<?php echo isset($id) ? $id : ''; ?>");
-                                        $.ajax({
-                                            url: _base_url_ + "class/Main.php?action=search_raffle_smallest_and_largest_number_today",
-                                            method: 'POST',
-                                            data: {
-                                                raffle: raffle
-                                            },
-                                            success: function(response) {
-                                                var data = JSON.parse(response);
-                                                console.log(data)
-
-                                                if (data.status == 'success') {
-                                                    $('#major-cota_today').html(data.major.cota);
-                                                    $('#major-winner_today').html(data.major.name);
-                                                    $('#major-date_today').html(data.major.date);
-
-                                                    $('#minor-cota_today').html(data.minor.cota);
-                                                    $('#minor-winner_today').html(data.minor.name);
-                                                    $('#minor-date_today').html(data.minor.date);
-
-                                                }
-
-                                            },
-                                            error: function() {}
-                                        });
-                                    })
-                                </script>
-                            <?php
-                            }  if ($enable_ranking_definido == 1) { ?>
+                            <?php if ($enable_ranking_definido == 1) { ?>
                                 <script>
                                     // Defina a data de fim - em formato de string (ex: '2025-02-02T12:00:00')
                                     var ranking_fim = '<?= $ranking_fim ?>';
@@ -2616,112 +2599,7 @@ if ($available > 0 && $status == '1') {
     document.getElementById("loadingSystem").style.display = "block";
   });
 </script>
-<?php if ($quantidade_auto_cota == 1) {
-?>
-    <script>
-        $(document).ready(function() {
-            var raffle = parseInt("<?php echo isset($id) ? $id : ''; ?>");
-            $.ajax({
-                url: _base_url_ + "class/Main.php?action=search_raffle_smallest_and_largest_number",
-                method: 'POST',
-                data: {
-                    raffle: raffle
-                },
-                success: function(response) {
-
-                    var data = JSON.parse(response);
-                    console.log(data)
-
-                    if (data.status == 'success') {
-                        $('#major-cota').html(data.major.cota);
-                        $('#major-winner').html(data.major.name);
-                        $('#major-date').html(data.major.date);
-
-                        $('#minor-cota').html(data.minor.cota);
-                        $('#minor-winner').html(data.minor.name);
-                        $('#minor-date').html(data.minor.date);
-
-                    }
-
-                },
-                error: function() {}
-            });
-        })
-    </script>
-<?php
-} ?>
-<?php if ($quantidade_auto_cota_diario == 1) {
-?>
-    <script>
-        $(document).ready(function() {
-            var raffle = parseInt("<?php echo isset($id) ? $id : ''; ?>");
-            $.ajax({
-                url: _base_url_ + "class/Main.php?action=search_raffle_smallest_and_largest_number_today",
-                method: 'POST',
-                data: {
-                    raffle: raffle,
-                    data_ini: '<?= $cota_diaria_ini ?>',
-                    data_fim: '<?= $cota_diaria_fim ?>'
-                },
-                success: function(response) {
-                    var data = JSON.parse(response);
-                    console.log(data)
-                    if (data.status == 'success') {
-                        $('#major-cota_today').html(data.major.cota);
-                        $('#major-winner_today').html(data.major.name);
-                        $('#major-date_today').html(data.major.date);
-
-                        $('#minor-cota_today').html(data.minor.cota);
-                        $('#minor-winner_today').html(data.minor.name);
-                        $('#minor-date_today').html(data.minor.date);
-
-                    }
-
-                },
-                error: function() {}
-            });
-        })
-    </script>
-    <script>
-        // Defina a data de fim - em formato de string (ex: '2025-02-02T12:00:00')
-        var cota_diaria_fim = '<?= $cota_diaria_fim ?>';
-
-        // Função para atualizar o contador
-        function atualizarContador() {
-            // Data atual
-            var dataAtual = new Date();
-
-            // Data de fim
-            var dataFim = new Date(cota_diaria_fim);
-
-            // Calculando a diferença em milissegundos
-            var diferença = dataFim - dataAtual;
-
-            if (diferença > 0) {
-                // Calculando os dias, horas, minutos e segundos restantes
-                var dias = Math.floor(diferença / (1000 * 60 * 60 * 24));
-                var horas = Math.floor((diferença % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                var minutos = Math.floor((diferença % (1000 * 60 * 60)) / (1000 * 60));
-                var segundos = Math.floor((diferença % (1000 * 60)) / 1000);
-
-                // Exibindo o contador no formato: "X dias, Y horas, Z minutos, W segundos"
-                document.getElementById("contadorseg").innerHTML =
-                    "<i class='bi bi-alarm me-2'></i>" + dias + " dias, " + horas + ":" + minutos + ":" + segundos;
-            } else {
-                // Caso o tempo tenha expirado
-                document.getElementById("contadorseg").innerHTML = "❌ Sorteio finalizado!";
-            }
-        }
-
-        // Atualizar o contador a cada segundo
-        setInterval(atualizarContador, 1000);
-
-        // Chamar a função uma vez ao carregar a página
-        atualizarContador();
-    </script>
-<?php
-}
-if ($enable_ranking_definido == 1) { ?>
+<?php if ($enable_ranking_definido == 1) { ?>
     <script>
         // Defina a data de fim - em formato de string (ex: '2025-02-02T12:00:00')
         var ranking_fim = '<?= $ranking_fim ?>';

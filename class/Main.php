@@ -517,9 +517,9 @@ class Main extends DBConnection
         $status_auto_cota_box = isset($_POST["status_auto_cota_box"]) == 1 ? 1 : 0;
         $quantidade_auto_cota = isset($_POST["quantidade_auto_cota"]) ? 1 : 0;
         $quantidade_auto_cota_diario = isset($_POST["quantidade_auto_cota_diario"]) ? 1 : 0;
-        $cota_diaria_ini = $this->conn->real_escape_string($_POST["cota_diaria_ini"]);
-        $cota_diaria_fim = $this->conn->real_escape_string($_POST["cota_diaria_fim"]);
-        $probabilidade = max(0, (int) $_POST["probabilidade"]);
+        $cota_diaria_ini = $this->conn->real_escape_string($_POST["cota_diaria_ini"] ?? '');
+        $cota_diaria_fim = $this->conn->real_escape_string($_POST["cota_diaria_fim"] ?? '');
+        $probabilidade = max(0, (int) ($_POST["probabilidade"] ?? 0));
         $tipo_auto_cota = $this->conn->real_escape_string($_POST["tipo_auto_cota"]);
         $tipo_auto_cota_roleta = $this->conn->real_escape_string($_POST["tipo_auto_cota_roleta"]);
         $tipo_auto_cota_box = $this->conn->real_escape_string($_POST["tipo_auto_cota_box"]);
