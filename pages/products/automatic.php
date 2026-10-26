@@ -128,6 +128,8 @@ if ($enable_cpf == 1) {
         box-shadow: 0 8px 18px rgba(91, 33, 182, .22);
     }
 
+    .manual-ticket-spotlight__icon svg { width: 18px; height: 18px; }
+
     .manual-ticket-spotlight__title strong {
         display: block;
         color: #1f2937;
@@ -1787,7 +1789,7 @@ if ($available > 0 && $status == '1') {
             <section class="manual-ticket-spotlight" aria-label="Maior e menor cota em destaque">
                 <header class="manual-ticket-spotlight__head">
                     <div class="manual-ticket-spotlight__title">
-                        <span class="manual-ticket-spotlight__icon"><i class="bi bi-arrow-down-up" aria-hidden="true"></i></span>
+                        <span class="manual-ticket-spotlight__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 0 2-2h12a2 2 0 0 0 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 0-2 2H6a2 2 0 0 0-2-2v-3a2 2 0 0 0 0-4V7Z"/><path d="M12 7v10"/></svg></span>
                         <span><strong>Maior/Menor Cota</strong><small>Destaques da ação</small></span>
                     </div>
                     <span class="manual-ticket-spotlight__badge">Em destaque</span>

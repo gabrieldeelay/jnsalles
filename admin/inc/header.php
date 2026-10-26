@@ -18,6 +18,7 @@ $biggestBuyerAvailability = $conn->query(
 if ($biggestBuyerAvailability && $biggestBuyerAvailability->num_rows > 0) {
     $biggestBuyerAvailable = true;
 }
+$majorMinorNavIcon = '<svg class="w-6 h-6" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 0 2-2h12a2 2 0 0 0 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 0-2 2H6a2 2 0 0 0-2-2v-3a2 2 0 0 0 0-4V7Z"/><path d="M12 7v10"/></svg>';
 
 switch ($pageTitle) {
     case 'products':
@@ -244,7 +245,7 @@ echo "\r\n" .
     ($biggestBuyerAvailable
         ? '            <li class="relative px-6 py-3"><a target="_parent" class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200" href="./?page=biggest_buyer"><i class="fa-duotone w-6 fa-crown text-lg"></i><span class="ml-4">Maior Comprador</span></a></li>' . "\r\n"
         : '') .
-    '            <li class="relative px-6 py-3"><a target="_parent" class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200" href="./?page=major_minor_ticket"><i class="fa-duotone w-6 fa-ticket text-lg"></i><span class="ml-4">Maior/Menor Cota</span></a></li>' . "\r\n" .
+    '            <li class="relative px-6 py-3"><a target="_parent" class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200" href="./?page=major_minor_ticket">' . $majorMinorNavIcon . '<span class="ml-4">Maior/Menor Cota</span></a></li>' . "\r\n" .
     '            <li class="relative px-6 py-3">' .
     "\r\n" .
     '              <a target="_parent" class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200"' .
@@ -559,7 +560,7 @@ echo '        </a>' .
     ($biggestBuyerAvailable
         ? '          <li class="relative px-6 py-3"><a class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200" href="./?page=biggest_buyer"><i class="fa-duotone w-6 fa-crown text-lg"></i><span class="ml-4">Maior Comprador</span></a></li>' . "\r\n"
         : '') .
-    '          <li class="relative px-6 py-3"><a class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200" href="./?page=major_minor_ticket"><i class="fa-duotone w-6 fa-ticket text-lg"></i><span class="ml-4">Maior/Menor Cota</span></a></li>' . "\r\n" .
+    '          <li class="relative px-6 py-3"><a class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200" href="./?page=major_minor_ticket">' . $majorMinorNavIcon . '<span class="ml-4">Maior/Menor Cota</span></a></li>' . "\r\n" .
     '          <li class="relative px-6 py-3">' .
     "\r\n" .
     '            <a class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200"' .
