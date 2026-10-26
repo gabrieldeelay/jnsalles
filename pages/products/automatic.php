@@ -53,16 +53,38 @@ $majorMinorDefault = [
     'major' => ['name' => '', 'ticket' => ''],
     'active_date' => '',
 ];
-$majorMinorStored = json_decode((string) $_settings->info('major_minor_ticket_' . (int) $id), true);
+$majorMinorKey = 'major_minor_ticket_' . (int) $id;
+$majorMinorStored = json_decode((string) $_settings->info($majorMinorKey), true);
 $majorMinorConfig = is_array($majorMinorStored)
     ? array_replace_recursive($majorMinorDefault, $majorMinorStored)
     : $majorMinorDefault;
+$majorMinorTimezone = new DateTimeZone('America/Sao_Paulo');
+$majorMinorNow = new DateTimeImmutable('now', $majorMinorTimezone);
+$majorMinorToday = $majorMinorNow->format('Y-m-d');
+$majorMinorHasData = !empty($majorMinorConfig['enabled'])
+    || trim((string) ($majorMinorConfig['minor']['name'] ?? '')) !== ''
+    || trim((string) ($majorMinorConfig['minor']['ticket'] ?? '')) !== ''
+    || trim((string) ($majorMinorConfig['major']['name'] ?? '')) !== ''
+    || trim((string) ($majorMinorConfig['major']['ticket'] ?? '')) !== '';
+if ((string) ($majorMinorConfig['active_date'] ?? '') !== $majorMinorToday && $majorMinorHasData) {
+    $majorMinorConfig = array_replace_recursive($majorMinorDefault, [
+        'active_date' => $majorMinorToday,
+        'updated_at' => $majorMinorNow->format('Y-m-d H:i:s'),
+    ]);
+    $majorMinorEncoded = json_encode($majorMinorConfig, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $majorMinorReset = $conn->prepare('UPDATE system_info SET meta_value = ? WHERE meta_field = ?');
+    if ($majorMinorReset) {
+        $majorMinorReset->bind_param('ss', $majorMinorEncoded, $majorMinorKey);
+        if ($majorMinorReset->execute()) {
+            $_settings->set_info($majorMinorKey, $majorMinorEncoded);
+        }
+        $majorMinorReset->close();
+    }
+}
 $majorMinorMinorName = trim((string) ($majorMinorConfig['minor']['name'] ?? ''));
 $majorMinorMinorTicket = trim((string) ($majorMinorConfig['minor']['ticket'] ?? ''));
 $majorMinorMajorName = trim((string) ($majorMinorConfig['major']['name'] ?? ''));
 $majorMinorMajorTicket = trim((string) ($majorMinorConfig['major']['ticket'] ?? ''));
-$majorMinorTimezone = new DateTimeZone('America/Sao_Paulo');
-$majorMinorToday = (new DateTimeImmutable('now', $majorMinorTimezone))->format('Y-m-d');
 $majorMinorExpiresAt = (new DateTimeImmutable($majorMinorToday . ' 00:00:00', $majorMinorTimezone))->modify('+1 day')->getTimestamp() * 1000;
 $showMajorMinor = !empty($majorMinorConfig['enabled'])
     && (string) ($majorMinorConfig['active_date'] ?? '') === $majorMinorToday
