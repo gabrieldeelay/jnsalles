@@ -51,6 +51,7 @@ $majorMinorDefault = [
     'enabled' => false,
     'minor' => ['name' => '', 'ticket' => ''],
     'major' => ['name' => '', 'ticket' => ''],
+    'active_date' => '',
 ];
 $majorMinorStored = json_decode((string) $_settings->info('major_minor_ticket_' . (int) $id), true);
 $majorMinorConfig = is_array($majorMinorStored)
@@ -60,7 +61,11 @@ $majorMinorMinorName = trim((string) ($majorMinorConfig['minor']['name'] ?? ''))
 $majorMinorMinorTicket = trim((string) ($majorMinorConfig['minor']['ticket'] ?? ''));
 $majorMinorMajorName = trim((string) ($majorMinorConfig['major']['name'] ?? ''));
 $majorMinorMajorTicket = trim((string) ($majorMinorConfig['major']['ticket'] ?? ''));
+$majorMinorTimezone = new DateTimeZone('America/Sao_Paulo');
+$majorMinorToday = (new DateTimeImmutable('now', $majorMinorTimezone))->format('Y-m-d');
+$majorMinorExpiresAt = (new DateTimeImmutable($majorMinorToday . ' 00:00:00', $majorMinorTimezone))->modify('+1 day')->getTimestamp() * 1000;
 $showMajorMinor = !empty($majorMinorConfig['enabled'])
+    && (string) ($majorMinorConfig['active_date'] ?? '') === $majorMinorToday
     && $majorMinorMinorName !== ''
     && $majorMinorMinorTicket !== ''
     && $majorMinorMajorName !== ''
@@ -1786,7 +1791,7 @@ if ($available > 0 && $status == '1') {
                                         ?>
 
           <?php if ($showMajorMinor): ?>
-            <section class="manual-ticket-spotlight" aria-label="Maior e menor cota em destaque">
+            <section id="manual-ticket-spotlight" class="manual-ticket-spotlight" data-expires-at="<?= (int) $majorMinorExpiresAt ?>" aria-label="Maior e menor cota em destaque">
                 <header class="manual-ticket-spotlight__head">
                     <div class="manual-ticket-spotlight__title">
                         <span class="manual-ticket-spotlight__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 0 2-2h12a2 2 0 0 0 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 0-2 2H6a2 2 0 0 0-2-2v-3a2 2 0 0 0 0-4V7Z"/><path d="M12 7v10"/></svg></span>
@@ -1807,6 +1812,18 @@ if ($available > 0 && $status == '1') {
                     </article>
                 </div>
             </section>
+            <script>
+            (function () {
+                var highlight = document.getElementById('manual-ticket-spotlight');
+                if (!highlight) return;
+                var remaining = Number(highlight.getAttribute('data-expires-at')) - Date.now();
+                if (remaining <= 0) {
+                    highlight.remove();
+                    return;
+                }
+                window.setTimeout(function () { highlight.remove(); }, remaining);
+            })();
+            </script>
           <?php endif; ?>
         
                                      <?php if (false): ?><div class="mt-2 d-flex text-center justify-content-center mb-3">
