@@ -49,8 +49,12 @@ $rankingWindowUsesReset = $rankingTimerHasPeriod && $rankingTimer['uses_reset'];
 
 $majorMinorDefault = [
     'enabled' => false,
-    'minor' => ['name' => '', 'ticket' => ''],
-    'major' => ['name' => '', 'ticket' => ''],
+    'mode' => 'manual',
+    'manual' => [
+        'minor' => ['name' => '', 'ticket' => ''],
+        'major' => ['name' => '', 'ticket' => ''],
+    ],
+    'real' => ['start_at' => '', 'end_at' => ''],
     'active_date' => '',
 ];
 $majorMinorKey = 'major_minor_ticket_' . (int) $id;
@@ -58,14 +62,18 @@ $majorMinorStored = json_decode((string) $_settings->info($majorMinorKey), true)
 $majorMinorConfig = is_array($majorMinorStored)
     ? array_replace_recursive($majorMinorDefault, $majorMinorStored)
     : $majorMinorDefault;
+if (isset($majorMinorStored['minor']) || isset($majorMinorStored['major'])) {
+    $majorMinorConfig['manual']['minor'] = array_replace($majorMinorDefault['manual']['minor'], (array) ($majorMinorStored['minor'] ?? []));
+    $majorMinorConfig['manual']['major'] = array_replace($majorMinorDefault['manual']['major'], (array) ($majorMinorStored['major'] ?? []));
+}
 $majorMinorTimezone = new DateTimeZone('America/Sao_Paulo');
 $majorMinorNow = new DateTimeImmutable('now', $majorMinorTimezone);
 $majorMinorToday = $majorMinorNow->format('Y-m-d');
 $majorMinorHasData = !empty($majorMinorConfig['enabled'])
-    || trim((string) ($majorMinorConfig['minor']['name'] ?? '')) !== ''
-    || trim((string) ($majorMinorConfig['minor']['ticket'] ?? '')) !== ''
-    || trim((string) ($majorMinorConfig['major']['name'] ?? '')) !== ''
-    || trim((string) ($majorMinorConfig['major']['ticket'] ?? '')) !== '';
+    || trim((string) ($majorMinorConfig['manual']['minor']['name'] ?? '')) !== ''
+    || trim((string) ($majorMinorConfig['manual']['minor']['ticket'] ?? '')) !== ''
+    || trim((string) ($majorMinorConfig['manual']['major']['name'] ?? '')) !== ''
+    || trim((string) ($majorMinorConfig['manual']['major']['ticket'] ?? '')) !== '';
 if ((string) ($majorMinorConfig['active_date'] ?? '') !== $majorMinorToday && $majorMinorHasData) {
     $majorMinorConfig = array_replace_recursive($majorMinorDefault, [
         'active_date' => $majorMinorToday,
@@ -81,12 +89,16 @@ if ((string) ($majorMinorConfig['active_date'] ?? '') !== $majorMinorToday && $m
         $majorMinorReset->close();
     }
 }
-$majorMinorMinorName = trim((string) ($majorMinorConfig['minor']['name'] ?? ''));
-$majorMinorMinorTicket = trim((string) ($majorMinorConfig['minor']['ticket'] ?? ''));
-$majorMinorMajorName = trim((string) ($majorMinorConfig['major']['name'] ?? ''));
-$majorMinorMajorTicket = trim((string) ($majorMinorConfig['major']['ticket'] ?? ''));
+$majorMinorMode = in_array((string) ($majorMinorConfig['mode'] ?? ''), ['real', 'manual'], true)
+    ? (string) $majorMinorConfig['mode']
+    : 'manual';
+$majorMinorMinorName = $majorMinorMode === 'manual' ? trim((string) ($majorMinorConfig['manual']['minor']['name'] ?? '')) : '';
+$majorMinorMinorTicket = $majorMinorMode === 'manual' ? trim((string) ($majorMinorConfig['manual']['minor']['ticket'] ?? '')) : '';
+$majorMinorMajorName = $majorMinorMode === 'manual' ? trim((string) ($majorMinorConfig['manual']['major']['name'] ?? '')) : '';
+$majorMinorMajorTicket = $majorMinorMode === 'manual' ? trim((string) ($majorMinorConfig['manual']['major']['ticket'] ?? '')) : '';
 $majorMinorExpiresAt = (new DateTimeImmutable($majorMinorToday . ' 00:00:00', $majorMinorTimezone))->modify('+1 day')->getTimestamp() * 1000;
 $showMajorMinor = !empty($majorMinorConfig['enabled'])
+    && $majorMinorMode === 'manual'
     && (string) ($majorMinorConfig['active_date'] ?? '') === $majorMinorToday
     && $majorMinorMinorName !== ''
     && $majorMinorMinorTicket !== ''
@@ -1812,8 +1824,7 @@ if ($available > 0 && $status == '1') {
 
                                         ?>
 
-          <?php if ($showMajorMinor): ?>
-            <section id="manual-ticket-spotlight" class="manual-ticket-spotlight" data-expires-at="<?= (int) $majorMinorExpiresAt ?>" aria-label="Maior e menor cota em destaque">
+            <section id="manual-ticket-spotlight" class="manual-ticket-spotlight <?= $showMajorMinor ? '' : 'hidden' ?>" data-expires-at="<?= (int) $majorMinorExpiresAt ?>" aria-label="Maior e menor cota em destaque">
                 <header class="manual-ticket-spotlight__head">
                     <div class="manual-ticket-spotlight__title">
                         <span class="manual-ticket-spotlight__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 0 2-2h12a2 2 0 0 0 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 0-2 2H6a2 2 0 0 0-2-2v-3a2 2 0 0 0 0-4V7Z"/><path d="M12 7v10"/></svg></span>
@@ -1824,13 +1835,13 @@ if ($available > 0 && $status == '1') {
                 <div class="manual-ticket-spotlight__items">
                     <article class="manual-ticket-spotlight__item">
                         <small>Menor Cota</small>
-                        <span class="manual-ticket-spotlight__ticket"><?= htmlspecialchars($majorMinorMinorTicket, ENT_QUOTES, 'UTF-8') ?></span>
-                        <strong class="manual-ticket-spotlight__name"><?= htmlspecialchars($majorMinorMinorName, ENT_QUOTES, 'UTF-8') ?></strong>
+                        <span id="major-minor-public-minor-ticket" class="manual-ticket-spotlight__ticket"><?= htmlspecialchars($majorMinorMinorTicket, ENT_QUOTES, 'UTF-8') ?></span>
+                        <strong id="major-minor-public-minor-name" class="manual-ticket-spotlight__name"><?= htmlspecialchars($majorMinorMinorName, ENT_QUOTES, 'UTF-8') ?></strong>
                     </article>
                     <article class="manual-ticket-spotlight__item">
                         <small>Maior Cota</small>
-                        <span class="manual-ticket-spotlight__ticket"><?= htmlspecialchars($majorMinorMajorTicket, ENT_QUOTES, 'UTF-8') ?></span>
-                        <strong class="manual-ticket-spotlight__name"><?= htmlspecialchars($majorMinorMajorName, ENT_QUOTES, 'UTF-8') ?></strong>
+                        <span id="major-minor-public-major-ticket" class="manual-ticket-spotlight__ticket"><?= htmlspecialchars($majorMinorMajorTicket, ENT_QUOTES, 'UTF-8') ?></span>
+                        <strong id="major-minor-public-major-name" class="manual-ticket-spotlight__name"><?= htmlspecialchars($majorMinorMajorName, ENT_QUOTES, 'UTF-8') ?></strong>
                     </article>
                 </div>
             </section>
@@ -1838,15 +1849,43 @@ if ($available > 0 && $status == '1') {
             (function () {
                 var highlight = document.getElementById('manual-ticket-spotlight');
                 if (!highlight) return;
-                var remaining = Number(highlight.getAttribute('data-expires-at')) - Date.now();
-                if (remaining <= 0) {
-                    highlight.remove();
-                    return;
+                var endpoint = <?= json_encode(BASE_URL . 'class/Main.php?action=major_minor_ticket_public_state&product_id=' . (int) $id, JSON_UNESCAPED_SLASHES) ?>;
+                var loading = false;
+
+                function setText(id, value) {
+                    var element = document.getElementById(id);
+                    if (element) element.textContent = value || '';
                 }
-                window.setTimeout(function () { highlight.remove(); }, remaining);
+
+                function applyState(data) {
+                    if (!data || data.status !== 'success' || !data.enabled || !data.minor || !data.major) {
+                        highlight.classList.add('hidden');
+                        return;
+                    }
+                    setText('major-minor-public-minor-ticket', data.minor.cota);
+                    setText('major-minor-public-minor-name', data.minor.name);
+                    setText('major-minor-public-major-ticket', data.major.cota);
+                    setText('major-minor-public-major-name', data.major.name);
+                    highlight.classList.remove('hidden');
+                }
+
+                function refreshHighlight() {
+                    if (loading || document.hidden) return;
+                    loading = true;
+                    fetch(endpoint, {credentials: 'same-origin', cache: 'no-store'})
+                        .then(function (response) { return response.json(); })
+                        .then(applyState)
+                        .catch(function () {})
+                        .finally(function () { loading = false; });
+                }
+
+                var remaining = Number(highlight.getAttribute('data-expires-at')) - Date.now();
+                if (remaining > 0) window.setTimeout(function () { highlight.classList.add('hidden'); }, remaining);
+                refreshHighlight();
+                window.setInterval(refreshHighlight, 5000);
+                document.addEventListener('visibilitychange', function () { if (!document.hidden) refreshHighlight(); });
             })();
             </script>
-          <?php endif; ?>
         
                                      <?php if (false): ?><div class="mt-2 d-flex text-center justify-content-center mb-3">
     <div class="text-center">

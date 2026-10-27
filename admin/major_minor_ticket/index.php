@@ -35,14 +35,25 @@ if (!$productExists && $products) {
 $settingKey = 'major_minor_ticket_' . $selectedProductId;
 $brazilNow = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
 $todayDate = $brazilNow->format('Y-m-d');
+$todayStart = $brazilNow->setTime(0, 0)->format('Y-m-d\TH:i');
+$todayEnd = $brazilNow->setTime(23, 59)->format('Y-m-d\TH:i');
 $defaultConfig = [
     'enabled' => false,
-    'minor' => ['name' => '', 'ticket' => ''],
-    'major' => ['name' => '', 'ticket' => ''],
+    'mode' => 'manual',
+    'manual' => [
+        'minor' => ['name' => '', 'ticket' => ''],
+        'major' => ['name' => '', 'ticket' => ''],
+    ],
+    'real' => ['start_at' => $todayStart, 'end_at' => $todayEnd],
     'active_date' => '',
 ];
 $storedConfig = json_decode((string) $_settings->info($settingKey), true);
 $config = is_array($storedConfig) ? array_replace_recursive($defaultConfig, $storedConfig) : $defaultConfig;
+if (isset($storedConfig['minor']) || isset($storedConfig['major'])) {
+    $config['manual']['minor'] = array_replace($defaultConfig['manual']['minor'], (array) ($storedConfig['minor'] ?? []));
+    $config['manual']['major'] = array_replace($defaultConfig['manual']['major'], (array) ($storedConfig['major'] ?? []));
+}
+$config['mode'] = in_array((string) ($config['mode'] ?? ''), ['real', 'manual'], true) ? (string) $config['mode'] : 'manual';
 $feedback = null;
 $dailyResetApplied = false;
 
@@ -81,12 +92,12 @@ $persistConfig = static function ($conn, $_settings, $settingKey, array $config)
     return $saved;
 };
 
-$hasStoredManualData = !empty($config['enabled'])
-    || trim((string) ($config['minor']['name'] ?? '')) !== ''
-    || trim((string) ($config['minor']['ticket'] ?? '')) !== ''
-    || trim((string) ($config['major']['name'] ?? '')) !== ''
-    || trim((string) ($config['major']['ticket'] ?? '')) !== '';
-if ((string) ($config['active_date'] ?? '') !== $todayDate && $hasStoredManualData) {
+$hasStoredData = !empty($config['enabled'])
+    || trim((string) ($config['manual']['minor']['name'] ?? '')) !== ''
+    || trim((string) ($config['manual']['minor']['ticket'] ?? '')) !== ''
+    || trim((string) ($config['manual']['major']['name'] ?? '')) !== ''
+    || trim((string) ($config['manual']['major']['ticket'] ?? '')) !== '';
+if ((string) ($config['active_date'] ?? '') !== $todayDate && $hasStoredData) {
     $config = array_replace_recursive($defaultConfig, [
         'active_date' => $todayDate,
         'updated_at' => $brazilNow->format('Y-m-d H:i:s'),
@@ -102,10 +113,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $feedback = ['type' => 'error', 'message' => 'Selecione uma campanha válida.'];
     } else {
         $enabled = isset($_POST['enabled']);
+        $mode = (string) ($_POST['mode'] ?? 'manual');
+        $mode = in_array($mode, ['real', 'manual'], true) ? $mode : 'manual';
         $minorName = trim((string) ($_POST['minor_name'] ?? ''));
         $minorTicket = trim((string) ($_POST['minor_ticket'] ?? ''));
         $majorName = trim((string) ($_POST['major_name'] ?? ''));
         $majorTicket = trim((string) ($_POST['major_ticket'] ?? ''));
+        $realStart = trim((string) ($_POST['real_start_at'] ?? ''));
+        $realEnd = trim((string) ($_POST['real_end_at'] ?? ''));
 
         $shorten = static function ($value, $length) {
             return function_exists('mb_substr') ? mb_substr($value, 0, $length) : substr($value, 0, $length);
@@ -115,13 +130,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $majorName = $shorten($majorName, 120);
         $majorTicket = $shorten($majorTicket, 80);
 
-        if ($enabled && ($minorName === '' || $minorTicket === '' || $majorName === '' || $majorTicket === '')) {
+        $realStartDate = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $realStart, new DateTimeZone('America/Sao_Paulo'));
+        $realEndDate = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $realEnd, new DateTimeZone('America/Sao_Paulo'));
+        $realPeriodValid = $realStartDate && $realEndDate
+            && $realStartDate->format('Y-m-d\TH:i') === $realStart
+            && $realEndDate->format('Y-m-d\TH:i') === $realEnd
+            && $realEndDate >= $realStartDate;
+
+        if ($enabled && $mode === 'manual' && ($minorName === '' || $minorTicket === '' || $majorName === '' || $majorTicket === '')) {
             $feedback = ['type' => 'error', 'message' => 'Para habilitar, preencha nome e cota nos dois destaques.'];
+        } elseif ($enabled && $mode === 'real' && !$realPeriodValid) {
+            $feedback = ['type' => 'error', 'message' => 'Confira as datas e horários do período do modo Real.'];
         } else {
             $config = [
                 'enabled' => $enabled,
-                'minor' => ['name' => $minorName, 'ticket' => $minorTicket],
-                'major' => ['name' => $majorName, 'ticket' => $majorTicket],
+                'mode' => $mode,
+                'manual' => [
+                    'minor' => ['name' => $minorName, 'ticket' => $minorTicket],
+                    'major' => ['name' => $majorName, 'ticket' => $majorTicket],
+                ],
+                'real' => [
+                    'start_at' => $realPeriodValid ? $realStart : $todayStart,
+                    'end_at' => $realPeriodValid ? $realEnd : $todayEnd,
+                ],
                 'active_date' => $todayDate,
                 'updated_at' => $brazilNow->format('Y-m-d H:i:s'),
             ];
@@ -131,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $feedback = [
                     'type' => 'success',
                     'message' => $enabled
-                        ? 'Destaques publicados para hoje. Eles serão desativados e apagados automaticamente às 00:00.'
+                        ? 'Modo ' . ($mode === 'real' ? 'Real' : 'Manual') . ' publicado. A alteração já será enviada aos visitantes sem precisar atualizar a página.'
                         : 'Exibição desativada. Se houver dados preenchidos, eles serão apagados automaticamente às 00:00.',
                 ];
             } else {
@@ -142,13 +173,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $isEnabled = !empty($config['enabled']);
-$minorName = (string) ($config['minor']['name'] ?? '');
-$minorTicket = (string) ($config['minor']['ticket'] ?? '');
-$majorName = (string) ($config['major']['name'] ?? '');
-$majorTicket = (string) ($config['major']['ticket'] ?? '');
+$activeMode = (string) ($config['mode'] ?? 'manual');
+$minorName = (string) ($config['manual']['minor']['name'] ?? '');
+$minorTicket = (string) ($config['manual']['minor']['ticket'] ?? '');
+$majorName = (string) ($config['manual']['major']['name'] ?? '');
+$majorTicket = (string) ($config['manual']['major']['ticket'] ?? '');
 $consultNow = $brazilNow;
-$consultStartValue = $consultNow->setTime(0, 0)->format('Y-m-d\TH:i');
-$consultEndValue = $consultNow->setTime(23, 59)->format('Y-m-d\TH:i');
+$consultStartValue = (string) ($config['real']['start_at'] ?? $todayStart);
+$consultEndValue = (string) ($config['real']['end_at'] ?? $todayEnd);
 ?>
 
 <style>
@@ -160,28 +192,30 @@ $consultEndValue = $consultNow->setTime(23, 59)->format('Y-m-d\TH:i');
 .mm-lookup{display:grid;grid-template-columns:minmax(230px,.72fr) 1fr;gap:14px;align-items:end;margin-top:14px;padding-top:14px;border-top:1px solid #2b384d}.mm-lookup-label{display:block;margin:0 0 7px;color:#cbd5e1;font-size:10px;font-weight:800}.mm-lookup-control{display:flex;gap:8px}.mm-lookup-control input{width:100%;height:40px!important;padding:0 12px!important;border:1px solid #40506a!important;border-radius:9px!important;background:#0c1526!important;color:#f8fafc!important;font-size:11px!important;outline:0}.mm-lookup-control input:focus{border-color:#8b5cf6!important;box-shadow:0 0 0 3px rgba(139,92,246,.14)!important}.mm-lookup-control button{display:grid;width:42px;height:40px;flex:0 0 42px;place-items:center;border:1px solid #7c3aed;border-radius:9px;background:#6d28d9;color:#fff}.mm-lookup-control button svg{width:16px;height:16px}.mm-lookup-control button:disabled{cursor:wait;opacity:.6}.mm-lookup-result{display:grid;grid-template-columns:1.1fr .65fr 1fr;gap:8px}.mm-lookup-result[hidden]{display:none}.mm-lookup-item{min-width:0;padding:9px 11px;border:1px solid #303e54;border-radius:9px;background:#10192a}.mm-lookup-item small{display:block;color:#71839d;font-size:7px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}.mm-lookup-item strong{display:block;overflow:hidden;margin-top:3px;color:#e2e8f0;font-size:10px;text-overflow:ellipsis;white-space:nowrap}.mm-lookup-message{align-self:center;color:#fca5a5;font-size:9px}
 @media(max-width:980px){.mm-grid{grid-template-columns:1fr}.mm-live-controls{grid-template-columns:1fr 1fr}.mm-live-actions{grid-column:1/-1}.mm-live-button{flex:1}.mm-lookup{grid-template-columns:1fr}}@media(max-width:640px){.mm-shell{padding:24px 14px 46px}.mm-head{align-items:flex-start;flex-direction:column}.mm-head h2{font-size:27px}.mm-pair,.mm-preview-items,.mm-live-controls,.mm-live-results,.mm-lookup-result{grid-template-columns:1fr}.mm-live-actions{grid-column:auto}.mm-card-body,.mm-preview-wrap,.mm-live-body{padding:15px}.mm-live-state{display:none}.mm-live-result{grid-template-columns:40px minmax(0,1fr)}.mm-live-result-ticket{grid-column:1/-1;width:100%;max-width:none}.mm-live-meta{align-items:flex-start;flex-direction:column}}
 .mm-onboarding{display:grid;gap:12px;margin:0 0 16px}.mm-reset-alert{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:13px;align-items:center;padding:14px 16px;border:1px solid rgba(251,191,36,.3);border-radius:15px;background:linear-gradient(135deg,rgba(120,53,15,.28),rgba(51,32,12,.52));box-shadow:0 14px 35px rgba(0,0,0,.12)}.mm-reset-alert__icon{display:grid;width:46px;height:46px;place-items:center;border-radius:13px;background:rgba(251,191,36,.14);color:#fcd34d}.mm-reset-alert__icon svg{width:23px;height:23px}.mm-reset-alert strong{display:block;color:#fef3c7;font-size:12px}.mm-reset-alert p{margin:4px 0 0;color:#d6c7a4;font-size:10px;line-height:1.5}.mm-reset-alert__time{padding:8px 11px;border:1px solid rgba(251,191,36,.26);border-radius:999px;background:rgba(15,23,42,.45);color:#fde68a;font-size:9px;font-weight:900;letter-spacing:.08em;white-space:nowrap}.mm-reset-done{padding:10px 13px;border:1px solid rgba(56,189,248,.24);border-radius:11px;background:rgba(12,74,110,.24);color:#bae6fd;font-size:10px;font-weight:750}.mm-step-flow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.mm-step{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid #2d3a50;border-radius:11px;background:#10192a;color:#8fa2bb;font-size:9px;font-weight:750}.mm-step b{display:grid;width:23px;height:23px;flex:0 0 23px;place-items:center;border-radius:7px;background:rgba(124,58,237,.24);color:#ddd6fe;font-size:9px}.mm-campaign-picker{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.65fr);gap:18px;align-items:center;margin-bottom:16px;padding:16px 18px;border:1px solid #34425a;border-radius:15px;background:linear-gradient(145deg,#172236,#111a2a)}.mm-campaign-picker__copy{display:flex;align-items:center;gap:12px}.mm-step-number{display:grid;width:35px;height:35px;flex:0 0 35px;place-items:center;border-radius:11px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;font-size:12px;font-weight:950;box-shadow:0 8px 20px rgba(109,40,217,.22)}.mm-campaign-picker strong{display:block;color:#f8fafc;font-size:12px}.mm-campaign-picker p{margin:3px 0 0;color:#8395ad;font-size:9px}.mm-campaign-picker select{width:100%;height:44px!important;padding:0 13px!important;border:1px solid #4a5b76!important;border-radius:10px!important;background:#0c1526!important;color:#fff!important;font-size:11px!important;outline:0}.mm-card-head__step{display:block;margin-bottom:3px;color:#a78bfa;font-size:8px;font-weight:950;letter-spacing:.12em;text-transform:uppercase}.mm-form-guide{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid rgba(167,139,250,.22);border-radius:11px;background:rgba(76,29,149,.12);color:#b9a9cf;font-size:9px;line-height:1.45}.mm-form-guide svg{width:17px;height:17px;flex:0 0 17px;color:#c4b5fd}.mm-expiry-pill{display:inline-flex;align-items:center;gap:6px;margin-top:6px;color:#fcd34d;font-size:8px;font-weight:850}.mm-expiry-pill svg{width:12px;height:12px}.mm-save{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px}.mm-save svg{width:16px;height:16px}.mm-fieldset{position:relative}.mm-fieldset:before{position:absolute;top:-8px;right:10px;padding:3px 7px;border-radius:999px;background:#18243a;color:#7f91aa;font-size:7px;font-weight:850;letter-spacing:.08em;text-transform:uppercase;content:'Manual'}
+.mm-mode-card{margin-bottom:16px;padding:18px;border:1px solid #34425a;border-radius:16px;background:linear-gradient(145deg,#172236,#101827)}.mm-mode-card__head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}.mm-mode-card__head h3{margin:0;color:#f8fafc;font-size:15px;font-weight:900}.mm-mode-card__head p{margin:4px 0 0;color:#8395ad;font-size:10px;line-height:1.5}.mm-mode-options{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mm-mode-option{position:relative;display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px;border:1px solid #35445c;border-radius:13px;background:#0d1727;cursor:pointer;transition:.18s}.mm-mode-option:hover{border-color:#5b6d89;transform:translateY(-1px)}.mm-mode-option:has(input:checked){border-color:#8b5cf6;background:linear-gradient(135deg,rgba(109,40,217,.25),rgba(15,23,42,.88));box-shadow:0 0 0 3px rgba(139,92,246,.08)}.mm-mode-option input{position:absolute;opacity:0}.mm-mode-icon{display:grid;width:42px;height:42px;place-items:center;border-radius:12px;background:rgba(56,189,248,.12);color:#7dd3fc}.mm-mode-option:last-child .mm-mode-icon{background:rgba(167,139,250,.14);color:#c4b5fd}.mm-mode-icon svg{width:20px;height:20px}.mm-mode-option strong{display:block;color:#f8fafc;font-size:12px}.mm-mode-option small{display:block;margin-top:4px;color:#7f91aa;font-size:9px;line-height:1.4}.mm-mode-check{display:grid;width:21px;height:21px;place-items:center;border:1px solid #52617a;border-radius:50%;color:transparent}.mm-mode-option:has(input:checked) .mm-mode-check{border-color:#8b5cf6;background:#7c3aed;color:#fff}.mm-mode-check svg{width:12px;height:12px}.mm-publish-row{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:12px;padding:13px 14px;border:1px solid #334155;border-radius:12px;background:#10192a}.mm-publish-row strong{display:block;color:#f8fafc;font-size:11px}.mm-publish-row span{display:block;margin-top:3px;color:#7f91aa;font-size:9px}.mm-mode-save{width:100%;margin-top:14px}.mm-mode-inactive{opacity:.7}.mm-mode-inactive .mm-card-head__step:after{content:' • configuração preservada';color:#64748b}.mm-real-save[hidden],.mm-manual-save[hidden]{display:none!important}
 @media(max-width:760px){.mm-reset-alert{grid-template-columns:42px 1fr}.mm-reset-alert__time{grid-column:1/-1;text-align:center}.mm-step-flow{grid-template-columns:1fr}.mm-campaign-picker{grid-template-columns:1fr}.mm-campaign-picker__copy{align-items:flex-start}}
+@media(max-width:760px){.mm-mode-options{grid-template-columns:1fr}.mm-mode-card__head,.mm-publish-row{align-items:flex-start;flex-direction:column}.mm-publish-row .mm-switch{align-self:flex-end}}
 </style>
 
 <main class="h-full overflow-y-auto">
   <div class="container mx-auto mm-shell">
     <header class="mm-head">
-      <div><p class="mm-eyebrow">Consulta e destaque visual</p><h2>Maior/Menor Cota</h2><p>Acompanhe as cotas reais dos pedidos pagos em tempo real e configure, separadamente, os nomes e códigos que serão mostrados abaixo da ação.</p></div>
-      <span id="mm-page-status" class="mm-status <?= $isEnabled ? 'enabled' : '' ?>"><?= $isEnabled ? 'Ativo hoje' : 'Desativado' ?></span>
+      <div><p class="mm-eyebrow">Consulta e destaque visual</p><h2>Maior/Menor Cota</h2><p>Escolha entre dados reais calculados automaticamente ou nomes e cotas definidos manualmente. O visitante sempre verá o mesmo design.</p></div>
+      <span id="mm-page-status" class="mm-status <?= $isEnabled ? 'enabled' : '' ?>"><?= $isEnabled ? 'Ativo • ' . ($activeMode === 'real' ? 'Real' : 'Manual') : 'Desativado' ?></span>
     </header>
 
     <?php if ($feedback): ?><div class="mm-feedback <?= $escape($feedback['type']) ?>" role="status"><?= $escape($feedback['message']) ?></div><?php endif; ?>
     <div class="mm-onboarding">
       <div class="mm-reset-alert" role="note">
         <span class="mm-reset-alert__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2M8 2h8"/></svg></span>
-        <div><strong>Reinício automático todos os dias às 00:00</strong><p>O destaque é desativado e os quatro campos manuais são apagados. Para publicar no novo dia, escolha a campanha, preencha novamente os nomes e cotas e ative a exibição.</p></div>
+        <div><strong>Reinício automático todos os dias às 00:00</strong><p>O destaque é desativado e zerado. Durante o mesmo dia, você pode alternar entre Real e Manual sem perder a configuração de nenhum deles.</p></div>
         <span class="mm-reset-alert__time">Válido somente até 23:59</span>
       </div>
       <?php if ($dailyResetApplied): ?><div class="mm-reset-done">O conteúdo do dia anterior foi zerado e desativado automaticamente. A tela já está pronta para uma nova configuração.</div><?php endif; ?>
       <div class="mm-step-flow" aria-label="Como usar esta página">
         <span class="mm-step"><b>1</b> Escolha a campanha</span>
-        <span class="mm-step"><b>2</b> Consulte as cotas reais</span>
-        <span class="mm-step"><b>3</b> Preencha e publique manualmente</span>
+        <span class="mm-step"><b>2</b> Escolha Real ou Manual</span>
+        <span class="mm-step"><b>3</b> Confira e publique</span>
       </div>
     </div>
 
@@ -192,7 +226,18 @@ $consultEndValue = $consultNow->setTime(23, 59)->format('Y-m-d\TH:i');
         <div class="mm-campaign-picker__copy"><span class="mm-step-number">1</span><div><strong id="mm-campaign-title">Escolha a campanha</strong><p>A consulta e a publicação abaixo sempre usam a campanha selecionada aqui.</p></div></div>
         <select id="mm-product" aria-label="Campanha selecionada"><?php foreach ($products as $product): ?><option value="<?= (int) $product['id'] ?>" <?= (int) $product['id'] === $selectedProductId ? 'selected' : '' ?>><?= $escape($product['name']) ?></option><?php endforeach; ?></select>
       </section>
-      <section class="mm-card mm-live-card" aria-labelledby="mm-live-title">
+      <form id="mm-config-form" class="mm-form" method="post" action="./?page=major_minor_ticket&product_id=<?= (int) $selectedProductId ?>">
+        <input type="hidden" name="csrf_token" value="<?= $escape($csrfToken) ?>">
+        <input type="hidden" name="product_id" value="<?= (int) $selectedProductId ?>">
+      <section class="mm-mode-card" aria-labelledby="mm-mode-title">
+        <div class="mm-mode-card__head"><div><h3 id="mm-mode-title">Escolha o que será exibido</h3><p>Somente um modo fica ativo. Ao trocar, as configurações do outro modo continuam salvas.</p></div><span class="mm-step-number">2</span></div>
+        <div class="mm-mode-options" role="radiogroup" aria-label="Modo de exibição">
+          <label class="mm-mode-option"><input type="radio" name="mode" value="real" <?= $activeMode === 'real' ? 'checked' : '' ?>><span class="mm-mode-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.3-6 4.2 12 2.2-6H21"/><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/></svg></span><span><strong>Modo Real</strong><small>Calcula automaticamente usando pedidos pagos no período.</small></span><span class="mm-mode-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 4 4L19 6"/></svg></span></label>
+          <label class="mm-mode-option"><input type="radio" name="mode" value="manual" <?= $activeMode === 'manual' ? 'checked' : '' ?>><span class="mm-mode-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M10 14v6"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></span><span><strong>Modo Manual</strong><small>Exibe exatamente os nomes e cotas digitados por você.</small></span><span class="mm-mode-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 4 4L19 6"/></svg></span></label>
+        </div>
+        <div class="mm-publish-row"><div><strong id="mm-publish-title">Ativar publicação do modo <?= $activeMode === 'real' ? 'Real' : 'Manual' ?></strong><span>O visitante verá o modo escolhido abaixo da ação. A troca aparece automaticamente, sem F5.</span></div><label class="mm-switch"><input id="mm-enabled" type="checkbox" name="enabled" value="1" <?= $isEnabled ? 'checked' : '' ?>><span></span></label></div>
+      </section>
+      <section id="mm-real-card" class="mm-card mm-live-card <?= $activeMode === 'real' ? '' : 'mm-mode-inactive' ?>" aria-labelledby="mm-live-title">
         <header class="mm-card-head">
           <span class="mm-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.3-6 4.2 12 2.2-6H21"/><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/></svg></span>
           <div><span class="mm-card-head__step">Passo 2 • somente consulta</span><h3 id="mm-live-title">Veja as cotas reais</h3><p>Menor e maior cota entre os pedidos pagos da campanha e do período selecionados.</p></div>
@@ -200,8 +245,8 @@ $consultEndValue = $consultNow->setTime(23, 59)->format('Y-m-d\TH:i');
         </header>
         <div class="mm-live-body">
           <div class="mm-live-controls">
-            <div class="mm-live-field"><label for="mm-consult-start">Início do período</label><input id="mm-consult-start" type="datetime-local" value="<?= $escape($consultStartValue) ?>"></div>
-            <div class="mm-live-field"><label for="mm-consult-end">Fim do período</label><input id="mm-consult-end" type="datetime-local" value="<?= $escape($consultEndValue) ?>"></div>
+            <div class="mm-live-field"><label for="mm-consult-start">Início do período</label><input id="mm-consult-start" type="datetime-local" name="real_start_at" value="<?= $escape($consultStartValue) ?>"></div>
+            <div class="mm-live-field"><label for="mm-consult-end">Fim do período</label><input id="mm-consult-end" type="datetime-local" name="real_end_at" value="<?= $escape($consultEndValue) ?>"></div>
             <div class="mm-live-actions">
               <button id="mm-today" class="mm-live-button" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2v3M18 2v3M3.5 9h17"/><rect x="3.5" y="4" width="17" height="17" rx="2"/><path d="M8 13h3v3H8z"/></svg>Hoje</button>
               <button id="mm-refresh" class="mm-live-button primary" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M6.1 8a7 7 0 0 1 11.4-2.2L20 8M4 16l2.5 2.2A7 7 0 0 0 17.9 16"/></svg>Consultar</button>
@@ -232,30 +277,26 @@ $consultEndValue = $consultNow->setTime(23, 59)->format('Y-m-d\TH:i');
             </div>
             <span id="mm-lookup-message" class="mm-lookup-message"></span>
           </div>
-          <p class="mm-live-help">Esta consulta é somente visual e se atualiza automaticamente. Ela não altera pedidos e não preenche os campos publicados abaixo.</p>
+          <p id="mm-live-help" class="mm-live-help"><?= $activeMode === 'real' ? 'Este é o período salvo do modo Real. Ao publicar, estes resultados serão exibidos e atualizados automaticamente.' : 'Esta consulta continua disponível como referência. Para exibi-la ao público, selecione o modo Real e salve.' ?></p>
+          <button id="mm-real-save" class="mm-save mm-mode-save mm-real-save" type="submit" <?= $activeMode === 'real' ? '' : 'hidden' ?>><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span>Salvar e publicar modo Real</span></button>
         </div>
       </section>
       <div class="mm-grid">
-        <section class="mm-card">
+        <section id="mm-manual-card" class="mm-card <?= $activeMode === 'manual' ? '' : 'mm-mode-inactive' ?>">
           <header class="mm-card-head"><span class="mm-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M10 14v6"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></span><div><span class="mm-card-head__step">Passo 3 • publicação manual</span><h3>Configure o destaque de hoje</h3><p>Digite exatamente o nome e a cota que devem aparecer no site.</p></div></header>
           <div class="mm-card-body">
-            <form class="mm-form" method="post" action="./?page=major_minor_ticket&product_id=<?= (int) $selectedProductId ?>">
-              <input type="hidden" name="csrf_token" value="<?= $escape($csrfToken) ?>">
-              <input type="hidden" name="product_id" value="<?= (int) $selectedProductId ?>">
-              <div class="mm-form-guide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8h.01M11 12h1v4h1"/><circle cx="12" cy="12" r="9"/></svg><span>A consulta real acima serve apenas como referência. A publicação não copia ninguém automaticamente: preencha tudo manualmente.</span></div>
-              <div class="mm-toggle-row"><div class="mm-toggle-copy"><strong>Ativar publicação de hoje</strong><span>Quando ativado, os dois destaques aparecem abaixo da ação até 23:59.</span><span class="mm-expiry-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Desativa e zera automaticamente às 00:00</span></div><label class="mm-switch"><input id="mm-enabled" type="checkbox" name="enabled" value="1" <?= $isEnabled ? 'checked' : '' ?>><span></span></label></div>
+              <div class="mm-form-guide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8h.01M11 12h1v4h1"/><circle cx="12" cy="12" r="9"/></svg><span>Estes dados ficam guardados ao trocar para o modo Real. Quando voltar ao Manual, estarão prontos para uso.</span></div>
               <div class="mm-pair">
                 <fieldset class="mm-fieldset"><legend>Menor Cota</legend><div class="mm-field"><label for="mm-minor-name">Nome exibido</label><input id="mm-minor-name" type="text" name="minor_name" maxlength="120" value="<?= $escape($minorName) ?>" placeholder="Ex.: Maicon"></div><div class="mm-field"><label for="mm-minor-ticket">Cota exibida</label><input id="mm-minor-ticket" type="text" name="minor_ticket" maxlength="80" value="<?= $escape($minorTicket) ?>" placeholder="Ex.: 0000195"></div></fieldset>
                 <fieldset class="mm-fieldset"><legend>Maior Cota</legend><div class="mm-field"><label for="mm-major-name">Nome exibido</label><input id="mm-major-name" type="text" name="major_name" maxlength="120" value="<?= $escape($majorName) ?>" placeholder="Ex.: Lucas"></div><div class="mm-field"><label for="mm-major-ticket">Cota exibida</label><input id="mm-major-ticket" type="text" name="major_ticket" maxlength="80" value="<?= $escape($majorTicket) ?>" placeholder="Ex.: 1999842"></div></fieldset>
               </div>
               <p class="mm-help">Os campos aceitam texto livre. Confira a prévia ao lado antes de salvar.</p>
-              <button id="mm-save-button" class="mm-save" type="submit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span id="mm-save-label"><?= $isEnabled ? 'Salvar publicação de hoje' : 'Salvar configuração desativada' ?></span></button>
-            </form>
+              <button id="mm-save-button" class="mm-save mm-manual-save" type="submit" <?= $activeMode === 'manual' ? '' : 'hidden' ?>><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span id="mm-save-label">Salvar e publicar modo Manual</span></button>
           </div>
         </section>
 
         <aside class="mm-card">
-          <header class="mm-card-head"><span class="mm-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.8"/></svg></span><div><span class="mm-card-head__step">Prévia antes de salvar</span><h3>Confira como ficará</h3><p>O bloco público seguirá exatamente os textos digitados.</p></div></header>
+          <header class="mm-card-head"><span class="mm-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.8"/></svg></span><div><span class="mm-card-head__step">Prévia antes de salvar</span><h3>Confira como ficará</h3><p id="mm-preview-copy"><?= $activeMode === 'real' ? 'A prévia acompanha os resultados reais do período.' : 'A prévia acompanha os textos digitados manualmente.' ?></p></div></header>
           <div class="mm-preview-wrap">
             <p class="mm-preview-label">Visualização pública</p>
             <div class="mm-preview">
@@ -266,10 +307,11 @@ $consultEndValue = $consultNow->setTime(23, 59)->format('Y-m-d\TH:i');
               </div>
               <div id="mm-preview-state" class="mm-preview-off"><?= $isEnabled ? 'Este bloco está publicado.' : 'Prévia visível somente no painel enquanto a exibição estiver desativada.' ?></div>
             </div>
-            <div class="mm-note"><strong>Importante:</strong> os campos publicados são independentes da consulta ao vivo. Nenhum resultado real é copiado automaticamente e nada interfere no sorteio.</div>
+            <div id="mm-preview-note" class="mm-note"><strong>Importante:</strong> <?= $activeMode === 'real' ? 'no modo Real, esta mesma aparência recebe automaticamente os pedidos pagos do período salvo.' : 'no modo Manual, o bloco segue exatamente os nomes e cotas digitados. A consulta real permanece guardada separadamente.' ?> Nada interfere no sorteio.</div>
           </div>
         </aside>
       </div>
+      </form>
     <?php endif; ?>
   </div>
 </main>
@@ -287,26 +329,79 @@ document.addEventListener('DOMContentLoaded', function () {
     ['mm-major-name', 'preview-major-name', 'Nome exibido'],
     ['mm-major-ticket', 'preview-major-ticket', '0000000']
   ];
-  bindings.forEach(function (binding) {
-    var input = document.getElementById(binding[0]);
-    var output = document.getElementById(binding[1]);
-    if (!input || !output) return;
-    input.addEventListener('input', function () { output.textContent = input.value.trim() || binding[2]; });
-  });
-
   var enabled = document.getElementById('mm-enabled');
   var state = document.getElementById('mm-preview-state');
   var pageStatus = document.getElementById('mm-page-status');
   var saveLabel = document.getElementById('mm-save-label');
   var previewBadge = document.getElementById('mm-preview-badge');
-  if (enabled) enabled.addEventListener('change', function () {
-    state.textContent = enabled.checked ? 'Será publicado para hoje depois que você salvar.' : 'Continuará somente como prévia e não aparecerá no site.';
-    pageStatus.textContent = enabled.checked ? 'Pronto para ativar hoje' : 'Desativado';
-    saveLabel.textContent = enabled.checked ? 'Salvar e publicar até 23:59' : 'Salvar configuração desativada';
+  var publishTitle = document.getElementById('mm-publish-title');
+  var previewNote = document.getElementById('mm-preview-note');
+  var previewCopy = document.getElementById('mm-preview-copy');
+  var liveHelp = document.getElementById('mm-live-help');
+  var realCard = document.getElementById('mm-real-card');
+  var manualCard = document.getElementById('mm-manual-card');
+  var realSave = document.getElementById('mm-real-save');
+  var manualSave = document.getElementById('mm-save-button');
+  var modeRadios = Array.prototype.slice.call(document.querySelectorAll('input[name="mode"]'));
+  var liveEntries = {minor: null, major: null};
+
+  function selectedMode() {
+    var selected = modeRadios.find(function (radio) { return radio.checked; });
+    return selected ? selected.value : 'manual';
+  }
+
+  function previewValue(id, value, fallback) {
+    var target = document.getElementById(id);
+    if (target) target.textContent = value || fallback;
+  }
+
+  function renderManualPreview() {
+    bindings.forEach(function (binding) {
+      var input = document.getElementById(binding[0]);
+      previewValue(binding[1], input ? input.value.trim() : '', binding[2]);
+    });
+  }
+
+  function renderRealPreview() {
+    previewValue('preview-minor-name', liveEntries.minor && liveEntries.minor.name, 'Nenhuma cota encontrada');
+    previewValue('preview-minor-ticket', liveEntries.minor && liveEntries.minor.cota, '—');
+    previewValue('preview-major-name', liveEntries.major && liveEntries.major.name, 'Nenhuma cota encontrada');
+    previewValue('preview-major-ticket', liveEntries.major && liveEntries.major.cota, '—');
+  }
+
+  function syncModeUi() {
+    var mode = selectedMode();
+    var label = mode === 'real' ? 'Real' : 'Manual';
+    realCard.classList.toggle('mm-mode-inactive', mode !== 'real');
+    manualCard.classList.toggle('mm-mode-inactive', mode !== 'manual');
+    realSave.hidden = mode !== 'real';
+    manualSave.hidden = mode !== 'manual';
+    publishTitle.textContent = 'Ativar publicação do modo ' + label;
+    liveHelp.textContent = mode === 'real'
+      ? 'Este é o período do modo Real. Ao salvar, os resultados serão exibidos e atualizados automaticamente.'
+      : 'Esta consulta continua disponível como referência. Para exibi-la ao público, selecione o modo Real e salve.';
+    previewNote.innerHTML = '<strong>Importante:</strong> ' + (mode === 'real'
+      ? 'no modo Real, esta mesma aparência recebe automaticamente os pedidos pagos do período salvo.'
+      : 'no modo Manual, o bloco segue exatamente os nomes e cotas digitados. A consulta real permanece guardada separadamente.') + ' Nada interfere no sorteio.';
+    previewCopy.textContent = mode === 'real' ? 'A prévia acompanha os resultados reais do período.' : 'A prévia acompanha os textos digitados manualmente.';
+    if (mode === 'real') renderRealPreview(); else renderManualPreview();
+    state.textContent = enabled.checked ? 'O modo ' + label + ' será publicado depois que você salvar.' : 'Somente prévia. O bloco não aparecerá no site.';
+    pageStatus.textContent = enabled.checked ? 'Pronto • ' + label : 'Desativado';
     previewBadge.textContent = enabled.checked ? 'Pronto para publicar' : 'Somente prévia';
     previewBadge.classList.toggle('is-preview', !enabled.checked);
     pageStatus.classList.toggle('enabled', enabled.checked);
+    if (saveLabel) saveLabel.textContent = enabled.checked ? 'Salvar e publicar modo Manual' : 'Salvar modo Manual desativado';
+    var realSaveLabel = realSave.querySelector('span');
+    if (realSaveLabel) realSaveLabel.textContent = enabled.checked ? 'Salvar e publicar modo Real' : 'Salvar modo Real desativado';
+  }
+
+  bindings.forEach(function (binding) {
+    var input = document.getElementById(binding[0]);
+    if (!input) return;
+    input.addEventListener('input', function () { if (selectedMode() === 'manual') renderManualPreview(); });
   });
+  modeRadios.forEach(function (radio) { radio.addEventListener('change', syncModeUi); });
+  if (enabled) enabled.addEventListener('change', syncModeUi);
 
   var liveEndpoint = <?= json_encode(BASE_URL . 'class/Main.php?action=major_minor_ticket_consult', JSON_UNESCAPED_SLASHES) ?>;
   var lookupEndpoint = <?= json_encode(BASE_URL . 'class/Main.php?action=major_minor_ticket_lookup', JSON_UNESCAPED_SLASHES) ?>;
@@ -376,6 +471,9 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!data || data.status !== 'success') throw new Error(data && (data.msg || data.error) ? (data.msg || data.error) : 'Não foi possível consultar agora.');
       renderLiveEntry('minor', data.minor);
       renderLiveEntry('major', data.major);
+      liveEntries.minor = data.minor || null;
+      liveEntries.major = data.major || null;
+      if (selectedMode() === 'real') renderRealPreview();
       liveSummary.textContent = data.summary.orders + ' pedidos pagos • ' + data.summary.numbers + ' cotas analisadas • atualizado em ' + data.summary.updated_at;
       liveMessage.textContent = data.msg || '';
       setLiveState('Ao vivo', 'ready');
@@ -449,6 +547,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
   lookupButton.addEventListener('click', lookupTicket);
+  syncModeUi();
   loadLiveConsultation();
   var pageDate = <?= json_encode($todayDate) ?>;
   function browserDateKey() {

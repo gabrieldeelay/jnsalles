@@ -1722,48 +1722,36 @@ class Main extends DBConnection
         return json_encode($this->biggest_buyer_snapshot($productId), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
-    public function major_minor_ticket_consult()
+    private function major_minor_ticket_calculate($productId, $startInput, $endInput)
     {
-        if (!$this->biggest_buyer_authorized()) {
-            http_response_code(403);
-            return json_encode(['status' => 'failed', 'msg' => 'Não autorizado.'], JSON_UNESCAPED_UNICODE);
-        }
-
-        $storedToken = (string) ($_SESSION['major_minor_ticket_csrf'] ?? '');
-        $receivedToken = (string) ($_POST['csrf_token'] ?? '');
-        if ($storedToken === '' || $receivedToken === '' || !hash_equals($storedToken, $receivedToken)) {
-            http_response_code(403);
-            return json_encode(['status' => 'failed', 'msg' => 'Sessão inválida. Atualize a página.'], JSON_UNESCAPED_UNICODE);
-        }
-
-        $productId = (int) ($_POST['product_id'] ?? 0);
-        $startInput = trim((string) ($_POST['start_at'] ?? ''));
-        $endInput = trim((string) ($_POST['end_at'] ?? ''));
+        $productId = (int) $productId;
+        $startInput = trim((string) $startInput);
+        $endInput = trim((string) $endInput);
         if ($productId <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $startInput) || !preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $endInput)) {
-            return json_encode(['status' => 'failed', 'msg' => 'Confira a campanha e o período informado.'], JSON_UNESCAPED_UNICODE);
+            return ['status' => 'failed', 'msg' => 'Confira a campanha e o período informado.'];
         }
 
         $timezone = new DateTimeZone('America/Sao_Paulo');
         $startAt = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $startInput, $timezone);
         $endAt = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $endInput, $timezone);
         if (!$startAt || !$endAt || $startAt->format('Y-m-d\TH:i') !== $startInput || $endAt->format('Y-m-d\TH:i') !== $endInput || $endAt < $startAt) {
-            return json_encode(['status' => 'failed', 'msg' => 'A data final precisa ser posterior à data inicial.'], JSON_UNESCAPED_UNICODE);
+            return ['status' => 'failed', 'msg' => 'A data final precisa ser posterior à data inicial.'];
         }
 
         $productStatement = $this->conn->prepare('SELECT qty_numbers FROM product_list WHERE id = ? AND delete_flag = 0 LIMIT 1');
         if (!$productStatement) {
-            return json_encode(['status' => 'failed', 'msg' => 'Não foi possível consultar a campanha agora.'], JSON_UNESCAPED_UNICODE);
+            return ['status' => 'failed', 'msg' => 'Não foi possível consultar a campanha agora.'];
         }
         $productStatement->bind_param('i', $productId);
         $productStatement->execute();
         $product = $productStatement->get_result()->fetch_assoc();
         $productStatement->close();
         if (!$product) {
-            return json_encode(['status' => 'failed', 'msg' => 'Campanha não encontrada.'], JSON_UNESCAPED_UNICODE);
+            return ['status' => 'failed', 'msg' => 'Campanha não encontrada.'];
         }
 
         $startSql = $startAt->format('Y-m-d H:i:s');
-        $endSql = $endAt->format('Y-m-d H:i:s');
+        $endSql = $endAt->modify('+59 seconds')->format('Y-m-d H:i:s');
         $statement = $this->conn->prepare(
             'SELECT o.id, o.order_numbers, o.date_created, c.firstname, c.lastname '
             . 'FROM order_list o LEFT JOIN customer_list c ON c.id = o.customer_id '
@@ -1771,7 +1759,7 @@ class Main extends DBConnection
             . 'ORDER BY o.date_created DESC, o.id DESC'
         );
         if (!$statement) {
-            return json_encode(['status' => 'failed', 'msg' => 'Não foi possível consultar os pedidos agora.'], JSON_UNESCAPED_UNICODE);
+            return ['status' => 'failed', 'msg' => 'Não foi possível consultar os pedidos agora.'];
         }
         $statement->bind_param('iss', $productId, $startSql, $endSql);
         $statement->execute();
@@ -1816,7 +1804,7 @@ class Main extends DBConnection
             unset($major['numeric']);
         }
 
-        return json_encode([
+        return [
             'status' => 'success',
             'minor' => $minor,
             'major' => $major,
@@ -1826,7 +1814,109 @@ class Main extends DBConnection
                 'updated_at' => date('d/m/Y') . ' às ' . date('H:i:s'),
             ],
             'msg' => $numberCount > 0 ? '' : 'Nenhuma cota de pedido pago foi encontrada neste período.',
+        ];
+    }
+
+    public function major_minor_ticket_public_state()
+    {
+        $productId = (int) ($_GET['product_id'] ?? 0);
+        if ($productId <= 0) {
+            return json_encode(['status' => 'failed', 'enabled' => false], JSON_UNESCAPED_UNICODE);
+        }
+
+        $settingKey = 'major_minor_ticket_' . $productId;
+        $statement = $this->conn->prepare('SELECT meta_value FROM system_info WHERE meta_field = ? ORDER BY id DESC LIMIT 1');
+        if (!$statement) {
+            return json_encode(['status' => 'failed', 'enabled' => false], JSON_UNESCAPED_UNICODE);
+        }
+        $statement->bind_param('s', $settingKey);
+        $statement->execute();
+        $row = $statement->get_result()->fetch_assoc();
+        $statement->close();
+
+        $timezone = new DateTimeZone('America/Sao_Paulo');
+        $now = new DateTimeImmutable('now', $timezone);
+        $today = $now->format('Y-m-d');
+        $default = [
+            'enabled' => false,
+            'mode' => 'manual',
+            'manual' => [
+                'minor' => ['name' => '', 'ticket' => ''],
+                'major' => ['name' => '', 'ticket' => ''],
+            ],
+            'real' => [
+                'start_at' => $now->setTime(0, 0)->format('Y-m-d\TH:i'),
+                'end_at' => $now->setTime(23, 59)->format('Y-m-d\TH:i'),
+            ],
+            'active_date' => '',
+        ];
+        $stored = json_decode((string) ($row['meta_value'] ?? ''), true);
+        $config = is_array($stored) ? array_replace_recursive($default, $stored) : $default;
+        if (isset($stored['minor']) || isset($stored['major'])) {
+            $config['manual']['minor'] = array_replace($default['manual']['minor'], (array) ($stored['minor'] ?? []));
+            $config['manual']['major'] = array_replace($default['manual']['major'], (array) ($stored['major'] ?? []));
+        }
+        $mode = in_array((string) ($config['mode'] ?? ''), ['real', 'manual'], true) ? (string) $config['mode'] : 'manual';
+        if (empty($config['enabled']) || (string) ($config['active_date'] ?? '') !== $today) {
+            return json_encode(['status' => 'success', 'enabled' => false, 'mode' => $mode], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
+        if ($mode === 'real') {
+            $calculated = $this->major_minor_ticket_calculate(
+                $productId,
+                (string) ($config['real']['start_at'] ?? ''),
+                (string) ($config['real']['end_at'] ?? '')
+            );
+            if (($calculated['status'] ?? '') !== 'success') {
+                return json_encode(['status' => 'success', 'enabled' => false, 'mode' => 'real'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+            $minor = $calculated['minor'] ?? null;
+            $major = $calculated['major'] ?? null;
+        } else {
+            $minor = [
+                'name' => trim((string) ($config['manual']['minor']['name'] ?? '')),
+                'cota' => trim((string) ($config['manual']['minor']['ticket'] ?? '')),
+            ];
+            $major = [
+                'name' => trim((string) ($config['manual']['major']['name'] ?? '')),
+                'cota' => trim((string) ($config['manual']['major']['ticket'] ?? '')),
+            ];
+        }
+
+        $hasBoth = is_array($minor) && is_array($major)
+            && trim((string) ($minor['name'] ?? '')) !== ''
+            && trim((string) ($minor['cota'] ?? '')) !== ''
+            && trim((string) ($major['name'] ?? '')) !== ''
+            && trim((string) ($major['cota'] ?? '')) !== '';
+        return json_encode([
+            'status' => 'success',
+            'enabled' => $hasBoth,
+            'mode' => $mode,
+            'minor' => $hasBoth ? ['name' => (string) $minor['name'], 'cota' => (string) $minor['cota']] : null,
+            'major' => $hasBoth ? ['name' => (string) $major['name'], 'cota' => (string) $major['cota']] : null,
+            'updated_at' => (string) ($config['updated_at'] ?? ''),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    public function major_minor_ticket_consult()
+    {
+        if (!$this->biggest_buyer_authorized()) {
+            http_response_code(403);
+            return json_encode(['status' => 'failed', 'msg' => 'Não autorizado.'], JSON_UNESCAPED_UNICODE);
+        }
+
+        $storedToken = (string) ($_SESSION['major_minor_ticket_csrf'] ?? '');
+        $receivedToken = (string) ($_POST['csrf_token'] ?? '');
+        if ($storedToken === '' || $receivedToken === '' || !hash_equals($storedToken, $receivedToken)) {
+            http_response_code(403);
+            return json_encode(['status' => 'failed', 'msg' => 'Sessão inválida. Atualize a página.'], JSON_UNESCAPED_UNICODE);
+        }
+
+        return json_encode($this->major_minor_ticket_calculate(
+            (int) ($_POST['product_id'] ?? 0),
+            (string) ($_POST['start_at'] ?? ''),
+            (string) ($_POST['end_at'] ?? '')
+        ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
     public function major_minor_ticket_lookup()
@@ -7624,6 +7714,11 @@ switch ($action) {
     case "major_minor_ticket_consult":
         header('Content-Type: application/json; charset=UTF-8');
         echo $Main->major_minor_ticket_consult();
+        break;
+    case "major_minor_ticket_public_state":
+        header('Content-Type: application/json; charset=UTF-8');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        echo $Main->major_minor_ticket_public_state();
         break;
     case "major_minor_ticket_lookup":
         header('Content-Type: application/json; charset=UTF-8');
