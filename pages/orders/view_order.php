@@ -1168,18 +1168,21 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
                             <?= number_format($total_amount, 2, ',', '.') ?>
                         </div>
                     </div>
-                    <div class="item  align-items-baseline container">
-                        <?php if ($type_of_draw == 1 && $status == 1 && $enable_hide_numbers == 1) {
-                            echo ' <div style="margin-left:-12px" class="title font-weight-500 me-1">                       <i class="bi me-1 bi-card-list"></i> 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                               Cotas:</div>';
-                        } ?>
+                    <div class="item align-items-baseline container">
+                        <?php if ($status == 2) { ?>
+                            <div style="margin-left:-12px" class="title font-weight-500 me-1">
+                                <i class="bi me-1 bi-card-list"></i>
+                                Cotas adquiridas:
+                            </div>
+                        <?php } ?>
                         <div class="result font-xs  row" data-nosnippet="true" style="overflow:hidden; gap:4px;">
                             <?php
-                            if ($type_of_draw > 2) {
+                            if ($status == 1) {
+                                echo '<p class="alert alert-info p-2 mt-2 font-xss" style="text-align:justify;margin-bottom:.5rem!important"><i class="bi bi-lock-fill me-1"></i> Suas cotas ficam protegidas e serão exibidas aqui somente após a confirmação do pagamento.</p>';
+                            } elseif ($status == 3) {
+                                echo '<p class="alert alert-warning p-2 mt-2 font-xss" style="text-align:justify;margin-bottom:.5rem!important">Este pedido foi cancelado e não possui cotas confirmadas.</p>';
+                            } elseif ($type_of_draw > 2) {
                                 echo leowp_format_luck_numbers($my_numbers, $row['qty_numbers'], $class = 'alert-success', $opt = true, $type_of_draw);
-                            } elseif ($type_of_draw == 1 && $status == 1 && $enable_hide_numbers == 1) {
-                                echo '            <p class="alert alert-warning p-2 mt-2 font-xss" style="text-align: justify; margin-bottom:0.5rem !important">As cotas serão geradas após o pagamento.</p>
-       ';
                             } else {
                                 echo leowp_format_luck_numbers($sliced_numbers, $row['qty_numbers'], $class = 'alert-success ', $opt = true, $type_of_draw);
 

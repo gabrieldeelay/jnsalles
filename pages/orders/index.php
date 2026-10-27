@@ -64,11 +64,11 @@ while ($row = $orders->fetch_assoc()) {
 		$nCollection = explode(',', $row['order_numbers']);
 		$qty_nums = count($nCollection);
 
-		if (1 < $type_of_draw) {
-			echo drope_format_luck_numbers_dashboard($row['order_numbers'], $row['qty_numbers'], $class, $opt = true, $type_of_draw);
+		if ($status != 2) {
+			echo '<i class="bi bi-lock-fill me-1"></i> Cotas liberadas após a confirmação do pagamento.';
 		}
-		else if (($type_of_draw == 1) && $status == 1 && $enable_hide_numbers == 1) {
-			echo 'As cotas serão geradas após o pagamento.';
+		else if (1 < $type_of_draw) {
+			echo drope_format_luck_numbers_dashboard($row['order_numbers'], $row['qty_numbers'], $class, $opt = true, $type_of_draw);
 		}
 		else {
 			echo '<div class="drope-tab">' . "\r\n" . '                        <input id="drope-tab-' . $row['id'] . '" type="checkbox">' . "\r\n" . '                        <label for="drope-tab-' . $row['id'] . '">Ver números</label>' . "\r\n" . '                        <div class="drope-content">' . drope_format_luck_numbers_dashboard($row['order_numbers'], $row['quantity'], $class = false, $opt = true, $type_of_draw) . '</div>' . "\r\n" . '                        </div>';

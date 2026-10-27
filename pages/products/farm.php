@@ -967,7 +967,7 @@ if ($enable_cpf == 1) {
                         <h5 class="modal-title">Checkout</h5> <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body checkout">
-                        <div class="alert alert-info p-2 mb-2 font-xs"><i class="bi bi-check-circle"></i> Você está adquirindo<span class="font-weight-500">&nbsp;<span id="qty_cotas"></span> cotas</span><span>&nbsp;da ação entre amigos</span><span class="font-weight-500">&nbsp;<?= (isset($name) ? $name : '') ?></span>,<span>&nbsp;seus números serão gerados</span><span>&nbsp;assim que concluir a compra.</span></div>
+                        <div class="alert alert-info p-2 mb-2 font-xs"><i class="bi bi-check-circle"></i> Você está adquirindo<span class="font-weight-500">&nbsp;<span id="qty_cotas"></span> cotas</span><span>&nbsp;da ação entre amigos</span><span class="font-weight-500">&nbsp;<?= (isset($name) ? $name : '') ?></span>. <span>&nbsp;Por segurança, suas cotas serão exibidas somente após a confirmação do pagamento.</span></div>
                         <div class="mb-3">
                             <div class="card app-card">
                                 <div class="card-body">

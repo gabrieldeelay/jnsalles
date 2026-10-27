@@ -78,11 +78,14 @@ if ($phoneQuery && 0 < $phoneQuery->num_rows) {
 			$qty_nums = count($nCollection);
 			$type_of_draw = $orderRow['type_of_draw'];
 
-			if (1 < $type_of_draw) {
-				echo drope_format_luck_numbers_dashboard($orderRow['order_numbers'], $orderRow['qty_numbers'], $class, $opt = true, $type_of_draw);
+			if ($status == 1) {
+				echo '<i class="bi bi-lock-fill me-1"></i> Cotas liberadas após a confirmação do pagamento.';
 			}
-			else if (($type_of_draw == 1) && ($status == 1) || $status == 3 && $enable_hide_numbers == 1) {
-				echo 'As cotas serão geradas após o pagamento.';
+			else if ($status == 3) {
+				echo 'Este pedido foi cancelado e não possui cotas confirmadas.';
+			}
+			else if (1 < $type_of_draw) {
+				echo drope_format_luck_numbers_dashboard($orderRow['order_numbers'], $orderRow['qty_numbers'], $class, $opt = true, $type_of_draw);
 			}
 			else {
 				echo '<div class="drope-tab">' . "\r\n" . '                  <input id="drope-tab-' . $orderRow['id'] . '" type="checkbox">' . "\r\n" . '                  <label for="drope-tab-' . $orderRow['id'] . '">Ver números</label>' . "\r\n" . '                  <div class="drope-content">' . drope_format_luck_numbers_dashboard($orderRow['order_numbers'], $orderRow['quantity'], $class = false, $opt = true, $type_of_draw) . '</div>' . "\r\n" . '                 </div>';
