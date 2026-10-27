@@ -1836,10 +1836,9 @@ class Main extends DBConnection
 
         $timezone = new DateTimeZone('America/Sao_Paulo');
         $now = new DateTimeImmutable('now', $timezone);
-        $today = $now->format('Y-m-d');
         $default = [
             'enabled' => false,
-            'mode' => 'manual',
+            'sources' => ['minor' => 'manual', 'major' => 'manual'],
             'manual' => [
                 'minor' => ['name' => '', 'ticket' => ''],
                 'major' => ['name' => '', 'ticket' => ''],
@@ -1848,7 +1847,6 @@ class Main extends DBConnection
                 'start_at' => $now->setTime(0, 0)->format('Y-m-d\TH:i'),
                 'end_at' => $now->setTime(23, 59)->format('Y-m-d\TH:i'),
             ],
-            'active_date' => '',
         ];
         $stored = json_decode((string) ($row['meta_value'] ?? ''), true);
         $config = is_array($stored) ? array_replace_recursive($default, $stored) : $default;
@@ -1856,44 +1854,52 @@ class Main extends DBConnection
             $config['manual']['minor'] = array_replace($default['manual']['minor'], (array) ($stored['minor'] ?? []));
             $config['manual']['major'] = array_replace($default['manual']['major'], (array) ($stored['major'] ?? []));
         }
-        $mode = in_array((string) ($config['mode'] ?? ''), ['real', 'manual'], true) ? (string) $config['mode'] : 'manual';
-        if (empty($config['enabled']) || (string) ($config['active_date'] ?? '') !== $today) {
-            return json_encode(['status' => 'success', 'enabled' => false, 'mode' => $mode], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if (!isset($stored['sources'])) {
+            $legacyMode = (string) ($stored['mode'] ?? 'manual');
+            $legacyMode = in_array($legacyMode, ['real', 'manual'], true) ? $legacyMode : 'manual';
+            $config['sources'] = ['minor' => $legacyMode, 'major' => $legacyMode];
+        }
+        $minorSource = in_array((string) ($config['sources']['minor'] ?? ''), ['real', 'manual'], true) ? (string) $config['sources']['minor'] : 'manual';
+        $majorSource = in_array((string) ($config['sources']['major'] ?? ''), ['real', 'manual'], true) ? (string) $config['sources']['major'] : 'manual';
+        if (empty($config['enabled'])) {
+            return json_encode(['status' => 'success', 'enabled' => false, 'sources' => ['minor' => $minorSource, 'major' => $majorSource]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
 
-        if ($mode === 'real') {
+        $calculated = null;
+        if ($minorSource === 'real' || $majorSource === 'real') {
             $calculated = $this->major_minor_ticket_calculate(
                 $productId,
                 (string) ($config['real']['start_at'] ?? ''),
                 (string) ($config['real']['end_at'] ?? '')
             );
             if (($calculated['status'] ?? '') !== 'success') {
-                return json_encode(['status' => 'success', 'enabled' => false, 'mode' => 'real'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                $calculated = ['minor' => null, 'major' => null];
             }
-            $minor = $calculated['minor'] ?? null;
-            $major = $calculated['major'] ?? null;
-        } else {
-            $minor = [
-                'name' => trim((string) ($config['manual']['minor']['name'] ?? '')),
-                'cota' => trim((string) ($config['manual']['minor']['ticket'] ?? '')),
-            ];
-            $major = [
-                'name' => trim((string) ($config['manual']['major']['name'] ?? '')),
-                'cota' => trim((string) ($config['manual']['major']['ticket'] ?? '')),
-            ];
         }
 
-        $hasBoth = is_array($minor) && is_array($major)
-            && trim((string) ($minor['name'] ?? '')) !== ''
-            && trim((string) ($minor['cota'] ?? '')) !== ''
-            && trim((string) ($major['name'] ?? '')) !== ''
-            && trim((string) ($major['cota'] ?? '')) !== '';
+        $manualMinor = [
+            'name' => trim((string) ($config['manual']['minor']['name'] ?? '')),
+            'cota' => trim((string) ($config['manual']['minor']['ticket'] ?? '')),
+        ];
+        $manualMajor = [
+            'name' => trim((string) ($config['manual']['major']['name'] ?? '')),
+            'cota' => trim((string) ($config['manual']['major']['ticket'] ?? '')),
+        ];
+        $emptyReal = ['name' => 'Aguardando pedido no período', 'cota' => '—'];
+        $emptyManual = ['name' => 'Aguardando configuração', 'cota' => '—'];
+        $minor = $minorSource === 'real'
+            ? (($calculated['minor'] ?? null) ?: $emptyReal)
+            : (($manualMinor['name'] !== '' && $manualMinor['cota'] !== '') ? $manualMinor : $emptyManual);
+        $major = $majorSource === 'real'
+            ? (($calculated['major'] ?? null) ?: $emptyReal)
+            : (($manualMajor['name'] !== '' && $manualMajor['cota'] !== '') ? $manualMajor : $emptyManual);
+
         return json_encode([
             'status' => 'success',
-            'enabled' => $hasBoth,
-            'mode' => $mode,
-            'minor' => $hasBoth ? ['name' => (string) $minor['name'], 'cota' => (string) $minor['cota']] : null,
-            'major' => $hasBoth ? ['name' => (string) $major['name'], 'cota' => (string) $major['cota']] : null,
+            'enabled' => true,
+            'sources' => ['minor' => $minorSource, 'major' => $majorSource],
+            'minor' => ['name' => (string) $minor['name'], 'cota' => (string) $minor['cota']],
+            'major' => ['name' => (string) $major['name'], 'cota' => (string) $major['cota']],
             'updated_at' => (string) ($config['updated_at'] ?? ''),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }

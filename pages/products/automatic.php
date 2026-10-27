@@ -49,13 +49,12 @@ $rankingWindowUsesReset = $rankingTimerHasPeriod && $rankingTimer['uses_reset'];
 
 $majorMinorDefault = [
     'enabled' => false,
-    'mode' => 'manual',
+    'sources' => ['minor' => 'manual', 'major' => 'manual'],
     'manual' => [
         'minor' => ['name' => '', 'ticket' => ''],
         'major' => ['name' => '', 'ticket' => ''],
     ],
     'real' => ['start_at' => '', 'end_at' => ''],
-    'active_date' => '',
 ];
 $majorMinorKey = 'major_minor_ticket_' . (int) $id;
 $majorMinorStored = json_decode((string) $_settings->info($majorMinorKey), true);
@@ -66,44 +65,18 @@ if (isset($majorMinorStored['minor']) || isset($majorMinorStored['major'])) {
     $majorMinorConfig['manual']['minor'] = array_replace($majorMinorDefault['manual']['minor'], (array) ($majorMinorStored['minor'] ?? []));
     $majorMinorConfig['manual']['major'] = array_replace($majorMinorDefault['manual']['major'], (array) ($majorMinorStored['major'] ?? []));
 }
-$majorMinorTimezone = new DateTimeZone('America/Sao_Paulo');
-$majorMinorNow = new DateTimeImmutable('now', $majorMinorTimezone);
-$majorMinorToday = $majorMinorNow->format('Y-m-d');
-$majorMinorHasData = !empty($majorMinorConfig['enabled'])
-    || trim((string) ($majorMinorConfig['manual']['minor']['name'] ?? '')) !== ''
-    || trim((string) ($majorMinorConfig['manual']['minor']['ticket'] ?? '')) !== ''
-    || trim((string) ($majorMinorConfig['manual']['major']['name'] ?? '')) !== ''
-    || trim((string) ($majorMinorConfig['manual']['major']['ticket'] ?? '')) !== '';
-if ((string) ($majorMinorConfig['active_date'] ?? '') !== $majorMinorToday && $majorMinorHasData) {
-    $majorMinorConfig = array_replace_recursive($majorMinorDefault, [
-        'active_date' => $majorMinorToday,
-        'updated_at' => $majorMinorNow->format('Y-m-d H:i:s'),
-    ]);
-    $majorMinorEncoded = json_encode($majorMinorConfig, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    $majorMinorReset = $conn->prepare('UPDATE system_info SET meta_value = ? WHERE meta_field = ?');
-    if ($majorMinorReset) {
-        $majorMinorReset->bind_param('ss', $majorMinorEncoded, $majorMinorKey);
-        if ($majorMinorReset->execute()) {
-            $_settings->set_info($majorMinorKey, $majorMinorEncoded);
-        }
-        $majorMinorReset->close();
-    }
+if (!isset($majorMinorStored['sources'])) {
+    $legacyMode = (string) ($majorMinorStored['mode'] ?? 'manual');
+    $legacyMode = in_array($legacyMode, ['real', 'manual'], true) ? $legacyMode : 'manual';
+    $majorMinorConfig['sources'] = ['minor' => $legacyMode, 'major' => $legacyMode];
 }
-$majorMinorMode = in_array((string) ($majorMinorConfig['mode'] ?? ''), ['real', 'manual'], true)
-    ? (string) $majorMinorConfig['mode']
-    : 'manual';
-$majorMinorMinorName = $majorMinorMode === 'manual' ? trim((string) ($majorMinorConfig['manual']['minor']['name'] ?? '')) : '';
-$majorMinorMinorTicket = $majorMinorMode === 'manual' ? trim((string) ($majorMinorConfig['manual']['minor']['ticket'] ?? '')) : '';
-$majorMinorMajorName = $majorMinorMode === 'manual' ? trim((string) ($majorMinorConfig['manual']['major']['name'] ?? '')) : '';
-$majorMinorMajorTicket = $majorMinorMode === 'manual' ? trim((string) ($majorMinorConfig['manual']['major']['ticket'] ?? '')) : '';
-$majorMinorExpiresAt = (new DateTimeImmutable($majorMinorToday . ' 00:00:00', $majorMinorTimezone))->modify('+1 day')->getTimestamp() * 1000;
-$showMajorMinor = !empty($majorMinorConfig['enabled'])
-    && $majorMinorMode === 'manual'
-    && (string) ($majorMinorConfig['active_date'] ?? '') === $majorMinorToday
-    && $majorMinorMinorName !== ''
-    && $majorMinorMinorTicket !== ''
-    && $majorMinorMajorName !== ''
-    && $majorMinorMajorTicket !== '';
+$majorMinorMinorSource = in_array((string) ($majorMinorConfig['sources']['minor'] ?? ''), ['real', 'manual'], true) ? (string) $majorMinorConfig['sources']['minor'] : 'manual';
+$majorMinorMajorSource = in_array((string) ($majorMinorConfig['sources']['major'] ?? ''), ['real', 'manual'], true) ? (string) $majorMinorConfig['sources']['major'] : 'manual';
+$majorMinorMinorName = $majorMinorMinorSource === 'manual' ? trim((string) ($majorMinorConfig['manual']['minor']['name'] ?? '')) : 'Aguardando pedido no período';
+$majorMinorMinorTicket = $majorMinorMinorSource === 'manual' ? trim((string) ($majorMinorConfig['manual']['minor']['ticket'] ?? '')) : '—';
+$majorMinorMajorName = $majorMinorMajorSource === 'manual' ? trim((string) ($majorMinorConfig['manual']['major']['name'] ?? '')) : 'Aguardando pedido no período';
+$majorMinorMajorTicket = $majorMinorMajorSource === 'manual' ? trim((string) ($majorMinorConfig['manual']['major']['ticket'] ?? '')) : '—';
+$showMajorMinor = !empty($majorMinorConfig['enabled']);
 
 $max_discount = 0;
 if ($available < $min_purchase) {
@@ -1824,7 +1797,7 @@ if ($available > 0 && $status == '1') {
 
                                         ?>
 
-            <section id="manual-ticket-spotlight" class="manual-ticket-spotlight <?= $showMajorMinor ? '' : 'hidden' ?>" data-expires-at="<?= (int) $majorMinorExpiresAt ?>" aria-label="Maior e menor cota em destaque">
+            <section id="manual-ticket-spotlight" class="manual-ticket-spotlight <?= $showMajorMinor ? '' : 'hidden' ?>" aria-label="Maior e menor cota em destaque">
                 <header class="manual-ticket-spotlight__head">
                     <div class="manual-ticket-spotlight__title">
                         <span class="manual-ticket-spotlight__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 0 2-2h12a2 2 0 0 0 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 0-2 2H6a2 2 0 0 0-2-2v-3a2 2 0 0 0 0-4V7Z"/><path d="M12 7v10"/></svg></span>
@@ -1879,8 +1852,6 @@ if ($available > 0 && $status == '1') {
                         .finally(function () { loading = false; });
                 }
 
-                var remaining = Number(highlight.getAttribute('data-expires-at')) - Date.now();
-                if (remaining > 0) window.setTimeout(function () { highlight.classList.add('hidden'); }, remaining);
                 refreshHighlight();
                 window.setInterval(refreshHighlight, 5000);
                 document.addEventListener('visibilitychange', function () { if (!document.hidden) refreshHighlight(); });
