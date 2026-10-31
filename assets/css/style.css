@@ -13962,6 +13962,14 @@ drope-tab .drope-content p {
   background: #f7f7f7;
 }
 
+.campaign-product-main {
+  max-width: 760px;
+}
+
+.campaign-product-main .campanha-header {
+  overflow: hidden;
+}
+
 .campanha-header .SorteioTpl_imagemContainer__2-pl4 .carousel,
 .campanha-header .SorteioTpl_imagemContainer__2-pl4 .carousel-inner {
   height: 100% !important;
@@ -13984,18 +13992,22 @@ drope-tab .drope-content p {
 }
 
 .custom-content-wrapper {
-  position: absolute;
-  bottom: 0;
+  position: static;
   width: 100%;
   z-index: 50;
   margin: 0 !important;
-  padding: 16px !important;
+  padding: 13px 15px !important;
+  background: #090909 !important;
 }
 
 .custom-content-wrapper-details {
-  padding: 18px 16px 0 !important;
-  background: linear-gradient(180deg, rgba(12, 14, 18, 0) 0%, rgba(12, 14, 18, 0.78) 32%, rgba(12, 14, 18, 0.98) 100%) !important;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 16px;
+  align-items: center;
+  padding: 13px 15px !important;
+  background: linear-gradient(135deg, #111 0%, #030303 100%) !important;
+  text-shadow: none;
 }
 
 .custom-content-wrapper-details h1,
@@ -14006,8 +14018,47 @@ drope-tab .drope-content p {
 
 .custom-content-wrapper-details h1 {
   margin-bottom: 3px !important;
+  color: #fff !important;
+  font-size: 1rem !important;
   font-weight: 700;
   line-height: 1.25;
+}
+
+.custom-content-wrapper-details p {
+  margin: 0 !important;
+  color: rgba(255, 255, 255, .7) !important;
+  font-size: .75rem !important;
+}
+
+.custom-content-wrapper-details .btn {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: auto !important;
+  min-width: 148px;
+  padding: 9px 13px !important;
+  border: 1px solid rgba(255, 255, 255, .15) !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, .09) !important;
+  font-weight: 700;
+}
+
+.campanha-header .custom-badge-display {
+  top: 14px !important;
+  bottom: auto !important;
+  left: 14px;
+}
+
+@media only screen and (max-width: 600px) {
+  .custom-content-wrapper-details {
+    grid-template-columns: 1fr;
+  }
+
+  .campaign-product-main .custom-content-wrapper-details .btn {
+    grid-column: 1;
+    grid-row: auto;
+    width: 100% !important;
+    margin-top: 7px;
+  }
 }
 
 .custom-content-wrapper-details p {
@@ -14017,15 +14068,13 @@ drope-tab .drope-content p {
 }
 
 .custom-content-wrapper-details .btn {
-  margin: 14px -16px 0;
-  width: calc(100% + 32px) !important;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
+  margin: 0;
+  width: auto !important;
   text-shadow: none;
 }
 
 .custom-content-wrapper h1 {
-  margin-bottom: 8px !important;
+  margin-bottom: 3px !important;
 }
 
 .custom-content-wrapper h1,

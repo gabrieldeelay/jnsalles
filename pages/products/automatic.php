@@ -841,11 +841,11 @@ echo '<div id="overlay">' .
     "\r\n" .
     '</style>' .
     "\r\n" .
-    '<div class="container app-main">' .
+    '<div class="container app-main campaign-product-main">' .
     "\r\n" .
     '   <div class="campanha-header SorteioTpl_sorteioTpl__2s2Wu SorteioTpl_destaque__3vnWR pointer custom-highlight-card">' .
     "\r\n" .
-    '   <div style="bottom: 87px !important; " class="custom-badge-display">' .
+    '   <div class="custom-badge-display">' .
     "\r\n" .
     '      ';
 
