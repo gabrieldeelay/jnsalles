@@ -13955,10 +13955,10 @@ drope-tab .drope-content p {
   z-index: 50;
 }
 
-/* Mantem as artes das campanhas proporcionais em todos os tipos de sorteio. */
+/* Mantem as artes internas das campanhas no formato horizontal usado pelos banners. */
 .campanha-header .SorteioTpl_imagemContainer__2-pl4 {
   height: auto !important;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 9;
   background: #f7f7f7;
 }
 
@@ -13970,7 +13970,7 @@ drope-tab .drope-content p {
 .campanha-header .carousel-inner .custom-image {
   width: 100%;
   height: auto !important;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   background: #f7f7f7;
 }
