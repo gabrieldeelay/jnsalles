@@ -366,7 +366,34 @@ function payment_http($method, $url, array $headers = [], $body = null, $certifi
     curl_setopt_array($curl, $options);
     $raw = curl_exec($curl);
     $error = curl_error($curl);
+    $errorCode = curl_errno($curl);
     $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+    // A hospedagem pode ficar temporariamente sem resolver DNS externo mesmo
+    // com o site no ar. Mantemos um fallback restrito ao host oficial da
+    // VenoPag; o certificado TLS continua sendo validado para o domínio.
+    $requestHost = strtolower((string) parse_url($url, PHP_URL_HOST));
+    if ($errorCode === CURLE_COULDNT_RESOLVE_HOST && $requestHost === 'venopagments.com') {
+        $configuredIps = trim((string) getenv('VENOPAG_RESOLVE_IPS'));
+        $resolveIps = $configuredIps !== ''
+            ? preg_split('/\s*,\s*/', $configuredIps, -1, PREG_SPLIT_NO_EMPTY)
+            : ['104.26.1.38', '104.26.0.38', '172.67.70.39'];
+        foreach ($resolveIps as $resolveIp) {
+            if (!filter_var($resolveIp, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                continue;
+            }
+            $responseHeaders = [];
+            curl_setopt($curl, CURLOPT_RESOLVE, ['venopagments.com:443:' . $resolveIp]);
+            $raw = curl_exec($curl);
+            $error = curl_error($curl);
+            $errorCode = curl_errno($curl);
+            $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+            if ($errorCode === 0 && $status > 0) {
+                error_log('[payments] venopag DNS fallback used');
+                break;
+            }
+        }
+    }
     curl_close($curl);
 
     $json = null;
