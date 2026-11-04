@@ -25,6 +25,41 @@ $result = $active ? payment_test_gateway($active) : [
     'msg' => 'Nenhum gateway unico esta ativo.',
 ];
 
+$probe = null;
+if ($active === 'venopag') {
+    $credentials = payment_venopag_credentials();
+    if (!empty($credentials['ok'])) {
+        $responseHeaders = [];
+        $curl = curl_init(payment_venopag_base_url() . '/api/consult-transaction?request_number=codex_connection_test');
+        curl_setopt_array($curl, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 3,
+            CURLOPT_CONNECTTIMEOUT => 7,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_HTTPHEADER => $credentials['headers'],
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_HEADERFUNCTION => function ($handle, $line) use (&$responseHeaders) {
+                $parts = explode(':', $line, 2);
+                if (count($parts) === 2) {
+                    $responseHeaders[strtolower(trim($parts[0]))] = trim($parts[1]);
+                }
+                return strlen($line);
+            },
+        ]);
+        $raw = curl_exec($curl);
+        $probe = [
+            'status' => (int) curl_getinfo($curl, CURLINFO_HTTP_CODE),
+            'content_type' => (string) curl_getinfo($curl, CURLINFO_CONTENT_TYPE),
+            'error' => curl_error($curl),
+            'app_error_code' => (int) ($responseHeaders['x-app-error-code'] ?? 0),
+            'body_prefix' => is_string($raw) ? mb_substr(trim(strip_tags($raw)), 0, 300) : '',
+        ];
+        curl_close($curl);
+    }
+}
+
 $paymentLogs = [];
 $errorLog = (string) ini_get('error_log');
 if ($errorLog !== '' && is_file($errorLog) && is_readable($errorLog)) {
@@ -42,6 +77,7 @@ echo json_encode([
     'active_provider' => $active,
     'enabled_providers' => $enabled,
     'gateway_test' => $result,
+    'provider_probe' => $probe,
     'runtime' => [
         'php' => PHP_VERSION,
         'curl' => extension_loaded('curl'),
