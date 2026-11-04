@@ -321,7 +321,11 @@ function payment_http($method, $url, array $headers = [], $body = null, $certifi
         }
         $lastError = error_get_last();
         $error = $raw === false ? (string) ($lastError['message'] ?? 'Falha de comunicação HTTP.') : '';
-        $json = is_string($raw) ? json_decode($raw, true) : null;
+        $json = null;
+        if (is_string($raw)) {
+            $normalizedRaw = preg_replace('/^\xEF\xBB\xBF/', '', trim($raw));
+            $json = json_decode($normalizedRaw, true);
+        }
         $ok = $error === '' && $status >= 200 && $status < 300;
         return ['ok' => $ok, 'status' => $status, 'json' => is_array($json) ? $json : [], 'headers' => $responseHeaders, 'error' => $error];
     }
@@ -338,6 +342,7 @@ function payment_http($method, $url, array $headers = [], $body = null, $certifi
         CURLOPT_HTTPHEADER => $headers,
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_ENCODING => '',
         CURLOPT_HEADERFUNCTION => function ($curlHandle, $headerLine) use (&$responseHeaders) {
             $length = strlen($headerLine);
             $parts = explode(':', $headerLine, 2);
@@ -364,7 +369,11 @@ function payment_http($method, $url, array $headers = [], $body = null, $certifi
     $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
     curl_close($curl);
 
-    $json = is_string($raw) ? json_decode($raw, true) : null;
+    $json = null;
+    if (is_string($raw)) {
+        $normalizedRaw = preg_replace('/^\xEF\xBB\xBF/', '', trim($raw));
+        $json = json_decode($normalizedRaw, true);
+    }
     $ok = $error === '' && $status >= 200 && $status < 300;
     return ['ok' => $ok, 'status' => $status, 'json' => is_array($json) ? $json : [], 'headers' => $responseHeaders, 'error' => $error];
 }
@@ -906,8 +915,11 @@ function payment_venopag_credentials()
         'headers' => [
             'X-Client-Id: ' . $clientId,
             'X-Client-Secret: ' . $clientSecret,
+            'Authorization: Basic ' . base64_encode($clientId . ':' . $clientSecret),
             'Accept: application/json',
+            'Accept-Encoding: identity',
             'Content-Type: application/json',
+            'User-Agent: JNSalles-Payment/1.0 (+https://jnsalles.online)',
         ],
     ];
 }
