@@ -33,7 +33,7 @@ header('Referrer-Policy: no-referrer');
       <?php foreach (['1º LUGAR', '2º LUGAR', '3º LUGAR'] as $index => $position): ?>
       <article class="ranking-item ranking-empty" data-position="<?= $index ?>">
         <strong class="ranking-position"><?= $position ?></strong>
-        <span class="ranking-name">AGUARDANDO PARTICIPANTE</span>
+        <span class="ranking-name">-</span>
         <span class="ranking-quantity">0<small>cotas</small></span>
       </article>
       <?php endforeach; ?>
@@ -59,7 +59,7 @@ header('Referrer-Policy: no-referrer');
         var name = row.querySelector('.ranking-name');
         var quantity = row.querySelector('.ranking-quantity');
         row.classList.toggle('ranking-empty', !entry);
-        name.textContent = entry ? String(entry.name || 'PARTICIPANTE').toUpperCase() : 'AGUARDANDO PARTICIPANTE';
+        name.textContent = entry ? String(entry.name || 'PARTICIPANTE').toUpperCase() : '-';
         quantity.firstChild.nodeValue = entry ? integer(entry.quantity) : '0';
       });
     }
