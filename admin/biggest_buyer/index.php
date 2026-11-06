@@ -8,30 +8,6 @@ if (empty($_SESSION['biggest_buyer_csrf'])) {
 }
 $csrfToken = (string) $_SESSION['biggest_buyer_csrf'];
 
-$overlayTokenField = 'biggest_buyer_overlay_token';
-$overlayToken = trim((string) $_settings->info($overlayTokenField));
-if (!preg_match('/^[a-f0-9]{64}$/', $overlayToken)) {
-    try {
-        $overlayToken = bin2hex(random_bytes(32));
-        $overlayStatement = $conn->prepare(
-            'INSERT INTO system_info (meta_field, meta_value) VALUES (?, ?) '
-            . 'ON DUPLICATE KEY UPDATE meta_value = VALUES(meta_value)'
-        );
-        if (!$overlayStatement) {
-            throw new RuntimeException('Não foi possível preparar o link do overlay.');
-        }
-        $overlayStatement->bind_param('ss', $overlayTokenField, $overlayToken);
-        if (!$overlayStatement->execute()) {
-            throw new RuntimeException('Não foi possível salvar o link do overlay.');
-        }
-        $overlayStatement->close();
-        $_SESSION['system_info'][$overlayTokenField] = $overlayToken;
-    } catch (Throwable $overlayError) {
-        error_log('[biggest-buyer] overlay token unavailable');
-        $overlayToken = '';
-    }
-}
-
 $products = [];
 $productsQuery = $conn->query(
     "SELECT p.id, p.name FROM product_list p "
@@ -41,6 +17,8 @@ $productsQuery = $conn->query(
 while ($productsQuery && ($product = $productsQuery->fetch_assoc())) {
     $products[] = $product;
 }
+$activeRankingProductId = ranking_active_product_id(array_column($products, 'id'));
+$activeCampaignProductId = campaign_active_product_id($conn, true);
 
 $customers = [];
 $customersQuery = $conn->query(
@@ -56,9 +34,15 @@ while ($customersQuery && ($customer = $customersQuery->fetch_assoc())) {
 }
 
 $storedAction = json_decode((string) $_settings->info('biggest_buyer_action'), true);
-$selectedProductId = isset($_GET['product_id']) ? (int) $_GET['product_id'] : 0;
+$hasRequestedProduct = isset($_GET['product_id']) && (int) $_GET['product_id'] > 0;
+$selectedProductId = $hasRequestedProduct ? (int) $_GET['product_id'] : 0;
+$preferredProductId = $hasRequestedProduct ? $selectedProductId : 0;
 if (is_array($storedAction) && ($storedAction['status'] ?? '') === 'active') {
     $selectedProductId = (int) ($storedAction['product_id'] ?? 0);
+    $preferredProductId = $selectedProductId;
+} elseif (!$hasRequestedProduct && ($activeCampaignProductId > 0 || $activeRankingProductId > 0)) {
+    $selectedProductId = $activeCampaignProductId > 0 ? $activeCampaignProductId : $activeRankingProductId;
+    $preferredProductId = $selectedProductId;
 }
 if ($selectedProductId <= 0 && $products) {
     $selectedProductId = (int) $products[0]['id'];
@@ -116,7 +100,7 @@ if ($selectedProductId <= 0 && $products) {
         </section>
 
         <section class="buyer-card">
-          <header class="buyer-card-head"><div class="buyer-card-title"><span class="buyer-card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4Z"></path><path d="M7 6H4v2a4 4 0 0 0 4 4M17 6h3v2a4 4 0 0 1-4 4"></path></svg></span><div><h3>Top 5</h3><p>Classificação atualizada a cada segundo.</p></div></div><div class="buyer-ranking-toolbar"><button id="buyer-open-ranking" class="buyer-secondary" type="button">Abrir Ranking</button><button id="buyer-copy-overlay" class="buyer-secondary buyer-copy-overlay" type="button" <?= $overlayToken === '' ? 'disabled' : '' ?> title="Copiar link para usar como fonte de navegador na live"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"></path><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"></path></svg><span>Copiar link do overlay</span></button></div></header>
+          <header class="buyer-card-head"><div class="buyer-card-title"><span class="buyer-card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4Z"></path><path d="M7 6H4v2a4 4 0 0 0 4 4M17 6h3v2a4 4 0 0 1-4 4"></path></svg></span><div><h3>Top 5</h3><p>Classificação atualizada a cada segundo.</p></div></div><div class="buyer-ranking-toolbar"><button id="buyer-open-ranking" class="buyer-secondary" type="button">Abrir Ranking</button><button id="buyer-copy-overlay" class="buyer-secondary buyer-copy-overlay" type="button" title="Copiar link fixo para usar como fonte de navegador na live"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"></path><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"></path></svg><span>Copiar link do overlay</span></button></div></header>
           <div id="buyer-ranking-list" class="buyer-ranking-list"><div class="buyer-empty">Carregando ranking...</div></div>
         </section>
 
@@ -135,7 +119,7 @@ if ($selectedProductId <= 0 && $products) {
 (function () {
   var endpoint = _base_url_ + 'class/Main.php?action=';
   var csrfToken = <?= json_encode($csrfToken) ?>;
-  var overlayToken = <?= json_encode($overlayToken) ?>;
+  var preferredProductId = <?= (int) $preferredProductId ?>;
   var preferenceKey = 'jnsalles.biggestBuyer.preferences.' + <?= json_encode((string) $_settings->userdata('id')) ?>;
   var customers = <?= json_encode($customers, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
   var product = document.getElementById('buyer-product');
@@ -193,7 +177,7 @@ if ($selectedProductId <= 0 && $products) {
   function nowDate() { return new Date(serverEpoch + (Date.now() - serverSyncedAt)); }
   function showFeedback(message, type) { feedback.textContent = message || ''; feedback.className = 'buyer-feedback' + (message ? ' ' + type : ''); }
   function showToast(message, type) { var toast = document.createElement('div'); toast.className = 'buyer-toast ' + (type || ''); toast.textContent = message; toastStack.appendChild(toast); window.setTimeout(function () { toast.classList.add('leaving'); window.setTimeout(function () { toast.remove(); }, 220); }, 4600); }
-  function overlayUrl() { var base = String(_base_url_ || '/'); if (!base.endsWith('/')) base += '/'; return base + 'ranking-overlay.php?token=' + encodeURIComponent(overlayToken) + '&product_id=' + encodeURIComponent(product.value || '0'); }
+  function overlayUrl() { var base = String(_base_url_ || '/'); if (!base.endsWith('/')) base += '/'; return base + 'overlay/'; }
   function copyText(value) { if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(value); return new Promise(function (resolve, reject) { var area = document.createElement('textarea'); area.value = value; area.setAttribute('readonly', ''); area.style.position = 'fixed'; area.style.opacity = '0'; document.body.appendChild(area); area.select(); try { if (!document.execCommand('copy')) throw new Error('copy'); area.remove(); resolve(); } catch (error) { area.remove(); reject(error); } }); }
   function post(action, data) { data = data || new FormData(); data.set('csrf_token', csrfToken); return fetch(endpoint + action, {method:'POST', body:data, credentials:'same-origin'}).then(function (response) { return response.json(); }); }
   function statusLabel(status) { return status === 2 ? 'Pago' : (status === 1 ? 'Aguardando' : 'Cancelado'); }
@@ -219,8 +203,9 @@ if ($selectedProductId <= 0 && $products) {
     try { saved = JSON.parse(window.localStorage.getItem(preferenceKey) || 'null'); } catch (error) { saved = null; }
     if (!saved || typeof saved !== 'object') return;
     restoringPreferences = true;
+    var preferredProductExists = preferredProductId > 0 && Array.prototype.some.call(product.options, function (option) { return option.value === String(preferredProductId); });
     var savedProductExists = Array.prototype.some.call(product.options, function (option) { return option.value === String(saved.productId || ''); });
-    if (savedProductExists) product.value = String(saved.productId);
+    if (preferredProductExists) product.value = String(preferredProductId); else if (savedProductExists) product.value = String(saved.productId);
     if (Number(saved.durationSeconds) >= 60) setDurationChoice(Number(saved.durationSeconds));
     if (saved.marginMin !== undefined && saved.marginMin !== '') marginMinInput.value = String(saved.marginMin);
     if (saved.marginMax !== undefined && saved.marginMax !== '') marginMaxInput.value = String(saved.marginMax);
@@ -392,7 +377,7 @@ if ($selectedProductId <= 0 && $products) {
   stopButton.addEventListener('click', function () { var data = new FormData(); data.set('product_id', product.value || '0'); post('biggest_buyer_stop', data).then(function (state) { if (state.status !== 'success') throw new Error(state.msg || 'Não foi possível encerrar a ação.'); render(state); showFeedback('', ''); }).catch(function (error) { showFeedback(error.message || 'Não foi possível encerrar a ação.', 'error'); }); });
   product.addEventListener('change', function () { savePreferences(); fetch(endpoint + 'biggest_buyer_state&product_id=' + encodeURIComponent(product.value), {credentials:'same-origin'}).then(function (response) { return response.json(); }).then(render); });
   document.getElementById('buyer-open-ranking').addEventListener('click', function () { window.open('biggest_buyer/display.php?product_id=' + encodeURIComponent(product.value), 'jnsalles-ranking', 'popup=yes,width=980,height=760,resizable=yes,scrollbars=yes'); });
-  copyOverlayButton.addEventListener('click', function () { if (!overlayToken || !product.value) { showToast('Selecione uma campanha antes de copiar o overlay.', 'neutral'); return; } var label = copyOverlayButton.querySelector('span'); copyText(overlayUrl()).then(function () { copyOverlayButton.classList.add('copied'); label.textContent = 'Link copiado!'; showToast('Link do overlay copiado. Cole como fonte de navegador na sua live.', 'success'); window.setTimeout(function () { copyOverlayButton.classList.remove('copied'); label.textContent = 'Copiar link do overlay'; }, 2400); }).catch(function () { showToast('Não foi possível copiar automaticamente. Tente novamente.', 'neutral'); }); });
+  copyOverlayButton.addEventListener('click', function () { var label = copyOverlayButton.querySelector('span'); copyText(overlayUrl()).then(function () { copyOverlayButton.classList.add('copied'); label.textContent = 'Link copiado!'; showToast('Link fixo do overlay copiado. Cole como fonte de navegador na sua live.', 'success'); window.setTimeout(function () { copyOverlayButton.classList.remove('copied'); label.textContent = 'Copiar link do overlay'; }, 2400); }).catch(function () { showToast('Não foi possível copiar automaticamente. Tente novamente.', 'neutral'); }); });
   window.setInterval(function () { if (remainingSeconds > 0) { remainingSeconds -= 1; clockTime.textContent = formatClock(remainingSeconds); } updateTimes(); }, 1000);
   restorePreferences(); poll(); window.setInterval(poll, 1000);
 })();

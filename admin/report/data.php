@@ -46,7 +46,7 @@ if (!function_exists('jnsalles_report_filters')) {
         $paymentMethods = jnsalles_report_payment_methods();
         $timezone = new DateTimeZone('America/Sao_Paulo');
         $today = new DateTimeImmutable('today', $timezone);
-        $defaultStart = $today->modify('-6 days')->format('Y-m-d 00:00:00');
+        $defaultStart = $today->format('Y-m-d 00:00:00');
         $defaultEnd = $today->format('Y-m-d 23:59:59');
 
         $legacyStart = trim((string) ($source['start_date'] ?? ''));

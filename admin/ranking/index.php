@@ -10,6 +10,7 @@ $validTime = static function ($value, $fallback) {
     return preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', (string) $value) ? $value : $fallback;
 };
 
+$hasProductFilter = array_key_exists('raffle', $_GET);
 $productId = isset($_GET['raffle']) && ctype_digit((string) $_GET['raffle']) ? (int) $_GET['raffle'] : 0;
 $startDate = $validDate($_GET['start_date'] ?? '', date('Y-m-d', strtotime('-6 days')));
 $endDate = $validDate($_GET['end_date'] ?? '', date('Y-m-d'));
@@ -24,10 +25,17 @@ $productsQuery = $conn->query('SELECT id, name FROM product_list WHERE delete_fl
 while ($productsQuery && ($product = $productsQuery->fetch_assoc())) {
     $products[] = $product;
 }
+$activeCampaignProductId = campaign_active_product_id($conn);
+$activeRankingProductId = ranking_active_product_id(array_column($products, 'id'));
+$defaultProductId = $activeCampaignProductId > 0 ? $activeCampaignProductId : $activeRankingProductId;
+if (!$hasProductFilter && $defaultProductId > 0) {
+    $productId = $defaultProductId;
+}
 
-$timerProductId = isset($_GET['timer_product_id']) && ctype_digit((string) $_GET['timer_product_id'])
+$hasTimerProduct = isset($_GET['timer_product_id']) && ctype_digit((string) $_GET['timer_product_id']);
+$timerProductId = $hasTimerProduct
     ? (int) $_GET['timer_product_id']
-    : $productId;
+    : ($defaultProductId > 0 ? $defaultProductId : $productId);
 if ($timerProductId === 0 && count($products) === 1) {
     $timerProductId = (int) $products[0]['id'];
 }

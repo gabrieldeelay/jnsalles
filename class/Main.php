@@ -1430,6 +1430,25 @@ class Main extends DBConnection
         return $product ?: null;
     }
 
+    private function biggest_buyer_active_ranking_product_id()
+    {
+        $activeCampaignProductId = campaign_active_product_id($this->conn, true);
+        if ($activeCampaignProductId > 0) {
+            return $activeCampaignProductId;
+        }
+
+        $productIds = [];
+        $query = $this->conn->query(
+            "SELECT p.id FROM product_list p "
+            . "INNER JOIN system_info s ON s.meta_field = CONCAT('ranking_timer_', p.id, '_enabled') "
+            . "AND s.meta_value = '1' WHERE p.delete_flag = 0 ORDER BY p.id DESC"
+        );
+        while ($query && ($row = $query->fetch_assoc())) {
+            $productIds[] = (int) $row['id'];
+        }
+        return ranking_active_product_id($productIds);
+    }
+
     private function biggest_buyer_resolve_customer($customerId, $customerName)
     {
         $customerId = (int) $customerId;
@@ -1652,6 +1671,9 @@ class Main extends DBConnection
         $action = $action ?: $this->biggest_buyer_load_action();
         $productId = (int) ($action['status'] === 'active' ? $action['product_id'] : $requestedProductId);
         if ($productId <= 0) {
+            $productId = $this->biggest_buyer_active_ranking_product_id();
+        }
+        if ($productId <= 0) {
             $productId = (int) $action['product_id'];
         }
         $product = $productId > 0 ? $this->biggest_buyer_product($productId) : null;
@@ -1724,15 +1746,7 @@ class Main extends DBConnection
 
     public function biggest_buyer_overlay_state()
     {
-        $storedToken = trim((string) $this->settings->info('biggest_buyer_overlay_token'));
-        $providedToken = trim((string) ($_GET['token'] ?? ''));
-        if ($storedToken === '' || $providedToken === '' || !hash_equals($storedToken, $providedToken)) {
-            http_response_code(404);
-            return json_encode(['status' => 'failed']);
-        }
-
-        $productId = (int) ($_GET['product_id'] ?? 0);
-        $snapshot = $this->biggest_buyer_snapshot($productId);
+        $snapshot = $this->biggest_buyer_snapshot(0);
         $ranking = [];
         foreach (array_slice((array) ($snapshot['ranking'] ?? []), 0, 3) as $row) {
             $ranking[] = [

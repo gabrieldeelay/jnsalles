@@ -248,6 +248,47 @@ function ranking_timer_configuration($productId, $now = null)
     ];
 }
 
+function ranking_active_product_id(array $productIds)
+{
+    $priorities = ['running' => 3, 'paused' => 2, 'scheduled' => 1];
+    $selectedProductId = 0;
+    $selectedPriority = 0;
+
+    foreach ($productIds as $productId) {
+        $productId = (int) $productId;
+        if ($productId <= 0) {
+            continue;
+        }
+        $timer = ranking_timer_configuration($productId);
+        $priority = $priorities[(string) ($timer['state'] ?? '')] ?? 0;
+        if ($priority > $selectedPriority) {
+            $selectedProductId = $productId;
+            $selectedPriority = $priority;
+        }
+    }
+
+    return $selectedProductId;
+}
+
+function campaign_active_product_id($connection, $rankingEnabledOnly = false)
+{
+    if (!is_object($connection)) {
+        return 0;
+    }
+
+    $rankingJoin = $rankingEnabledOnly
+        ? "INNER JOIN system_info s ON s.meta_field = CONCAT('ranking_timer_', p.id, '_enabled') AND s.meta_value = '1' "
+        : '';
+    $query = $connection->query(
+        "SELECT p.id FROM product_list p {$rankingJoin}"
+        . "WHERE p.delete_flag = 0 AND p.private_draw = 0 AND p.status <> 3 "
+        . "ORDER BY p.featured_draw DESC, CASE p.status WHEN 1 THEN 0 WHEN 2 THEN 1 ELSE 2 END, p.id DESC LIMIT 1"
+    );
+    $row = $query ? $query->fetch_assoc() : null;
+
+    return (int) ($row['id'] ?? 0);
+}
+
 function ranking_timer_sql_conditions($alias, array $timer, $connection)
 {
     if (empty($timer['configured'])) {

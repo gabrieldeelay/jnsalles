@@ -1,14 +1,5 @@
 <?php
 require_once __DIR__ . '/settings.php';
-
-$storedToken = trim((string) $_settings->info('biggest_buyer_overlay_token'));
-$providedToken = trim((string) ($_GET['token'] ?? ''));
-if ($storedToken === '' || $providedToken === '' || !hash_equals($storedToken, $providedToken)) {
-    http_response_code(404);
-    exit('Overlay indisponível.');
-}
-
-$productId = max(0, (int) ($_GET['product_id'] ?? 0));
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('X-Robots-Tag: noindex, nofollow, noarchive');
@@ -43,8 +34,6 @@ header('Referrer-Policy: no-referrer');
   <script>
   (function () {
     var baseUrl = <?= json_encode(rtrim(BASE_URL, '/') . '/', JSON_UNESCAPED_SLASHES) ?>;
-    var token = <?= json_encode($providedToken) ?>;
-    var productId = <?= (int) $productId ?>;
     var overlay = document.getElementById('ranking-overlay');
     var rows = Array.prototype.slice.call(document.querySelectorAll('.ranking-item'));
     var busy = false;
@@ -52,7 +41,6 @@ header('Referrer-Policy: no-referrer');
     function render(state) {
       if (!state || state.status !== 'success' || !state.available) throw new Error('ranking unavailable');
       overlay.classList.remove('ranking-offline');
-      if (state.product && state.product.id) productId = Number(state.product.id);
       var ranking = Array.isArray(state.ranking) ? state.ranking : [];
       rows.forEach(function (row, index) {
         var entry = ranking[index];
@@ -66,7 +54,7 @@ header('Referrer-Policy: no-referrer');
     function poll() {
       if (busy) return;
       busy = true;
-      var url = baseUrl + 'class/Main.php?action=biggest_buyer_overlay_state&token=' + encodeURIComponent(token) + '&product_id=' + encodeURIComponent(productId) + '&_=' + Date.now();
+      var url = baseUrl + 'class/Main.php?action=biggest_buyer_overlay_state&_=' + Date.now();
       fetch(url, {cache:'no-store', credentials:'omit'})
         .then(function (response) { if (!response.ok) throw new Error('request failed'); return response.json(); })
         .then(render)
