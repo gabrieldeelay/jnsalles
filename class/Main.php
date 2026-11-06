@@ -1722,6 +1722,34 @@ class Main extends DBConnection
         return json_encode($this->biggest_buyer_snapshot($productId), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
+    public function biggest_buyer_overlay_state()
+    {
+        $storedToken = trim((string) $this->settings->info('biggest_buyer_overlay_token'));
+        $providedToken = trim((string) ($_GET['token'] ?? ''));
+        if ($storedToken === '' || $providedToken === '' || !hash_equals($storedToken, $providedToken)) {
+            http_response_code(404);
+            return json_encode(['status' => 'failed']);
+        }
+
+        $productId = (int) ($_GET['product_id'] ?? 0);
+        $snapshot = $this->biggest_buyer_snapshot($productId);
+        $ranking = [];
+        foreach (array_slice((array) ($snapshot['ranking'] ?? []), 0, 3) as $row) {
+            $ranking[] = [
+                'name' => (string) ($row['name'] ?? 'Participante'),
+                'quantity' => (int) ($row['quantity'] ?? 0),
+            ];
+        }
+
+        return json_encode([
+            'status' => 'success',
+            'available' => !empty($snapshot['available']),
+            'server_time' => (string) ($snapshot['server_time'] ?? payment_local_datetime()),
+            'product' => $snapshot['product'] ?? null,
+            'ranking' => $ranking,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
     private function major_minor_ticket_calculate($productId, $startInput, $endInput)
     {
         $productId = (int) $productId;
@@ -7716,6 +7744,11 @@ switch ($action) {
     case "biggest_buyer_state":
         header('Content-Type: application/json; charset=UTF-8');
         echo $Main->biggest_buyer_state();
+        break;
+    case "biggest_buyer_overlay_state":
+        header('Content-Type: application/json; charset=UTF-8');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        echo $Main->biggest_buyer_overlay_state();
         break;
     case "major_minor_ticket_consult":
         header('Content-Type: application/json; charset=UTF-8');
