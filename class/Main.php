@@ -1749,8 +1749,10 @@ class Main extends DBConnection
         $snapshot = $this->biggest_buyer_snapshot(0);
         $ranking = [];
         foreach (array_slice((array) ($snapshot['ranking'] ?? []), 0, 3) as $row) {
+            $fullName = trim((string) ($row['name'] ?? ''));
+            $nameParts = preg_split('/\s+/u', $fullName, 2, PREG_SPLIT_NO_EMPTY);
             $ranking[] = [
-                'name' => (string) ($row['name'] ?? 'Participante'),
+                'name' => $nameParts ? (string) $nameParts[0] : '-',
                 'quantity' => (int) ($row['quantity'] ?? 0),
             ];
         }
