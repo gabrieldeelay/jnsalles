@@ -1,30 +1,25 @@
 <?php
 
-
-if (session_status() == PHP_SESSION_NONE) {
-	session_start();
-}
-if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
-	$link = 'https';
-}
-else {
-	$link = 'http';
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
 }
 
-$link .= '://';
-$link .= $_SERVER['HTTP_HOST'];
-$link .= $_SERVER['REQUEST_URI'];
-if (!isset($_SESSION['userdata']) && !strpos($link, 'login.php')) {
-	redirect('admin/login.php');
-}
-if (isset($_SESSION['userdata']) && strpos($link, 'login.php')) {
-	redirect('admin/index.php');
+$adminSession = $_SESSION['userdata'] ?? null;
+$adminAuthorized = is_array($adminSession)
+    && (int) ($adminSession['login_type'] ?? 0) === 1
+    && (int) ($adminSession['type'] ?? 0) === 1
+    && trim((string) ($adminSession['firstname'] ?? '')) !== '';
+
+if (!$adminAuthorized) {
+    $target = BASE_URL . 'admin/login.php';
+    if (!headers_sent()) {
+        header('Location: ' . $target, true, 302);
+    } else {
+        echo '<script>location.replace(' . json_encode($target) . ');</script>';
+    }
+    exit;
 }
 
 $module = ['', 'admin', ''];
-if (isset($_SESSION['userdata']) && strpos($link, 'index.php') || strpos($link, 'admin/') && $_SESSION['userdata']['login_type'] != 1) {
-	echo '<script>alert(\'Access Denied!\');location.replace(\'' . BASE_URL . '\');</script>';
-	exit();
-}
 
 ?>
