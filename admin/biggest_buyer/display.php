@@ -1,6 +1,6 @@
 <?php
 require_once dirname(__DIR__, 2) . '/settings.php';
-if (empty($_settings->userdata('firstname')) || (int) $_settings->userdata('type') !== 1) {
+if (!biggest_buyer_access_is_authorized()) {
     http_response_code(403);
     exit('Acesso restrito ao administrador.');
 }

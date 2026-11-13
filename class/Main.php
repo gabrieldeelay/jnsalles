@@ -1351,10 +1351,14 @@ class Main extends DBConnection
         return true;
     }
 
+    private function administrator_authorized()
+    {
+        return biggest_buyer_admin_is_authenticated();
+    }
+
     private function biggest_buyer_authorized()
     {
-        return !empty($this->settings->userdata('firstname'))
-            && (int) $this->settings->userdata('type') === 1;
+        return biggest_buyer_access_is_authorized();
     }
 
     private function biggest_buyer_default_action()
@@ -1655,7 +1659,7 @@ class Main extends DBConnection
         }
         $updateProduct->close();
 
-        $adminName = trim((string) $this->settings->userdata('firstname'));
+        $adminName = biggest_buyer_operator_name();
         $description = 'Maior Comprador: pedido manual ' . $orderId . ' com ' . $quantity
             . ' cotas (diferença ' . $difference . ' + margem ' . $margin . ') criado por ' . $adminName;
         $log = $this->conn->prepare("INSERT INTO logs (origin, description) VALUES ('ORDER', ?)");
@@ -1742,6 +1746,141 @@ class Main extends DBConnection
         }
         $productId = (int) ($_REQUEST['product_id'] ?? 0);
         return json_encode($this->biggest_buyer_snapshot($productId), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    public function biggest_buyer_venopag_report()
+    {
+        if (!$this->biggest_buyer_authorized()) {
+            http_response_code(403);
+            return json_encode(['status' => 'failed', 'msg' => 'Não autorizado.']);
+        }
+
+        $timezone = new DateTimeZone('America/Sao_Paulo');
+        $today = new DateTimeImmutable('today', $timezone);
+        $parse = static function ($value, DateTimeImmutable $fallback) use ($timezone) {
+            $value = trim((string) $value);
+            foreach (['!Y-m-d\TH:i', '!Y-m-d H:i', '!Y-m-d'] as $format) {
+                $date = DateTimeImmutable::createFromFormat($format, $value, $timezone);
+                $errors = DateTimeImmutable::getLastErrors();
+                if ($date && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))) {
+                    return $date;
+                }
+            }
+            return $fallback;
+        };
+
+        $start = $parse($_GET['start_at'] ?? '', $today);
+        $end = $parse($_GET['end_at'] ?? '', $today->setTime(23, 59, 59));
+        if ($start > $end) {
+            [$start, $end] = [$end, $start];
+        }
+        $startValue = $start->format('Y-m-d H:i:00');
+        $endValue = $end->format('Y-m-d H:i:59');
+
+        $statement = $this->conn->prepare(
+            "SELECT COUNT(*) AS orders_count, COALESCE(SUM(quantity), 0) AS quantity, "
+            . "COALESCE(SUM(total_amount), 0) AS revenue FROM order_list "
+            . "WHERE status = 2 AND payment_method = 'VenoPag' AND date_created BETWEEN ? AND ?"
+        );
+        if (!$statement) {
+            return json_encode(['status' => 'failed', 'msg' => 'Não foi possível carregar o resumo agora.']);
+        }
+        $statement->bind_param('ss', $startValue, $endValue);
+        $statement->execute();
+        $summary = $statement->get_result()->fetch_assoc() ?: [];
+        $statement->close();
+
+        return json_encode([
+            'status' => 'success',
+            'server_time' => payment_local_datetime(),
+            'period' => [
+                'start_at' => $start->format('Y-m-d\TH:i'),
+                'end_at' => $end->format('Y-m-d\TH:i'),
+            ],
+            'summary' => [
+                'revenue' => (float) ($summary['revenue'] ?? 0),
+                'orders_count' => (int) ($summary['orders_count'] ?? 0),
+                'quantity' => (int) ($summary['quantity'] ?? 0),
+            ],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    public function biggest_buyer_delete_order()
+    {
+        if (!$this->biggest_buyer_authorized() || !$this->biggest_buyer_csrf_is_valid()) {
+            http_response_code(403);
+            return json_encode(['status' => 'failed', 'msg' => 'Sessão inválida. Atualize a página.']);
+        }
+
+        $orderId = (int) ($_POST['order_id'] ?? 0);
+        if ($orderId <= 0) {
+            return json_encode(['status' => 'failed', 'msg' => 'Pedido inválido.']);
+        }
+
+        $this->conn->begin_transaction();
+        try {
+            $find = $this->conn->prepare(
+                'SELECT id, status, product_id, quantity FROM order_list WHERE id = ? LIMIT 1 FOR UPDATE'
+            );
+            $find->bind_param('i', $orderId);
+            $find->execute();
+            $order = $find->get_result()->fetch_assoc();
+            $find->close();
+            if (!$order) {
+                throw new RuntimeException('Este pedido não existe mais.');
+            }
+
+            $status = (int) $order['status'];
+            $productId = (int) $order['product_id'];
+            $quantity = max(0, (int) $order['quantity']);
+            if ($status === 1 || $status === 2) {
+                $counter = $status === 1 ? 'pending_numbers' : 'paid_numbers';
+                $update = $this->conn->prepare(
+                    "UPDATE product_list SET {$counter} = GREATEST(0, CAST({$counter} AS SIGNED) - ?) WHERE id = ?"
+                );
+                $update->bind_param('ii', $quantity, $productId);
+                if (!$update->execute()) {
+                    throw new RuntimeException('Não foi possível ajustar os totais da campanha.');
+                }
+                $update->close();
+            }
+
+            $items = $this->conn->prepare('DELETE FROM order_items WHERE order_id = ?');
+            if ($items) {
+                $items->bind_param('i', $orderId);
+                $items->execute();
+                $items->close();
+            }
+            $delete = $this->conn->prepare('DELETE FROM order_list WHERE id = ?');
+            $delete->bind_param('i', $orderId);
+            if (!$delete->execute() || $delete->affected_rows !== 1) {
+                throw new RuntimeException('Não foi possível excluir o pedido.');
+            }
+            $delete->close();
+
+            if ($productId > 0) {
+                $reactivate = $this->conn->prepare(
+                    "UPDATE product_list SET status = 1, status_display = '1' "
+                    . 'WHERE id = ? AND status > 1 AND (CAST(pending_numbers AS UNSIGNED) + CAST(paid_numbers AS UNSIGNED)) < CAST(qty_numbers AS UNSIGNED)'
+                );
+                $reactivate->bind_param('i', $productId);
+                $reactivate->execute();
+                $reactivate->close();
+            }
+
+            $operator = biggest_buyer_operator_name();
+            $description = 'Maior Comprador: pedido ' . $orderId . ' excluído por ' . ($operator !== '' ? $operator : 'operador');
+            $log = $this->conn->prepare("INSERT INTO logs (origin, description) VALUES ('ORDER', ?)");
+            $log->bind_param('s', $description);
+            $log->execute();
+            $log->close();
+            $this->conn->commit();
+
+            return json_encode(['status' => 'success', 'msg' => 'Pedido excluído com sucesso.'], JSON_UNESCAPED_UNICODE);
+        } catch (Throwable $error) {
+            $this->conn->rollback();
+            return json_encode(['status' => 'failed', 'msg' => $error->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
     }
 
     public function biggest_buyer_overlay_state()
@@ -1950,7 +2089,7 @@ class Main extends DBConnection
 
     public function major_minor_ticket_consult()
     {
-        if (!$this->biggest_buyer_authorized()) {
+        if (!$this->administrator_authorized()) {
             http_response_code(403);
             return json_encode(['status' => 'failed', 'msg' => 'Não autorizado.'], JSON_UNESCAPED_UNICODE);
         }
@@ -1971,7 +2110,7 @@ class Main extends DBConnection
 
     public function major_minor_ticket_lookup()
     {
-        if (!$this->biggest_buyer_authorized()) {
+        if (!$this->administrator_authorized()) {
             http_response_code(403);
             return json_encode(['status' => 'failed', 'msg' => 'Não autorizado.'], JSON_UNESCAPED_UNICODE);
         }
@@ -7760,6 +7899,15 @@ switch ($action) {
     case "biggest_buyer_state":
         header('Content-Type: application/json; charset=UTF-8');
         echo $Main->biggest_buyer_state();
+        break;
+    case "biggest_buyer_venopag_report":
+        header('Content-Type: application/json; charset=UTF-8');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        echo $Main->biggest_buyer_venopag_report();
+        break;
+    case "biggest_buyer_delete_order":
+        header('Content-Type: application/json; charset=UTF-8');
+        echo $Main->biggest_buyer_delete_order();
         break;
     case "biggest_buyer_overlay_state":
         header('Content-Type: application/json; charset=UTF-8');

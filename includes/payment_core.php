@@ -166,6 +166,46 @@ function payment_ranking_datetime_sql($alias = 'o')
         . "ELSE COALESCE({$updated}, {$created}) END";
 }
 
+function biggest_buyer_portal_is_authenticated()
+{
+    $session = $_SESSION['biggest_buyer_portal'] ?? null;
+    if (!is_array($session) || empty($session['authenticated'])) {
+        return false;
+    }
+
+    $username = (string) ($session['username'] ?? '');
+    $expiresAt = (int) ($session['expires_at'] ?? 0);
+    return hash_equals('guedes', $username) && $expiresAt >= time();
+}
+
+function biggest_buyer_admin_is_authenticated()
+{
+    global $_settings;
+    return isset($_settings) && is_object($_settings)
+        && !empty($_settings->userdata('firstname'))
+        && (int) $_settings->userdata('type') === 1
+        && (int) $_settings->userdata('login_type') === 1;
+}
+
+function biggest_buyer_access_is_authorized()
+{
+    return biggest_buyer_admin_is_authenticated() || biggest_buyer_portal_is_authenticated();
+}
+
+function biggest_buyer_operator_name()
+{
+    global $_settings;
+    if (biggest_buyer_admin_is_authenticated()) {
+        $name = trim((string) $_settings->userdata('firstname') . ' ' . (string) $_settings->userdata('lastname'));
+        return $name !== '' ? $name : (string) $_settings->userdata('username');
+    }
+
+    $session = $_SESSION['biggest_buyer_portal'] ?? [];
+    return biggest_buyer_portal_is_authenticated()
+        ? ((string) ($session['display_name'] ?? 'Guedes') ?: 'Guedes')
+        : '';
+}
+
 function ranking_timer_configuration($productId, $now = null)
 {
     global $_settings;
