@@ -1853,7 +1853,7 @@ if ($available > 0 && $status == '1') {
                 }
 
                 refreshHighlight();
-                window.setInterval(refreshHighlight, 5000);
+                window.setInterval(refreshHighlight, 10000);
                 document.addEventListener('visibilitychange', function () { if (!document.hidden) refreshHighlight(); });
             })();
             </script>

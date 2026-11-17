@@ -2000,6 +2000,54 @@ class Main extends DBConnection
         ];
     }
 
+    private function major_minor_ticket_cached_calculate($productId, $startInput, $endInput)
+    {
+        $productId = (int) $productId;
+        $startInput = (string) $startInput;
+        $endInput = (string) $endInput;
+        $cacheKey = hash('sha256', $productId . '|' . $startInput . '|' . $endInput);
+        $cachePath = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR
+            . 'jnsalles_major_minor_' . $cacheKey . '.json';
+        $handle = @fopen($cachePath, 'c+');
+
+        if (!$handle || !@flock($handle, LOCK_EX)) {
+            if (is_resource($handle)) {
+                @fclose($handle);
+            }
+            return $this->major_minor_ticket_calculate($productId, $startInput, $endInput);
+        }
+
+        try {
+            rewind($handle);
+            $cached = json_decode((string) stream_get_contents($handle), true);
+            if (
+                is_array($cached)
+                && isset($cached['created_at'], $cached['result'])
+                && (time() - (int) $cached['created_at']) < 10
+                && is_array($cached['result'])
+            ) {
+                return $cached['result'];
+            }
+
+            $result = $this->major_minor_ticket_calculate($productId, $startInput, $endInput);
+            $payload = json_encode([
+                'created_at' => time(),
+                'result' => $result,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if ($payload !== false) {
+                rewind($handle);
+                ftruncate($handle, 0);
+                fwrite($handle, $payload);
+                fflush($handle);
+            }
+
+            return $result;
+        } finally {
+            @flock($handle, LOCK_UN);
+            @fclose($handle);
+        }
+    }
+
     public function major_minor_ticket_public_state()
     {
         $productId = (int) ($_GET['product_id'] ?? 0);
@@ -2050,7 +2098,7 @@ class Main extends DBConnection
 
         $calculated = null;
         if ($minorSource === 'real' || $majorSource === 'real') {
-            $calculated = $this->major_minor_ticket_calculate(
+            $calculated = $this->major_minor_ticket_cached_calculate(
                 $productId,
                 (string) ($config['real']['start_at'] ?? ''),
                 (string) ($config['real']['end_at'] ?? '')
