@@ -1277,6 +1277,7 @@ function payment_bspay_request($path, array $payload, $timeout = 25)
             && (!is_array($providerError) || !array_key_exists('retryable', $providerError) || !empty($providerError['retryable']));
         if ($status === 403) {
             $reasons = [
+                'CASHIN_BLOCKED' => 'A BSPay bloqueou o recebimento (cash-in) desta conta. Solicite à BSPay a liberação das cobranças PIX.',
                 'UNAUTHORIZED_IP' => 'O IP do servidor não está autorizado na credencial BSPay.',
                 'CREDENTIAL_PENDING_ADMIN_ACTIVATION' => 'A credencial BSPay ainda aguarda ativação pelo administrador da conta.',
                 'ACCOUNT_UNDER_REVIEW' => 'A conta BSPay está sob análise e não pode gerar cobranças agora.',
