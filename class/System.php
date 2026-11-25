@@ -582,8 +582,8 @@ class System extends DBConnection
 
     private function update_gateway_settings()
     {
-        $providers = ['none', 'split', 'mercadopago', 'gerencianet', 'paggue', 'openpix', 'pay2m', 'venopag'];
-        $gatewayFlags = ['mercadopago', 'gerencianet', 'paggue', 'openpix', 'pay2m', 'venopag'];
+        $providers = ['none', 'split', 'mercadopago', 'gerencianet', 'paggue', 'openpix', 'pay2m', 'venopag', 'bspay'];
+        $gatewayFlags = ['mercadopago', 'gerencianet', 'paggue', 'openpix', 'pay2m', 'venopag', 'bspay'];
         $provider = strtolower(trim((string) ($_POST['gateway_provider'] ?? 'none')));
 
         if (!in_array($provider, $providers, true)) {
@@ -597,6 +597,7 @@ class System extends DBConnection
             'openpix' => ['openpix_app_id'],
             'pay2m' => ['pay2m_client_id', 'pay2m_client_secret'],
             'venopag' => ['venopag_client_id', 'venopag_client_secret'],
+            'bspay' => ['bspay_client_id', 'bspay_client_secret'],
             'split' => ['venopag_client_id', 'venopag_client_secret', 'pay2m_client_id', 'pay2m_client_secret'],
         ];
         $secrets = [
@@ -605,8 +606,9 @@ class System extends DBConnection
             'paggue_client_key', 'paggue_client_secret', 'openpix_app_id',
             'pay2m_client_id', 'pay2m_client_secret', 'pay2m_webhook_secret',
             'venopag_client_id', 'venopag_client_secret', 'venopag_webhook_secret',
+            'bspay_client_id', 'bspay_client_secret', 'bspay_webhook_secret',
         ];
-        $taxes = ['mercadopago_tax', 'gerencianet_tax', 'paggue_tax', 'openpix_tax', 'pay2m_tax', 'venopag_tax'];
+        $taxes = ['mercadopago_tax', 'gerencianet_tax', 'paggue_tax', 'openpix_tax', 'pay2m_tax', 'venopag_tax', 'bspay_tax'];
         $values = ['gateway_provider' => $provider, 'gateway' => '1'];
 
         foreach ($gatewayFlags as $flag) {
@@ -629,7 +631,8 @@ class System extends DBConnection
         $venopagMinimum = (float) str_replace(',', '.', (string) ($_POST['venopag_min_amount'] ?? $this->info('venopag_min_amount')));
         $values['venopag_min_amount'] = number_format(max(1, $venopagMinimum), 2, '.', '');
 
-        $pay2mHighValueEnabled = $provider === 'split' || (string) ($_POST['pay2m_high_value_enabled'] ?? '0') === '1';
+        $pay2mHighValueEnabled = $provider === 'split'
+            || ($provider !== 'bspay' && (string) ($_POST['pay2m_high_value_enabled'] ?? '0') === '1');
         $pay2mHighValueThreshold = $provider === 'split'
             ? 999.99
             : (float) str_replace(',', '.', (string) ($_POST['pay2m_high_value_threshold'] ?? '999.00'));
@@ -641,6 +644,9 @@ class System extends DBConnection
         }
         if ($values['venopag_webhook_secret'] === '') {
             $values['venopag_webhook_secret'] = bin2hex(random_bytes(32));
+        }
+        if ($values['bspay_webhook_secret'] === '') {
+            $values['bspay_webhook_secret'] = bin2hex(random_bytes(32));
         }
 
         foreach ($taxes as $field) {

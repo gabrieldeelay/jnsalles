@@ -16,6 +16,7 @@ function payment_provider_definitions()
         'openpix' => ['label' => 'OpenPix / Woovi', 'method' => 'OpenPix', 'tax' => 'openpix_tax'],
         'pay2m' => ['label' => 'Pay2M', 'method' => 'Pay2m', 'tax' => 'pay2m_tax'],
         'venopag' => ['label' => 'VenoPag', 'method' => 'VenoPag', 'tax' => 'venopag_tax'],
+        'bspay' => ['label' => 'BSPay', 'method' => 'BSPay', 'tax' => 'bspay_tax'],
     ];
 }
 
@@ -1199,6 +1200,178 @@ function payment_create_venopag($orderId, $amount, $name, $email, $cpf, $expirat
     return ['ok' => true, 'provider' => 'venopag'];
 }
 
+function payment_bspay_token()
+{
+    $clientId = trim((string) payment_setting('bspay_client_id'));
+    $clientSecret = trim((string) payment_setting('bspay_client_secret'));
+    if ($clientId === '' || $clientSecret === '') {
+        return ['ok' => false, 'message' => 'Client ID e Client Secret da BSPay não configurados.'];
+    }
+
+    // Reuse the hour-long OAuth token across PHP requests to respect the auth rate limit.
+    $cache = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR
+        . 'jnsalles-bspay-' . hash('sha256', $clientId . ':' . $clientSecret) . '.json';
+    $handle = @fopen($cache, 'c+');
+    if ($handle) {
+        @chmod($cache, 0600);
+        if (flock($handle, LOCK_EX)) {
+            $stored = json_decode((string) stream_get_contents($handle), true);
+            if (is_array($stored) && !empty($stored['token']) && (int) ($stored['expires'] ?? 0) > time() + 60) {
+                flock($handle, LOCK_UN);
+                fclose($handle);
+                return ['ok' => true, 'access_token' => $stored['token']];
+            }
+        } else {
+            fclose($handle);
+            $handle = null;
+        }
+    }
+
+    $response = payment_http('POST', 'https://api.bspay.co/v2/oauth/token', [
+        'Authorization: Basic ' . base64_encode($clientId . ':' . $clientSecret),
+        'Content-Type: application/json',
+        'Accept: application/json',
+    ], ['grant_type' => 'client_credentials']);
+    $json = $response['json'] ?? [];
+    $token = !empty($response['ok']) && !empty($json['access_token']) ? (string) $json['access_token'] : '';
+    if ($token !== '' && $handle) {
+        rewind($handle);
+        ftruncate($handle, 0);
+        fwrite($handle, json_encode([
+            'token' => $token,
+            'expires' => time() + max(60, min(3600, (int) ($json['expires_in'] ?? 3600))),
+        ]));
+        fflush($handle);
+    }
+    if ($handle) {
+        flock($handle, LOCK_UN);
+        fclose($handle);
+    }
+    if ($token === '') {
+        error_log('[payments] bspay oauth failed http=' . (int) ($response['status'] ?? 0));
+        return ['ok' => false, 'message' => 'Não foi possível autenticar na BSPay. Confira as credenciais e a habilitação da conta.'];
+    }
+    return ['ok' => true, 'access_token' => $token];
+}
+
+function payment_bspay_request($path, array $payload, $timeout = 25)
+{
+    $auth = payment_bspay_token();
+    if (empty($auth['ok'])) {
+        return $auth + ['json' => [], 'status' => 0];
+    }
+    $response = payment_http('POST', 'https://api.bspay.co' . $path, [
+        'Authorization: Bearer ' . $auth['access_token'],
+        'Content-Type: application/json',
+        'Accept: application/json',
+    ], $payload, null, $timeout);
+    $response['ok'] = !empty($response['ok']) && !empty($response['json']['success']);
+    if (!$response['ok']) {
+        error_log('[payments] bspay request failed path=' . $path . ' http=' . (int) ($response['status'] ?? 0));
+        $response['message'] = 'A BSPay não concluiu a operação. Tente novamente em instantes.';
+    }
+    return $response;
+}
+
+function payment_bspay_webhook_secret()
+{
+    return trim((string) payment_setting('bspay_webhook_secret'));
+}
+
+function payment_bspay_external_id($orderId)
+{
+    return 'jnsalles_order_' . (int) $orderId;
+}
+
+function payment_bspay_consult($transactionId)
+{
+    $transactionId = trim((string) $transactionId);
+    if ($transactionId === '' || strlen($transactionId) > 150) {
+        return ['ok' => false, 'message' => 'Referência BSPay inválida.'];
+    }
+    $response = payment_bspay_request('/v2/account/transactions/list', [
+        'page' => 1, 'page_size' => 1, 'transaction_id' => $transactionId,
+    ], 10);
+    $items = $response['json']['data']['items'] ?? [];
+    $item = is_array($items) && isset($items[0]) && is_array($items[0]) ? $items[0] : [];
+    if (empty($response['ok']) || (string) ($item['transaction_id'] ?? '') !== $transactionId) {
+        return ['ok' => false, 'message' => 'Não foi possível confirmar a transação na BSPay.'];
+    }
+    return ['ok' => true, 'data' => $item];
+}
+
+function payment_bspay_verified($transactionId, $orderId = null)
+{
+    $consult = payment_bspay_consult($transactionId);
+    if (empty($consult['ok'])) {
+        return ['ok' => false, 'http' => 502, 'message' => 'Falha ao consultar a BSPay.'];
+    }
+    $data = $consult['data'];
+    $externalId = (string) ($data['external_id'] ?? '');
+    if ($orderId === null) {
+        if (!preg_match('/^jnsalles_order_([1-9][0-9]*)$/D', $externalId, $matches)) {
+            return ['ok' => false, 'http' => 400, 'message' => 'Pedido BSPay desconhecido.'];
+        }
+        $orderId = (int) $matches[1];
+    }
+    if ($externalId !== payment_bspay_external_id($orderId)
+        || (string) ($data['currency'] ?? '') !== 'BRL'
+        || (string) ($data['source'] ?? '') !== 'cashin') {
+        return ['ok' => false, 'http' => 409, 'message' => 'Transação BSPay não corresponde ao pedido.'];
+    }
+    if (strtolower((string) ($data['status'] ?? '')) !== 'confirmed') {
+        return ['ok' => false, 'http' => 200, 'message' => 'Pagamento BSPay ainda não confirmado.'];
+    }
+    return [
+        'ok' => true, 'order_id' => $orderId,
+        'amount' => $data['amount'] ?? 0, 'reference' => $transactionId,
+    ];
+}
+
+function payment_create_bspay($orderId, $amount, $name, $email, $cpf, $expiration, $phone)
+{
+    $secret = payment_bspay_webhook_secret();
+    if ($secret === '') {
+        return ['ok' => false, 'message' => 'Proteção do webhook BSPay ausente. Salve a configuração do gateway.'];
+    }
+    $payload = [
+        'amount' => round((float) $amount, 2),
+        'currency' => 'BRL',
+        'external_id' => payment_bspay_external_id($orderId),
+        'postback_url' => rtrim(BASE_URL, '/') . '/webhook.php?notify=bspay&token=' . rawurlencode($secret),
+    ];
+    $payer = [];
+    if (trim((string) $name) !== '') {
+        $payer['name'] = trim((string) $name);
+    }
+    $document = preg_replace('/\D+/', '', (string) $cpf);
+    if (payment_customer_document_is_valid($document)) {
+        $payer['document'] = $document;
+    }
+    if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $payer['email'] = $email;
+    }
+    if ($payer) {
+        $payload['payer'] = $payer;
+    }
+    $response = payment_bspay_request('/v2/transactions/cashin', $payload, 45);
+    $data = $response['json']['data'] ?? [];
+    $transactionId = (string) ($data['transaction_id'] ?? '');
+    $pixCode = (string) ($data['payment_info']['qrcode'] ?? '');
+    if (empty($response['ok']) || $transactionId === '' || $pixCode === ''
+        || (string) ($data['external_id'] ?? '') !== $payload['external_id']
+        || (string) ($data['currency'] ?? '') !== 'BRL'
+        || abs((float) ($data['amount'] ?? 0) - (float) $payload['amount']) > 0.01) {
+        return ['ok' => false, 'message' => $response['message'] ?? 'Não foi possível gerar o PIX na BSPay.'];
+    }
+    $ttl = (int) ($data['payment_info']['expiration'] ?? 0);
+    $minutes = $ttl > 0 ? (int) ceil($ttl / 60) : $expiration;
+    if (!payment_store_pix($orderId, 'BSPay', $pixCode, $transactionId, $minutes)) {
+        return ['ok' => false, 'message' => 'O PIX foi criado, mas não pôde ser salvo.'];
+    }
+    return ['ok' => true, 'provider' => 'bspay'];
+}
+
 function payment_test_gateway($provider)
 {
     if ($provider === 'split') {
@@ -1221,6 +1394,12 @@ function payment_test_gateway($provider)
         $result = $appId === '' ? ['ok' => false] : payment_http('GET', 'https://api.openpix.com.br/api/v1/charge?limit=1', ['Authorization: ' . $appId]);
     } elseif ($provider === 'pay2m') {
         $result = payment_pay2m_token();
+    } elseif ($provider === 'bspay') {
+        $auth = payment_bspay_token();
+        $result = empty($auth['ok']) ? $auth : payment_http('GET', 'https://api.bspay.co/v2/account/balance', [
+            'Authorization: Bearer ' . $auth['access_token'],
+            'Accept: application/json',
+        ]);
     } elseif ($provider === 'gerencianet') {
         $result = payment_efi_token();
     } elseif ($provider === 'venopag') {
@@ -1328,6 +1507,26 @@ function payment_verify_webhook($provider, $raw, array $headers)
 
     if (!is_array($event)) {
         return ['ok' => false, 'http' => 400, 'message' => 'JSON inválido.'];
+    }
+
+    if ($provider === 'bspay') {
+        $secret = payment_bspay_webhook_secret();
+        $received = trim((string) ($_GET['token'] ?? ''));
+        if ($secret === '' || $received === '' || !hash_equals($secret, $received)) {
+            return ['ok' => false, 'http' => 401, 'message' => 'Webhook não autorizado.'];
+        }
+        if ((string) ($headers['x-sandbox'] ?? '') === '1') {
+            return ['ok' => false, 'http' => 403, 'message' => 'Evento sandbox recusado.'];
+        }
+        if ((string) ($event['event'] ?? '') !== 'cashin.confirmed') {
+            return ['ok' => false, 'http' => 200, 'message' => 'Evento BSPay ignorado.'];
+        }
+        $transactionId = trim((string) ($event['transaction_id'] ?? ($event['data']['transaction_id'] ?? '')));
+        if ($transactionId === '') {
+            return ['ok' => false, 'http' => 400, 'message' => 'Referência BSPay ausente.'];
+        }
+        // The webhook itself never releases tickets: fetch the transaction with our OAuth token.
+        return payment_bspay_verified($transactionId);
     }
 
     if ($provider === 'openpix') {
@@ -1671,10 +1870,74 @@ function payment_reconcile_venopag_reversal($requestNumber, $status)
     return ['ok' => true, 'message' => 'Reversão VenoPag conciliada.'];
 }
 
+function payment_reconcile_bspay_refund($transactionId)
+{
+    global $conn;
+    $conn->begin_transaction();
+    try {
+        $statement = $conn->prepare("SELECT id, status, product_id, quantity FROM order_list WHERE id_mp = ? AND payment_method = 'BSPay' LIMIT 1 FOR UPDATE");
+        $statement->bind_param('s', $transactionId);
+        $statement->execute();
+        $result = $statement->get_result();
+        $order = $result ? $result->fetch_assoc() : null;
+        $statement->close();
+        if (!$order) {
+            throw new RuntimeException('Pedido BSPay não encontrado.', 404);
+        }
+        if ((int) $order['status'] === 2) {
+            $orderId = (int) $order['id'];
+            $update = $conn->prepare('UPDATE order_list SET status = 3, date_updated = NOW() WHERE id = ? AND status = 2');
+            $update->bind_param('i', $orderId);
+            $update->execute();
+            if ($update->affected_rows !== 1) {
+                throw new RuntimeException('Pedido alterado durante o estorno.', 409);
+            }
+            $update->close();
+            $product = $conn->prepare('UPDATE product_list SET paid_numbers = GREATEST(0, CAST(paid_numbers AS SIGNED) - ?) WHERE id = ?');
+            $quantity = max(0, (int) $order['quantity']);
+            $productId = (int) $order['product_id'];
+            $product->bind_param('ii', $quantity, $productId);
+            $product->execute();
+            $product->close();
+        }
+        $conn->commit();
+    } catch (Throwable $error) {
+        $conn->rollback();
+        $http = (int) $error->getCode();
+        return ['ok' => false, 'http' => $http >= 400 && $http <= 599 ? $http : 500, 'message' => $error->getMessage()];
+    }
+    error_log('[payments] bspay refund reconciled transaction=' . preg_replace('/[^a-zA-Z0-9_-]/', '', $transactionId));
+    return ['ok' => true, 'message' => 'Estorno BSPay conciliado.'];
+}
+
 function payment_process_webhook($provider, $raw, array $headers)
 {
     if (!isset(payment_provider_definitions()[$provider])) {
         return ['ok' => false, 'http' => 404, 'message' => 'Gateway desconhecido.'];
+    }
+    if ($provider === 'bspay') {
+        $event = json_decode($raw, true);
+        if (is_array($event) && (string) ($event['event'] ?? '') === 'cashin.refunded') {
+            $secret = payment_bspay_webhook_secret();
+            $received = trim((string) ($_GET['token'] ?? ''));
+            if ($secret === '' || $received === '' || !hash_equals($secret, $received)
+                || (string) ($headers['x-sandbox'] ?? '') === '1') {
+                return ['ok' => false, 'http' => 401, 'message' => 'Webhook não autorizado.'];
+            }
+            $transactionId = trim((string) ($event['transaction_id'] ?? ($event['data']['transaction_id'] ?? '')));
+            $consult = payment_bspay_consult($transactionId);
+            if (empty($consult['ok'])) {
+                return ['ok' => false, 'http' => 502, 'message' => 'Falha ao confirmar estorno na BSPay.'];
+            }
+            $data = $consult['data'];
+            if ((string) ($data['currency'] ?? '') !== 'BRL'
+                || (string) ($data['source'] ?? '') !== 'cashin'
+                || !preg_match('/^jnsalles_order_[1-9][0-9]*$/D', (string) ($data['external_id'] ?? ''))
+                || strtolower((string) ($data['status'] ?? '')) !== 'refunded') {
+                return ['ok' => false, 'http' => 409, 'message' => 'Estorno BSPay não confirmado.'];
+            }
+            return payment_reconcile_bspay_refund($transactionId);
+        }
     }
     if ($provider === 'venopag') {
         $event = json_decode($raw, true);
@@ -1751,7 +2014,7 @@ function payment_check_order($orderId)
     if ((int) $order['status'] === 2) {
         return ['ok' => true, 'status' => 2];
     }
-    $methodMap = ['MercadoPago' => 'mercadopago', 'Gerencianet' => 'gerencianet', 'Paggue' => 'paggue', 'OpenPix' => 'openpix', 'Pay2m' => 'pay2m', 'VenoPag' => 'venopag'];
+    $methodMap = ['MercadoPago' => 'mercadopago', 'Gerencianet' => 'gerencianet', 'Paggue' => 'paggue', 'OpenPix' => 'openpix', 'Pay2m' => 'pay2m', 'VenoPag' => 'venopag', 'BSPay' => 'bspay'];
     $provider = $methodMap[$order['payment_method']] ?? null;
     $currentStatus = (int) $order['status'];
     $hasProviderReference = $provider === 'openpix'
@@ -1811,6 +2074,13 @@ function payment_check_order($orderId)
             'amount' => $data['amount'] ?? 0,
             'reference' => $data['request_number'] ?? $order['id_mp'],
         ];
+    } elseif ($provider === 'bspay') {
+        $verified = payment_bspay_verified((string) $order['id_mp'], $orderId);
+        if (empty($verified['ok'])) {
+            return (int) ($verified['http'] ?? 500) === 200
+                ? ['ok' => true, 'status' => $currentStatus]
+                : ['ok' => false, 'status' => $currentStatus, 'message' => $verified['message'] ?? 'Falha ao consultar a BSPay.'];
+        }
     } elseif ($provider === 'pay2m') {
         $token = payment_pay2m_token();
         if (empty($token['ok'])) {

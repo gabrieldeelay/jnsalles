@@ -4,7 +4,7 @@ define('BASE_URL', 'https://jnsalles.online/');
 require dirname(__DIR__) . '/includes/payment_core.php';
 
 $providers = array_keys(payment_provider_definitions());
-$expected = ['mercadopago', 'gerencianet', 'paggue', 'openpix', 'pay2m', 'venopag'];
+$expected = ['mercadopago', 'gerencianet', 'paggue', 'openpix', 'pay2m', 'venopag', 'bspay'];
 if ($providers !== $expected) {
     fwrite(STDERR, "Lista de gateways divergente.\n");
     exit(1);
@@ -72,4 +72,4 @@ if ($gatewaySelectionPosition === false
     exit(1);
 }
 
-echo "Núcleo de pagamentos validado para 6 gateways.\n";
+echo "Núcleo de pagamentos validado para 7 gateways.\n";

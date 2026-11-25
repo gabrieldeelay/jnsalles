@@ -47,6 +47,17 @@ if ($result->num_rows > 0) {
                 } else {
                     echo 'Pedido ' . $order_id . ' foi aprovado.<br>';
                 }
+            } else if ($payment_method == 'BSPay') {
+                $check = payment_check_order((int) $order_id);
+                if (!empty($check['ok']) && (int) ($check['status'] ?? 1) === 2) {
+                    echo 'Pedido ' . $order_id . ' foi aprovado.<br>';
+                } elseif (!empty($check['ok'])) {
+                    $updatePendingStatements[] = 'UPDATE product_list SET pending_numbers = pending_numbers - \'' . $quantity . '\' WHERE id = \'' . $product_id . '\'';
+                    $updatePendingStatements[] = 'UPDATE order_list SET status = 3, date_updated = \'' . $currentDateTime . '\' WHERE id = \'' . $order_id . '\'';
+                    echo 'Pedido ' . $order_id . ' expirou e foi cancelado.<br>';
+                } else {
+                    echo 'Pedido ' . $order_id . ' aguarda consulta da BSPay.<br>';
+                }
             } else {
                 $updatePendingStatements[] = 'UPDATE product_list SET pending_numbers = pending_numbers - \'' . $quantity . '\' WHERE id = \'' . $product_id . '\'';
                 $updatePendingStatements[] = 'UPDATE order_list SET status = 3, date_updated = \'' . $currentDateTime . '\' WHERE id = \'' . $order_id . '\'';

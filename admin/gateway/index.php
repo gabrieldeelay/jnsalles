@@ -31,6 +31,7 @@ $required = [
     'openpix' => ['openpix_app_id'],
     'pay2m' => ['pay2m_client_id', 'pay2m_client_secret'],
     'venopag' => ['venopag_client_id', 'venopag_client_secret'],
+    'bspay' => ['bspay_client_id', 'bspay_client_secret'],
 ];
 $configured = [];
 foreach ($required as $provider => $fields) {
@@ -80,9 +81,11 @@ function gateway_tax_value($field)
 $webhookBase = rtrim(BASE_URL, '/') . '/webhook.php?notify=';
 $venopagWebhookSecret = trim((string) payment_setting('venopag_webhook_secret'));
 $venopagWebhook = $webhookBase . 'venopag' . ($venopagWebhookSecret !== '' ? '&token=' . rawurlencode($venopagWebhookSecret) : '&token=GERADO_AO_SALVAR');
+$bspayWebhookSecret = payment_bspay_webhook_secret();
+$bspayWebhook = $webhookBase . 'bspay' . ($bspayWebhookSecret !== '' ? '&token=' . rawurlencode($bspayWebhookSecret) : '&token=GERADO_AO_SALVAR');
 $providerShortNames = [
     'mercadopago' => 'MP', 'gerencianet' => 'EF', 'paggue' => 'PG',
-    'openpix' => 'OP', 'pay2m' => 'P2', 'venopag' => 'VP',
+    'openpix' => 'OP', 'pay2m' => 'P2', 'venopag' => 'VP', 'bspay' => 'BS',
 ];
 $activeLabel = $selected === 'split'
     ? 'VenoPag + Pay2M por valor'
@@ -242,6 +245,19 @@ $activeDescription = $selected === 'split'
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">A URL é enviada automaticamente em cada nova cobrança; não é necessário cadastrá-la manualmente.</p>
                 </section>
 
+                <section class="gateway-panel" data-provider="bspay">
+                    <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-200">BSPay</h3>
+                    <div class="gateway-note">Configure uma credencial de API com cash-in habilitado. A confirmação do PIX é consultada na BSPay antes de liberar as cotas. Salvar esta opção não altera as credenciais dos demais gateways.</div>
+                    <div class="gateway-field"><label>Client ID</label><?= gateway_credential_input('bspay_client_id', trim((string) payment_setting('bspay_client_id')) !== '') ?></div>
+                    <div class="gateway-field"><label>Client Secret</label><?= gateway_credential_input('bspay_client_secret', trim((string) payment_setting('bspay_client_secret')) !== '') ?></div>
+                    <div class="gateway-field"><label>Taxa adicional (%)</label><input class="form-input block w-full dark:bg-gray-700 dark:text-gray-300" type="number" min="0" max="100" step="0.01" name="bspay_tax" value="<?= gateway_tax_value('bspay_tax') ?>"></div>
+                    <div class="gateway-field"><label>Webhook protegido</label><input class="form-input block w-full dark:bg-gray-700 dark:text-gray-300" readonly value="<?= htmlspecialchars($bspayWebhook, ENT_QUOTES, 'UTF-8') ?>"></div>
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">A URL é enviada automaticamente na geração de cada PIX. Use “Testar credenciais salvas” após salvar.</p>
+                    <?php if ($selected !== 'bspay'): ?>
+                        <div class="gateway-actions"><button id="save-bspay-credentials" class="gateway-test" type="button">Salvar credenciais BSPay sem ativar</button></div>
+                    <?php endif; ?>
+                </section>
+
                 <div class="gateway-actions">
                     <button id="save-gateway" class="gateway-save" type="submit">Salvar configuração</button>
                     <button id="test-gateway" class="gateway-test" type="button">Testar credenciais salvas</button>
@@ -254,6 +270,7 @@ $activeDescription = $selected === 'split'
 
 <script>
 (function ($) {
+    var currentProvider = <?= json_encode($selected, JSON_UNESCAPED_SLASHES) ?>;
     function selectedProvider() { return $('input[name="gateway_provider"]:checked').val() || 'none'; }
     function showPanel() {
         var provider = selectedProvider();
@@ -316,6 +333,24 @@ $activeDescription = $selected === 'split'
             } else { message('error', response.msg || 'Não foi possível salvar.'); }
         }).fail(function () { message('error', 'Falha de comunicação ao salvar.'); })
           .always(function () { saveButton.prop('disabled', false); });
+    });
+
+    $('#save-bspay-credentials').on('click', function () {
+        var button = $(this);
+        var data = new FormData($('#gateway-form')[0]);
+        data.set('gateway_provider', currentProvider);
+        button.prop('disabled', true);
+        message('loading', 'Salvando BSPay sem alterar o gateway ativo...');
+        $.ajax({
+            url: _base_url_ + 'class/System.php?action=update_system', method: 'POST',
+            data: data, cache: false, contentType: false, processData: false, dataType: 'json'
+        }).done(function (response) {
+            if (response.status === 'success') {
+                message('success', 'Credenciais BSPay salvas. O gateway ativo foi mantido.');
+                setTimeout(function () { location.reload(); }, 1000);
+            } else { message('error', response.msg || 'Não foi possível salvar.'); }
+        }).fail(function () { message('error', 'Falha de comunicação ao salvar.'); })
+          .always(function () { button.prop('disabled', false); });
     });
 
     $('#test-gateway').on('click', function () {
