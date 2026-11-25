@@ -1267,8 +1267,27 @@ function payment_bspay_request($path, array $payload, $timeout = 25)
     ], $payload, null, $timeout);
     $response['ok'] = !empty($response['ok']) && !empty($response['json']['success']);
     if (!$response['ok']) {
-        error_log('[payments] bspay request failed path=' . $path . ' http=' . (int) ($response['status'] ?? 0));
-        $response['message'] = 'A BSPay não concluiu a operação. Tente novamente em instantes.';
+        $status = (int) ($response['status'] ?? 0);
+        $providerError = $response['json']['error'] ?? [];
+        $code = is_array($providerError) ? preg_replace('/[^A-Z0-9_]/', '', strtoupper((string) ($providerError['code'] ?? ''))) : '';
+        $requestId = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($response['json']['request_id'] ?? ''));
+        error_log('[payments] bspay request failed path=' . $path . ' http=' . $status
+            . ' code=' . ($code ?: 'unknown') . ' request_id=' . ($requestId ?: 'unknown'));
+        $response['retryable'] = ($status === 0 || $status === 429 || $status >= 500)
+            && (!is_array($providerError) || !array_key_exists('retryable', $providerError) || !empty($providerError['retryable']));
+        if ($status === 403) {
+            $reasons = [
+                'UNAUTHORIZED_IP' => 'O IP do servidor não está autorizado na credencial BSPay.',
+                'CREDENTIAL_PENDING_ADMIN_ACTIVATION' => 'A credencial BSPay ainda aguarda ativação pelo administrador da conta.',
+                'ACCOUNT_UNDER_REVIEW' => 'A conta BSPay está sob análise e não pode gerar cobranças agora.',
+                'KYC_REQUIRED' => 'A BSPay exige a verificação da conta antes de liberar cobranças.',
+                'PENDING_APPROVAL' => 'A operação ainda aguarda aprovação na BSPay.',
+                'PERMISSION_DENIED' => 'A credencial BSPay não tem permissão para gerar PIX em BRL.',
+            ];
+            $response['message'] = $reasons[$code] ?? 'A BSPay recusou a cobrança (403). Verifique no painel BSPay a liberação de cash-in PIX/BRL, a credencial e o IP autorizado.';
+        } else {
+            $response['message'] = 'A BSPay não concluiu a operação. ' . ($response['retryable'] ? 'Tente novamente em instantes.' : 'Confira as configurações no painel BSPay.');
+        }
     }
     return $response;
 }
@@ -1362,7 +1381,8 @@ function payment_create_bspay($orderId, $amount, $name, $email, $cpf, $expiratio
         || (string) ($data['external_id'] ?? '') !== $payload['external_id']
         || (string) ($data['currency'] ?? '') !== 'BRL'
         || abs((float) ($data['amount'] ?? 0) - (float) $payload['amount']) > 0.01) {
-        return ['ok' => false, 'message' => $response['message'] ?? 'Não foi possível gerar o PIX na BSPay.'];
+        return ['ok' => false, 'retryable' => $response['retryable'] ?? false,
+            'message' => $response['message'] ?? 'Não foi possível gerar o PIX na BSPay.'];
     }
     $ttl = (int) ($data['payment_info']['expiration'] ?? 0);
     $minutes = $ttl > 0 ? (int) ceil($ttl / 60) : $expiration;

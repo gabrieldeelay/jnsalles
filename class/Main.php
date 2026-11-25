@@ -4961,6 +4961,7 @@ class Main extends DBConnection
                 return json_encode([
                     'status' => 'failed',
                     'msg' => $payment['message'] ?? 'Não foi possível gerar o PIX. Tente novamente.',
+                    'retryable' => $payment['retryable'] ?? true,
                 ], JSON_UNESCAPED_UNICODE);
             }
             return json_encode(['status' => 'success'], JSON_UNESCAPED_UNICODE);

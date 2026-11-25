@@ -1329,13 +1329,17 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
                     }
                     pixGenerationFailures++;
                     var message = resp.msg || 'O gateway ainda não respondeu.';
-                    if (pixGenerationFailures < 3) {
-                        $('#pix-generation-state').html('<strong>' + message + '</strong> Tentaremos novamente automaticamente.');
+                    var state = $('#pix-generation-state').empty().append($('<strong>').text(message));
+                    if (resp.retryable === false) {
+                        state.append('<br>').append(
+                            $('<button type="button" id="retry-pix-generation" class="btn btn-sm btn-primary mt-2">').text('Tentar gerar novamente')
+                        );
+                    } else if (pixGenerationFailures < 3) {
+                        state.append(document.createTextNode(' Tentaremos novamente automaticamente.'));
                         schedulePixGeneration(4000);
                     } else {
-                        $('#pix-generation-state').html(
-                            '<strong>' + message + '</strong><br>' +
-                            '<button type="button" id="retry-pix-generation" class="btn btn-sm btn-primary mt-2">Tentar gerar novamente</button>'
+                        state.append('<br>').append(
+                            $('<button type="button" id="retry-pix-generation" class="btn btn-sm btn-primary mt-2">').text('Tentar gerar novamente')
                         );
                     }
                 },
