@@ -10,6 +10,7 @@ if (!function_exists('jnsalles_report_payment_methods')) {
             'OpenPix' => 'OpenPix / Woovi',
             'Pay2m' => 'Pay2M',
             'VenoPag' => 'VenoPag',
+            'BSPay' => 'BSPay',
             'Manual' => 'Manual',
         ];
     }

@@ -115,8 +115,9 @@ $isAdminAccess = biggest_buyer_admin_is_authenticated();
           </section>
 
           <section class="buyer-card">
-            <header class="buyer-card-head"><div class="buyer-card-title"><span class="buyer-card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"></path></svg></span><div><h3>Resumo VenoPag</h3><p>Somente pagamentos confirmados no período.</p></div></div></header>
+            <header class="buyer-card-head"><div class="buyer-card-title"><span class="buyer-card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"></path></svg></span><div><h3 id="buyer-report-title">Resumo BSPay</h3><p>Somente pagamentos confirmados no período.</p></div></div></header>
             <div class="buyer-report-body">
+              <div class="buyer-report-field"><label for="buyer-report-gateway">Gateway</label><select id="buyer-report-gateway" class="form-control"><option value="auto">Automático (gateway ativo)</option><option value="bspay">BSPay</option><option value="venopag">VenoPag</option><option value="pay2m">Pay2M</option><option value="mercadopago">Mercado Pago</option><option value="gerencianet">Efí / Gerencianet</option><option value="openpix">OpenPix / Woovi</option><option value="paggue">Paggue</option></select></div>
               <div class="buyer-report-filter"><div class="buyer-report-field"><label for="buyer-report-start">Início</label><input id="buyer-report-start" type="datetime-local" value="<?= $escape($reportStartValue) ?>"></div><div class="buyer-report-field"><label for="buyer-report-end">Fim</label><input id="buyer-report-end" type="datetime-local" value="<?= $escape($reportEndValue) ?>"></div></div>
               <div class="buyer-report-value"><small>Valor pago no período</small><strong id="buyer-report-revenue">R$ 0,00</strong></div>
               <div class="buyer-report-meta"><div><small>Pagamentos</small><strong id="buyer-report-orders">0</strong></div><div><small>Cotas confirmadas</small><strong id="buyer-report-quantity">0</strong></div></div>
@@ -173,6 +174,8 @@ $isAdminAccess = biggest_buyer_admin_is_authenticated();
   var formEndTime = document.getElementById('buyer-form-end-time');
   var rankingList = document.getElementById('buyer-ranking-list');
   var orderList = document.getElementById('buyer-order-list');
+  var reportGateway = document.getElementById('buyer-report-gateway');
+  var reportTitle = document.getElementById('buyer-report-title');
   var reportStart = document.getElementById('buyer-report-start');
   var reportEnd = document.getElementById('buyer-report-end');
   var reportRevenue = document.getElementById('buyer-report-revenue');
@@ -375,9 +378,10 @@ $isAdminAccess = biggest_buyer_admin_is_authenticated();
   function refreshVenoPagReport() {
     if (reportBusy || !reportStart || !reportEnd) return;
     reportBusy = true;
-    var url = endpoint + 'biggest_buyer_venopag_report&start_at=' + encodeURIComponent(reportStart.value) + '&end_at=' + encodeURIComponent(reportEnd.value) + '&_=' + Date.now();
+    var url = endpoint + 'biggest_buyer_venopag_report&provider=' + encodeURIComponent(reportGateway.value) + '&start_at=' + encodeURIComponent(reportStart.value) + '&end_at=' + encodeURIComponent(reportEnd.value) + '&_=' + Date.now();
     fetch(url, {credentials:'same-origin', cache:'no-store'}).then(function (response) { return response.json(); }).then(function (state) {
       if (!state || state.status !== 'success') throw new Error((state && state.msg) || 'Resumo indisponível.');
+      reportTitle.textContent = 'Resumo ' + (state.provider_label || 'BSPay');
       var summary = state.summary || {}; reportRevenue.textContent = money(summary.revenue); reportOrders.textContent = integer(summary.orders_count); reportQuantity.textContent = integer(summary.quantity);
       reportUpdated.textContent = 'Atualizado às ' + String(state.server_time || '').slice(11,19) + ' — horário de Brasília';
     }).catch(function () { reportUpdated.textContent = 'Não foi possível atualizar o resumo agora.'; }).finally(function () { reportBusy = false; });
@@ -429,6 +433,7 @@ $isAdminAccess = biggest_buyer_admin_is_authenticated();
   product.addEventListener('change', function () { savePreferences(); fetch(endpoint + 'biggest_buyer_state&product_id=' + encodeURIComponent(product.value), {credentials:'same-origin'}).then(function (response) { return response.json(); }).then(render); });
   document.getElementById('buyer-open-ranking').addEventListener('click', function () { window.open(_base_url_ + 'admin/biggest_buyer/display.php?product_id=' + encodeURIComponent(product.value), 'jnsalles-ranking', 'popup=yes,width=980,height=760,resizable=yes,scrollbars=yes'); });
   copyOverlayButton.addEventListener('click', function () { var label = copyOverlayButton.querySelector('span'); copyText(overlayUrl()).then(function () { copyOverlayButton.classList.add('copied'); label.textContent = 'Link copiado!'; showToast('Link fixo do overlay copiado. Cole como fonte de navegador na sua live.', 'success'); window.setTimeout(function () { copyOverlayButton.classList.remove('copied'); label.textContent = 'Copiar link do overlay'; }, 2400); }).catch(function () { showToast('Não foi possível copiar automaticamente. Tente novamente.', 'neutral'); }); });
+  reportGateway.addEventListener('change', refreshVenoPagReport);
   reportStart.addEventListener('change', refreshVenoPagReport); reportEnd.addEventListener('change', refreshVenoPagReport);
   window.setInterval(function () { if (remainingSeconds > 0) { remainingSeconds -= 1; clockTime.textContent = formatClock(remainingSeconds); } updateTimes(); }, 1000);
   restorePreferences(); poll(); refreshVenoPagReport(); window.setInterval(poll, 1000); window.setInterval(refreshVenoPagReport, 5000);

@@ -1755,6 +1755,26 @@ class Main extends DBConnection
             return json_encode(['status' => 'failed', 'msg' => 'Não autorizado.']);
         }
 
+        $definitions = payment_provider_definitions();
+        $provider = strtolower(trim((string) ($_GET['provider'] ?? 'auto')));
+        if ($provider === 'auto') {
+            // Read the current selection on every refresh, including changes in another tab.
+            $selection = $this->conn->query("SELECT meta_value FROM system_info WHERE meta_field = 'gateway_provider' LIMIT 1");
+            $selected = $selection ? $selection->fetch_assoc() : null;
+            $provider = strtolower(trim((string) ($selected['meta_value'] ?? payment_setting('gateway_provider', 'bspay'))));
+            if ($provider === 'split') {
+                $provider = 'venopag';
+            }
+            if (!isset($definitions[$provider])) {
+                $provider = payment_active_provider() ?: 'bspay';
+            }
+        }
+        if (!isset($definitions[$provider])) {
+            http_response_code(400);
+            return json_encode(['status' => 'failed', 'msg' => 'Gateway inválido.']);
+        }
+        $paymentMethod = $definitions[$provider]['method'];
+
         $timezone = new DateTimeZone('America/Sao_Paulo');
         $today = new DateTimeImmutable('today', $timezone);
         $parse = static function ($value, DateTimeImmutable $fallback) use ($timezone) {
@@ -1780,18 +1800,20 @@ class Main extends DBConnection
         $statement = $this->conn->prepare(
             "SELECT COUNT(*) AS orders_count, COALESCE(SUM(quantity), 0) AS quantity, "
             . "COALESCE(SUM(total_amount), 0) AS revenue FROM order_list "
-            . "WHERE status = 2 AND payment_method = 'VenoPag' AND date_created BETWEEN ? AND ?"
+            . "WHERE status = 2 AND payment_method = ? AND date_created BETWEEN ? AND ?"
         );
         if (!$statement) {
             return json_encode(['status' => 'failed', 'msg' => 'Não foi possível carregar o resumo agora.']);
         }
-        $statement->bind_param('ss', $startValue, $endValue);
+        $statement->bind_param('sss', $paymentMethod, $startValue, $endValue);
         $statement->execute();
         $summary = $statement->get_result()->fetch_assoc() ?: [];
         $statement->close();
 
         return json_encode([
             'status' => 'success',
+            'provider' => $provider,
+            'provider_label' => $definitions[$provider]['label'],
             'server_time' => payment_local_datetime(),
             'period' => [
                 'start_at' => $start->format('Y-m-d\TH:i'),
